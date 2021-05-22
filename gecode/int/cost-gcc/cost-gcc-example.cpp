@@ -12,11 +12,11 @@ protected:
 
 public:
 	CountCostsExample(void) : x(*this, 3) {
-		x[0] = IntVar(*this, IntSet({7, 6, 9, 777, 888}));
+		x[0] = IntVar(*this, IntSet({6, 9, 777, 888}));
 		x[1] = IntVar(*this, IntSet({10, 7, 6, 777, 9}));
 		x[2] = IntVar(*this, IntSet({777, 9}));
 
-		IntArgs lowerBounds = {0, 1, 0, 2};
+		IntArgs lowerBounds = {0, 1, 0, 1};
 		IntArgs upperBounds = {2, 1, 1, 4};
 
 		IntArgs vals = {9, 7, 10, 777};
@@ -27,7 +27,7 @@ public:
 				11, 12, 13, 14
 		};
 
-		countCosts(*this, x, vals, lowerBounds, upperBounds, costs, 100, IntPropLevel::IPL_DOM);
+		countCosts(*this, x, vals, lowerBounds, upperBounds, costs, 42, IntPropLevel::IPL_DOM);
 		//branch(*this, x, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
 	}
 

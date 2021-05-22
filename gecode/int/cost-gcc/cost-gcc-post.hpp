@@ -26,15 +26,17 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 		throw ArgumentSizeMismatch("Int::countCosts");
 	}
 
-	// No duplicates in vals
-	unordered_set<int> distinctVals;
-	for (auto& val: vals) {
-		if (distinctVals.insert(val).second == false) {
+	// Don't allow duplicates in vals
+	// Map each value to its respective position in vals array
+	unordered_map<int, unsigned int> valToIndex;
+	for (int i = 0; i < vals.size(); i++) {
+		if (valToIndex.insert({vals[i], i}).second == false) {
 			throw ArgumentSizeMismatch("Int::countCosts");
 		}
 	}
 
 	// Map values to their variables
+	// Helps do fast lookups, for early pruning and FlowGraph creation
 	MapToSet valToVars;
 	for (int x = 0; x < vars.size(); x++) {
 		for (IntVarValues i(vars[x]); i(); ++i) {
@@ -48,8 +50,8 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 	}
 
 	// Values in vals argument must belong to at least one variable domain
-	for (auto& v: distinctVals) {
-		if (valToVars.find(v) == valToVars.end()) {
+	for (auto& v: valToIndex) {
+		if (valToVars.find(v.first) == valToVars.end()) {
 			throw OutOfLimits("Int::countCosts");
 		}
 	}
@@ -70,7 +72,7 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 	
 	ViewArray<Int::IntView> views(home, vars);
 	GECODE_POST;
-	GECODE_ES_FAIL(CostGcc::post(home, views, valToVars, vals, distinctVals, 
+	GECODE_ES_FAIL(CostGcc::post(home, views, valToVars, vals, valToIndex, 
 															 lowerBounds, upperBounds, costs, costUpperBound
 															));
 }
