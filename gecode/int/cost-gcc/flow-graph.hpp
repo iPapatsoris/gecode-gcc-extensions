@@ -9,7 +9,14 @@
 using namespace Gecode;
 using namespace std;
 
-typedef unordered_map<int, unordered_set<int>> MapToSet;
+template <class T1, class T2>
+struct MapToSet {
+	unordered_map<T1, unordered_set<T2>> map;
+	MapToSet() {}
+	MapToSet(const MapToSet &c) {
+		map = c.map;
+	}
+};
 
 /**
  * Base Edge class
@@ -57,21 +64,28 @@ class NormalEdge : public Edge {
 class ResidualEdge : public Edge {
 	unsigned int upperBound;
 	int cost;
+	unsigned int reducedCost;
 
 	public: 
 		ResidualEdge(unsigned int destNode, unsigned int upperBound, int cost) 
-				: Edge(destNode), upperBound(upperBound), cost(cost) {}
+				: Edge(destNode), upperBound(upperBound), cost(cost), reducedCost(0) {}
 		ResidualEdge(const NormalEdge& edge) 
 				: Edge(edge.getDestNode()), upperBound(edge.getUpperBound()), 
-					cost(edge.getCost()) {}
+					cost(edge.getCost()), reducedCost(0) {}
 		ResidualEdge() {}
 		void print() const {
-			cout << destNode << " upper " << upperBound << " cost " << cost << "\n";
+			cout << destNode << " upper " << upperBound << " cost " << cost 
+					 << " reduced cost " << reducedCost << "\n";
 		}
 	
 	friend class FlowGraph;
 	friend class FlowGraphAlgorithms;
 };
+
+// Edge containing both source node and destination info
+// Normally source is not included in Edge class, because node ID N corresponds
+// to the N-th position in the node list arrays
+typedef pair<unsigned int, NormalEdge *> FullEdge;
 
 class Node {
 	vector<NormalEdge> edgeList;
@@ -110,9 +124,29 @@ class FlowGraph {
 		unsigned int totalVarNodes; 
 		// Fast lookup of what node a value corresponds to
 		unordered_map<int, unsigned int> valToNode;
+		// Fast lookup of what value a node corresponds to
+		unordered_map<unsigned int, int> nodeToVal;
+		// Holds each variable's domain. Is needed to find out which values got
+		// pruned during an iteration, by comparing with Gecode's variable domains.
+		// We know which variables got changed by using advisors, so domain
+		// comparison is only done among those.
+		// Should be kept up to date with assignments and pruning.
+		MapToSet<unsigned int, int> varToVals;
 
-		// Total flow through the graph, starts at 0
+		// Total flow through the graph, starts at 0. Is calculated at once using
+		// appropriate function, not gradually
 		int flowCost;
+
+		// Cost upper bound as defined by the constraint input
+		const int costUpperBound;
+
+		// When values are pruned or variables are assigned, we update the 
+		// bounds of the corresponding edges. At that point, set this variable
+		// to note whether our old flow is still feasible, or if we need to find a 
+		// new one. It is much more efficient to check this when we update 
+		// the bounds of specific edges, than to scan the whole graph later to see 
+		// if the old flow still stands
+		bool oldFlowIsFeasible;
 
 		// Position of S node
 		unsigned int sNode() const { return nodeList.size() - 2; }
@@ -121,12 +155,12 @@ class FlowGraph {
 
 		// Search for an edge flow violating lower bounds
 		// Return false if none exists
-		bool getLowerBoundViolatingEdge(pair<unsigned int, NormalEdge>& violation) 
+		bool getLowerBoundViolatingEdge(pair<unsigned int, unsigned int>& violation) 
 			const {
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				for (auto& edge: nodeList[i].edgeList) {
 					if (edge.flow < edge.lowerBound) {
-						violation = {i, edge};
+						violation = {i, edge.destNode};
 						return true;
 					}
 				}
@@ -186,6 +220,7 @@ class FlowGraph {
 
 		// Iterate through each edge that has flow, to find its total cost
 		int calculateFlowCost() {
+			flowCost = 0;
 			for (unsigned int i = totalVarNodes; i < sNode(); i++) {
 				for (auto& edge: nodeList[i].edgeList) {
 					if (edge.flow > 0) {
@@ -193,8 +228,12 @@ class FlowGraph {
 					}
 				}
 			}
-
 			return flowCost;
+		}
+
+		bool checkFlowCost() const {
+			cout << "Min cost flow " << flowCost << endl;
+			return flowCost <= costUpperBound;
 		}
 
 		// Given 'distances' contains the shortest paths from one node to every 
@@ -203,7 +242,7 @@ class FlowGraph {
 		void calculateReducedCosts(const vector<int>& distances) {
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				for (auto& edge : nodeList[i].residualEdgeList) {
-					edge.cost = distances[i] + edge.cost - distances[edge.destNode];
+					edge.reducedCost = distances[i] + edge.cost - distances[edge.destNode];
 				}
 			}
 		}
@@ -219,14 +258,19 @@ class FlowGraph {
 		// This is only for testing purposes, to see how much checkLowerBounds helps
 		// performance. 
 		// TODO: Eventually, decide on one way and remove this parameter.
-		FlowGraph(const ViewArray<Int::IntView>& vars, const MapToSet& valToVars,
-					const IntArgs& inputVals, const IntArgs& lowerBounds, 
-					const IntArgs& upperBounds, const IntArgs& costs, bool includePruned) 
-				: flowCost(0) {
-
+		FlowGraph(
+			const ViewArray<Int::IntView>& vars, 
+ 			const MapToSet<unsigned int, int>& varToVals,
+			const MapToSet<int, unsigned int>& valToVars,
+			const IntArgs& inputVals, const IntArgs& lowerBounds, 
+			const IntArgs& upperBounds, const IntArgs& costs, int costUpperBound, 
+			bool includePruned) 
+				: flowCost(0), costUpperBound(costUpperBound) {
+			
+			this->varToVals = varToVals;
 			totalVarNodes = vars.size();
 			unsigned int totalValNodes = (includePruned ? inputVals.size() 
-																									: valToVars.size());
+																									: valToVars.map.size());
 			// Nodes are variable nodes, values nodes, S and T nodes
 			int totalNodes = totalVarNodes + totalValNodes + 2;
 			// S node position
@@ -250,12 +294,13 @@ class FlowGraph {
 			// their lower bound restriction
 			for (int i = 0; i < inputVals.size(); i++) {
 				int val = inputVals[i];
-				auto it = valToVars.find(val);
-				if (it != valToVars.end() || includePruned) {
+				auto it = valToVars.map.find(val);
+				if (it != valToVars.map.end() || includePruned) {
 					valToNode.insert({val, nodeList.size()});
-					cout << "node " << nodeList.size() << " corresponds to val " << val
-							 << "\n";
-					if (it != valToVars.end()) {
+					nodeToVal.insert({nodeList.size(), val});
+					//cout << "node " << nodeList.size() << " corresponds to val " << val
+					//		 << "\n";
+					if (it != valToVars.map.end()) {
 						nodeList.push_back(Node(it->second.size()));
 						for (auto& var : it->second) {
 							int lowerBound = (vars[var].assigned() ? 1 : 0);
@@ -294,8 +339,41 @@ class FlowGraph {
 			}
 		}
 
-		int getFlowCost() const {
-			return flowCost;
+		// Update graph state to match variable X domain pruning/assignment.
+		// Update is made by tightening the bounds of edge V->X as follows:
+		// - If X got assigned to value V, set the lower bound to 1.
+		// - For every value V that has been pruned off X, set the upper bound 
+		//   to 0. 
+	  // If we prune a value that is used by current flow, or assign a value 
+		// that is not used by it, set oldFlowIsFeasible to false.
+		void updatePrunedValues(Int::IntView x, unsigned int xIndex, 
+													  vector<FullEdge>& updatedEdges) {
+			oldFlowIsFeasible = true;
+			for (auto& value: varToVals.map.find(xIndex)->second) {
+				auto valueNode = valToNode.find(value)->second;
+				for(auto& edge: nodeList[valueNode].edgeList) {
+					if (edge.destNode == xIndex && !edge.lowerBound && 
+																					edge.upperBound == 1) {
+						// If edge hasn't already been pruned or assigned
+						if (!x.in(value)) {
+							// Value has been pruned from variable X's domain, update graph
+							edge.upperBound = 0;
+							if (edge.flow == 1) {
+								oldFlowIsFeasible = false;
+							}
+							updatedEdges.push_back({valueNode, &edge});
+						}
+						if (x.assigned() && x.val() == value && !edge.lowerBound) {
+							// Variable has been assigned with a value, update graph
+							edge.lowerBound = 1;
+							if (edge.flow == 0) {
+								oldFlowIsFeasible = false;
+							}
+							updatedEdges.push_back({valueNode, &edge});
+						}	
+					}
+				}
+			}
 		}
 
 		void print() const {

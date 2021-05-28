@@ -77,6 +77,47 @@ class FlowGraphAlgorithms {
 			}
 		}
 
+		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation) {
+			vector<unsigned int> shortestPath;
+			int pathCost; 
+			if (!findShortestPathNegativeCosts(violation.second, violation.first, 
+																				 shortestPath, pathCost)) {
+				// Constraint is not consistent
+				return false;
+			}
+
+			// Find min upper bound along shortest path
+			unsigned int prev = violation.first;
+			unsigned int minUpperBound = INF_UINT;
+			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
+				// Bellman returns the path in reverse, so traverse it in reverse
+				ResidualEdge *edge = graph.getResidualEdge(prev, *it);
+				minUpperBound = min(minUpperBound, edge->upperBound);
+				prev = *it;
+				// cout << *it << (it != shortestPath.rend()-1 ? "->" : "\n");
+			}
+			assert(minUpperBound != INF_UINT);
+
+			// Send flow through the path edges and update residual graph
+			prev = violation.first;
+			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
+				NormalEdge *edge = graph.getEdge(prev, *it);
+				if (edge != NULL) {
+					// Path residual edge is a forward edge in the original graph
+					edge->flow += minUpperBound;
+					updateResidualGraph(prev, *it, edge);
+				}	else {
+					// Path residual edge is a backward edge in the original graph
+					edge = graph.getEdge(*it, prev);
+					edge->flow -= minUpperBound;
+					updateResidualGraph(*it, prev, edge);
+				}
+				prev = *it;
+			}
+
+			return true;
+		}
+
 	public:
 		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
 
@@ -116,59 +157,52 @@ class FlowGraphAlgorithms {
 		}
 
 		bool findMinCostFlow() {
-			pair<unsigned int, NormalEdge> violation;
+			pair<unsigned int, unsigned int> violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
-				/*cout << "Edge violation " << violation.first << "->" 
-						 << violation.second.destNode << " flow " << violation.second.flow 
-						 << " lower bound " << violation.second.lowerBound << "\n";*/
-				vector<unsigned int> shortestPath;
-				int pathCost; 
-				if (!findShortestPathNegativeCosts(violation.second.destNode, 
-																					 violation.first, shortestPath, 
-																					 pathCost)) {
-					// Constraint is not consistent
-					cout << "No path for edge violation " << violation.first << "->" 
-							 << violation.second.destNode << endl;
-					graph.print();
-					graph.printResidual();
+				if (!minCostFlowIteration(violation)) {
 					return false;
-				}
-
-				//cout << "Path cost " << pathCost << endl;
-
-				// Find min upper bound along shortest path
-				unsigned int prev = violation.first;
-				unsigned int minUpperBound = INF_UINT;
-				for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
-					// Bellman returns the path in reverse, so traverse it in reverse
-					ResidualEdge *edge = graph.getResidualEdge(prev, *it);
-					minUpperBound = min(minUpperBound, edge->upperBound);
-					prev = *it;
-					cout << *it << (it != shortestPath.rend()-1 ? "->" : "\n");
-				}
-				//cout << "\nk = " << minUpperBound << endl;
-				assert(minUpperBound != INF_UINT);
-
-				// Send flow through the path edges and update residual graph
-				prev = violation.first;
-				for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
-					NormalEdge *edge = graph.getEdge(prev, *it);
-					if (edge != NULL) {
-						// Path residual edge is a forward edge in the original graph
-						edge->flow += minUpperBound;
-						updateResidualGraph(prev, *it, edge);
-					}	else {
-						// Path residual edge is a backward edge in the original graph
-						cout << "\tBackwards edge flow!!!!!!!" << endl;
-						edge = graph.getEdge(*it, prev);
-						edge->flow -= minUpperBound;
-						updateResidualGraph(*it, prev, edge);
-					}
-					prev = *it;
 				}
 			}
 			graph.calculateFlowCost();
-			cout << "Min cost flow " << graph.getFlowCost() << endl;
-			return true;
+			return graph.checkFlowCost();
+		}
+
+		// Given updatedEdges contains the edges whose bounds have been tightened
+		// since last execution, do the following:
+		// - Update the residual graph to match the changes
+		// - If the old flow is not still feasible, find a new one, using the 
+		//   incremental algorithm from the publication
+		bool updateMinCostFlow(vector<FullEdge>& updatedEdges) {
+			for (auto& edge: updatedEdges) {
+				updateResidualGraph(edge.first, edge.second->destNode, edge.second);
+			}
+			if (graph.oldFlowIsFeasible) {
+				return true;
+			}
+			bool foundFeasibleFlow = false;
+			for (auto& edge: updatedEdges) {
+				// Among the edges that changed, look for one violating bounds
+				// Assume we are violating lower bound on init
+				auto e = edge.second;
+				unsigned int src = edge.first;
+				unsigned int dest = e->destNode; 
+				if (e->flow >= e->lowerBound && e->flow <= e->upperBound) {
+					// All bounds satisfied, try another edge
+					continue;
+				}
+				if (e->flow > e->upperBound) {
+					// Violating upper bound, swap direction of initial violating edge
+					std::swap(src, dest);
+				}
+				if (minCostFlowIteration({src, dest})) {
+					foundFeasibleFlow = true;
+					break;
+				}
+			}
+			if (!foundFeasibleFlow) {
+				return false;
+			}
+			graph.calculateFlowCost();
+			return graph.checkFlowCost();
 		}
 };

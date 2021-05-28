@@ -37,22 +37,22 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 
 	// Map values to their variables
 	// Helps do fast lookups, for early pruning and FlowGraph creation
-	MapToSet valToVars;
+	MapToSet<int, unsigned int> valToVars;
+	// Map variables to their values
+	// Is used to compare old domain with current Gecode domain, to find which
+	// values got pruned between executions
+	MapToSet<unsigned int, int> varToVals;
 	for (int x = 0; x < vars.size(); x++) {
+		auto varToValsEntry = varToVals.map.insert({x, unordered_set<int>()});
 		for (IntVarValues i(vars[x]); i(); ++i) {
-			auto it = valToVars.find(i.val());
-			if (it == valToVars.end()) {
-				valToVars.insert({i.val(), unordered_set<int>({x})});
+			varToValsEntry.first->second.insert(i.val());
+			auto it = valToVars.map.find(i.val());
+			if (it == valToVars.map.end()) {
+				valToVars.map.insert({i.val(), 
+														  unordered_set<unsigned int>({(unsigned int) x})});
 			} else {
 				it->second.insert(x);
 			}
-		}
-	}
-
-	// Values in vals argument must belong to at least one variable domain
-	for (auto& v: valToIndex) {
-		if (valToVars.find(v.first) == valToVars.end()) {
-			throw OutOfLimits("Int::countCosts");
 		}
 	}
 
@@ -72,7 +72,8 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 	
 	ViewArray<Int::IntView> views(home, vars);
 	GECODE_POST;
-	GECODE_ES_FAIL(CostGcc::post(home, views, valToVars, vals, valToIndex, 
-															 lowerBounds, upperBounds, costs, costUpperBound
+	GECODE_ES_FAIL(CostGcc::post(home, views, varToVals, valToVars, vals, 
+															 valToIndex, lowerBounds, upperBounds, costs, 
+															 costUpperBound
 															));
 }
