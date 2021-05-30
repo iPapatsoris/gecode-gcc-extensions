@@ -247,6 +247,18 @@ class FlowGraph {
 			}
 		}
 
+		// Assert varToVals is synchronized with Gecode variable X domain
+		void assertVarToValsInSync(Int::IntView x, int xIndex) const {
+			auto vals = varToVals.map.find(xIndex)->second;
+			assert(vals.size() == x.size());
+			for (IntVarValues v(x); v(); ++v) {
+				assert(vals.find(v.val()) != vals.end());
+			}
+			for (auto val: vals) {
+				assert(x.in(val));
+			}
+		}
+
 	public:
 		// Create FlowGraph. Parameter includePruned controls whether early pruned
 		// values without any matching variables, should be included as edge-less
@@ -349,31 +361,44 @@ class FlowGraph {
 		void updatePrunedValues(Int::IntView x, unsigned int xIndex, 
 													  vector<FullEdge>& updatedEdges) {
 			oldFlowIsFeasible = true;
-			for (auto& value: varToVals.map.find(xIndex)->second) {
+			// Hold iterators to the values that we end up prunning, so we can also
+			// remove them from valToVars
+			vector< unordered_set<int>::iterator > prunedValues; 
+			// Iterate all values for which there is an edge to X
+			auto& values = varToVals.map.find(xIndex)->second;
+			for (auto valueIt = values.begin(); valueIt != values.end(); valueIt++) {
+				auto value = *valueIt;
 				auto valueNode = valToNode.find(value)->second;
-				for(auto& edge: nodeList[valueNode].edgeList) {
-					if (edge.destNode == xIndex && !edge.lowerBound && 
-																					edge.upperBound == 1) {
-						// If edge hasn't already been pruned or assigned
-						if (!x.in(value)) {
-							// Value has been pruned from variable X's domain, update graph
-							edge.upperBound = 0;
-							if (edge.flow == 1) {
-								oldFlowIsFeasible = false;
-							}
-							updatedEdges.push_back({valueNode, &edge});
+				NormalEdge* edge = getEdge(valueNode, xIndex);
+				if (!edge->lowerBound && edge->upperBound == 1) {
+					// If edge hasn't already been pruned or assigned
+					if (!x.in(value)) {
+						// Value has been pruned from variable X's domain, update graph
+						edge->upperBound = 0;
+						if (edge->flow == 1) {
+							oldFlowIsFeasible = false;
 						}
-						if (x.assigned() && x.val() == value && !edge.lowerBound) {
-							// Variable has been assigned with a value, update graph
-							edge.lowerBound = 1;
-							if (edge.flow == 0) {
-								oldFlowIsFeasible = false;
-							}
-							updatedEdges.push_back({valueNode, &edge});
-						}	
+						updatedEdges.push_back({valueNode, edge});
+						prunedValues.push_back(valueIt);
 					}
+					if (x.assigned() && x.val() == value && !edge->lowerBound) {
+						// Variable has been assigned with a value, update graph
+						edge->lowerBound = 1;
+						if (edge->flow == 0) {
+							oldFlowIsFeasible = false;
+						}
+						updatedEdges.push_back({valueNode, edge});
+					}	
 				}
 			}
+
+			for (auto it: prunedValues) {
+				values.erase(it);
+			}
+
+			#ifndef NDEBUG
+				assertVarToValsInSync(x, xIndex);
+			#endif
 		}
 
 		void print() const {
