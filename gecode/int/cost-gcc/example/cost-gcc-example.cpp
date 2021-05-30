@@ -1,10 +1,24 @@
 #include <gecode/driver.hh>
 #include <gecode/int.hh>
 #include <gecode/minimodel.hh>
-#include "cost-gcc-post.hpp"
+#include "../cost-gcc-post.hpp"
+#include "read-input.hpp"
 
 using namespace Gecode;
 using namespace std;
+
+class FileOptions : public Options {
+protected:
+	Driver::StringValueOption _file;
+public:
+	FileOptions(const char* scriptName) : 
+			Options(scriptName),
+			_file("file","input file name", "") { 
+		add(_file);
+	}
+  string file(void) const { return _file.value(); }
+
+};
 
 const int vars = 3;
 const int cost = 41;
@@ -34,7 +48,29 @@ public:
 		MODEL_SINGLE, MODEL_MULTI
 	};
 
-	CountCostsExample(const Options& opt) : Script(opt) {
+	CountCostsExample(const FileOptions& opt) : Script(opt) {
+		int vars, cost;
+		IntSetArgs domain;
+		IntArgs lowerBounds, upperBounds, vals, costs;
+		readInput(opt.file(), vars, domain, vals, lowerBounds, upperBounds, costs, 
+							cost);
+		/*cout << "Vars: " << vars << endl;
+		cout << "Domain: ";
+		for (auto i: domain) {
+			cout << i;
+		}
+		cout << "\n";
+		cout << "Lower bounds: " << lowerBounds << endl;
+		cout << "Upper bounds: " << upperBounds << endl;
+		cout << "Vals: " << vals << endl;
+		cout << "Costs: " << endl;
+		for (int i = 0; i < vars; i++) {
+			for (int j = 0; j < vals.size(); j++) {
+				cout << costs[i*vals.size() + j] << " ";
+			}
+			cout << "\n";
+		}*/
+
 		x = IntVarArray(*this, vars);
 		for (int i = 0; i < vars; i++) {
 			x[i] = IntVar(*this, domain[i]);
@@ -84,7 +120,7 @@ public:
 };
 
 int main(int argc, char *argv[]) {
-	Options opt("Cost GCC");
+	FileOptions opt("Cost GCC");
 	opt.model(CountCostsExample::MODEL_SINGLE,
 						"single", "use single costgcc");
 	opt.model(CountCostsExample::MODEL_MULTI,
@@ -94,7 +130,7 @@ int main(int argc, char *argv[]) {
 	opt.solutions(0);
 	opt.parse(argc, argv);
 
-	Script::run<CountCostsExample, DFS, Options>(opt);
+	Script::run<CountCostsExample, DFS, FileOptions>(opt);
 
 	return 0;
 }
