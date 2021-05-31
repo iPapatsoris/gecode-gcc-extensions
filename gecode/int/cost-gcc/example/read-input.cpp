@@ -23,7 +23,6 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 	}
 
 	mode = VARS;
-	int var = 0;
   while(getline(file, line)) {
 		vector<int> numbers;
 		stringstream stream(line);

@@ -85,7 +85,12 @@ class ResidualEdge : public Edge {
 // Edge containing both source node and destination info
 // Normally source is not included in Edge class, because node ID N corresponds
 // to the N-th position in the node list arrays
-typedef pair<unsigned int, NormalEdge *> FullEdge;
+// It is typically used in updatedEdges vectors, which hold which edges got 
+// updated due to some pruning or assignment, and need to be checked on when
+// we next update the residual graph. It is important to have NormalEdge object
+// and not NormalEdge*, because when search finds a solution or fails, it will
+// clone the graph and destroy the original, thus invalidating the pointer.
+typedef pair<unsigned int, NormalEdge> FullEdge;
 
 class Node {
 	vector<NormalEdge> edgeList;
@@ -247,6 +252,7 @@ class FlowGraph {
 			}
 		}
 
+		#ifndef NDEBUG
 		// Assert varToVals is synchronized with Gecode variable X domain
 		void assertVarToValsInSync(Int::IntView x, int xIndex) const {
 			auto vals = varToVals.map.find(xIndex)->second;
@@ -258,6 +264,7 @@ class FlowGraph {
 				assert(x.in(val));
 			}
 		}
+		#endif
 
 	public:
 		// Create FlowGraph. Parameter includePruned controls whether early pruned
@@ -358,8 +365,11 @@ class FlowGraph {
 		//   to 0. 
 	  // If we prune a value that is used by current flow, or assign a value 
 		// that is not used by it, set oldFlowIsFeasible to false.
+		// Populate updatedEdges, so we know where we should update the old residual
+		// graph later on
 		void updatePrunedValues(Int::IntView x, unsigned int xIndex, 
 													  vector<FullEdge>& updatedEdges) {
+			//cout << "\nIn advisor:\n";
 			oldFlowIsFeasible = true;
 			// Hold iterators to the values that we end up prunning, so we can also
 			// remove them from valToVars
@@ -374,20 +384,22 @@ class FlowGraph {
 					// If edge hasn't already been pruned or assigned
 					if (!x.in(value)) {
 						// Value has been pruned from variable X's domain, update graph
+						//cout << value << " pruned from " << xIndex << endl;
 						edge->upperBound = 0;
 						if (edge->flow == 1) {
 							oldFlowIsFeasible = false;
 						}
-						updatedEdges.push_back({valueNode, edge});
+						updatedEdges.push_back({valueNode, *edge});
 						prunedValues.push_back(valueIt);
 					}
 					if (x.assigned() && x.val() == value && !edge->lowerBound) {
 						// Variable has been assigned with a value, update graph
+						//cout << value << " assigned to " << xIndex << endl;
 						edge->lowerBound = 1;
 						if (edge->flow == 0) {
 							oldFlowIsFeasible = false;
 						}
-						updatedEdges.push_back({valueNode, edge});
+						updatedEdges.push_back({valueNode, *edge});
 					}	
 				}
 			}

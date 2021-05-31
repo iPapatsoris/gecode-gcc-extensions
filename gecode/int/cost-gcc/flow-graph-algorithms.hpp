@@ -21,24 +21,37 @@ class FlowGraphAlgorithms {
 		// source->dest. Updates / deletions are needed because in each iteration,
 		// instead of building the residual graph from scratch, we modify the 
 		// previous one only in the edges that change
-		void updateResidualGraph(unsigned int source, unsigned int dest, NormalEdge* edge) {
+		void updateResidualGraph(unsigned int source, unsigned int dest, 
+														 NormalEdge edge) {
 			unsigned int residualEdgeIndex;
-			ResidualEdge *residualEdgeSearch = graph.getResidualEdge(source, dest, &residualEdgeIndex);
-			if (edge->flow < edge->upperBound) {
+			ResidualEdge *residualEdgeSearch = graph.getResidualEdge(source, dest, 
+																														&residualEdgeIndex);
+			if (edge.flow < edge.upperBound) {
 				// Add / update forward residual edge
-				graph.setOrCreateResidualEdge(residualEdgeSearch, source, ResidualEdge(dest, edge->upperBound - edge->flow, edge->cost));
+				graph.setOrCreateResidualEdge(residualEdgeSearch, source, 
+																		  ResidualEdge(dest, 
+																								   edge.upperBound - edge.flow, 
+																									 edge.cost));
 			} else if (residualEdgeSearch != NULL) {
 				// Delete forward residual edge that should no longer exist
-				graph.nodeList[source].residualEdgeList.erase(graph.nodeList[source].residualEdgeList.begin() + residualEdgeIndex);
+				auto it = graph.nodeList[source].residualEdgeList.begin() + 
+																				 residualEdgeIndex;
+				graph.nodeList[source].residualEdgeList.erase(it);
 			}
 
-			residualEdgeSearch = graph.getResidualEdge(dest, source, &residualEdgeIndex);
-			if (edge->flow > edge->lowerBound) {
+			residualEdgeSearch = graph.getResidualEdge(dest, source, 
+																								 &residualEdgeIndex);
+			if (edge.flow > edge.lowerBound) {
 				// Add / update backward residual edge
-				graph.setOrCreateResidualEdge(residualEdgeSearch, dest, ResidualEdge(source, edge->flow - edge->lowerBound, -edge->cost));
+				graph.setOrCreateResidualEdge(residualEdgeSearch, dest, 
+																		  ResidualEdge(source, 
+																									 edge.flow - edge.lowerBound, 
+																									 -edge.cost));
 			} else if (residualEdgeSearch != NULL) {
 				// Delete backward residual edge that should no longer exist
-				graph.nodeList[dest].residualEdgeList.erase(graph.nodeList[dest].residualEdgeList.begin() + residualEdgeIndex);
+				auto it = graph.nodeList[dest].residualEdgeList.begin() + 
+																			 residualEdgeIndex;
+				graph.nodeList[dest].residualEdgeList.erase(it);
 			}
 		}
 
@@ -105,21 +118,18 @@ class FlowGraphAlgorithms {
 				if (edge != NULL) {
 					// Path residual edge is a forward edge in the original graph
 					edge->flow += minUpperBound;
-					updateResidualGraph(prev, *it, edge);
+					updateResidualGraph(prev, *it, *edge);
 				}	else {
 					// Path residual edge is a backward edge in the original graph
 					edge = graph.getEdge(*it, prev);
 					edge->flow -= minUpperBound;
-					updateResidualGraph(*it, prev, edge);
+					updateResidualGraph(*it, prev, *edge);
 				}
 				prev = *it;
 			}
 
 			return true;
 		}
-
-	public:
-		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
 
 		// Shortest paths from source node to all other nodes
 		// Return the costs for each shortest path in distances
@@ -156,6 +166,139 @@ class FlowGraphAlgorithms {
 			return true;
 		}
 
+		// Disjktra's algorithm for shortest paths.
+		// Early termination when we have found paths to targetNodes, we do not 
+		// compute the rest of the nodes.
+		// Nodes are removed from targetNodes as we finalize their paths. 
+		// Normally, targetNodes would be empty when function returns.
+		// Due to another early termination condition involving costLowerBound, 
+		// it is possible to terminate without visiting all targetNodes.
+		// In this case, the nodes remaining in targetNodes are inconsistent 
+		// and can be pruned.
+		void findShortestPathsReducedCosts(unsigned int source, 
+																			 unordered_set<unsigned int>& targetNodes, 
+																			 vector<unsigned int>& dist, 
+																			 unsigned int costLowerBound) const {
+			vector<bool> visited;
+			visited.assign(graph.nodeList.size(), false);
+			dist.assign(graph.nodeList.size(), INF_UINT);
+			dist[source] = 0;
+			if (targetNodes.empty()) {
+				return;
+			}
+
+			struct HeapItem {
+				unsigned int node;
+				unsigned int dist;
+
+				HeapItem(unsigned int node, unsigned int dist) : node(node), dist(dist) 
+				{}
+				HeapItem() {}
+				// Overload so we can use STL min-heap
+				int operator() (const HeapItem& a, const HeapItem& b) { 
+					return a.dist > b.dist; 
+				}
+			};		
+
+			priority_queue<HeapItem, vector<HeapItem>, HeapItem> heap;
+			heap.push(HeapItem(source, 0));
+
+			while (!heap.empty()) {
+				struct HeapItem curItem = heap.top();
+				heap.pop();
+				unsigned int node = curItem.node;
+				visited[node] = true;
+
+				// Early termination. If condition holds for current node, it will also 
+				// hold for every unexplored one. This condition is enough to prune the 
+				// associated values of the remaining unexplored targetNodes early,
+				// without having to find the remaining shortest paths
+				if (dist[node] > costLowerBound) {
+					return;
+				}
+
+				// Stop when we find paths to all targetNodes of interest
+				targetNodes.erase(node);
+				if (targetNodes.empty()) {
+					return;
+				}
+
+				if (dist[node] < curItem.dist) {
+					// We have already found a better path than the one this heap item 
+					// suggests
+					continue;
+				}
+
+				for (auto& edge: graph.nodeList[node].residualEdgeList) {
+					if (visited[edge.destNode]) {
+						continue;
+					}
+					unsigned int newDist = dist[node] + edge.reducedCost;
+					if (newDist < dist[edge.destNode]) {
+						// Found path of lower cost
+						dist[edge.destNode] = newDist;
+						heap.push(HeapItem(edge.destNode, newDist));
+					}
+				}
+			}
+		}
+
+		// Optimization to skip finding shortest paths for GAC, according to 
+		// Practical Improvements section of the research paper
+		bool earlyPrune(unsigned int a, unsigned int b, unsigned int y, 
+										unsigned int m) const {
+
+			auto mFactor = [](unsigned int b, unsigned int y, FlowGraph& graph) {
+				unsigned int min = INF_UINT;
+				for (unsigned int z = 0 ; z < graph.totalVarNodes ; z++) {
+					ResidualEdge *edgeZB;
+					if (z == y || ((edgeZB = graph.getResidualEdge(z, b)) == NULL)) {
+						continue;
+					}
+					for (auto& edgeZC: graph.nodeList[z].residualEdgeList) {
+						min = std::min(min, edgeZB->reducedCost + edgeZC.reducedCost);
+					}
+				}
+				return min;
+			};
+
+			NormalEdge* edgeSA = graph.getEdge(graph.sNode(), a);
+			NormalEdge* edgeSB = graph.getEdge(graph.sNode(), b);
+			ResidualEdge* edgeAY = graph.getResidualEdge(a, y);
+			ResidualEdge* edgeYB = graph.getResidualEdge(y, b);
+
+			if (edgeSA->flow < edgeSA->upperBound 
+					&& edgeSB->flow > edgeSB->lowerBound 
+					&& edgeAY->reducedCost > m - edgeYB->reducedCost) {
+				cout << "\tCONDITION 1 EARLY PRUNNING " << a << " from " << y << endl; 
+				return true;
+			} 
+			int mB = mFactor(b, y, graph);
+			if (edgeSA->flow < edgeSA->upperBound 
+					&& edgeSB->flow == edgeSB->lowerBound 
+					&& edgeAY->reducedCost + mB > m) {
+				cout << "\tCONDITION 2 EARLY PRUNNING " << a << " from " << y << endl;
+				return true;
+			}
+			int mA = mFactor(a, y, graph);
+			if (edgeSA->flow == edgeSA->upperBound 
+					&& edgeSB->flow > edgeSB->lowerBound 
+					&& edgeAY->reducedCost + mA > m - edgeYB->reducedCost) {
+				cout << "\tCONDITION 3 EARLY PRUNNING " << a << " from " << y << endl;
+				return true;
+			}
+			if (edgeSA->flow == edgeSA->upperBound 
+					&& edgeSB->flow == edgeSB->lowerBound 
+					&& edgeAY->reducedCost + mA + mB > m) {
+				cout << "\tCONDITION 4 EARLY PRUNNING " << a << " from " << y << endl;
+				return true;
+			}
+			return false;
+		}
+
+	public:
+		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
+		
 		bool findMinCostFlow() {
 			pair<unsigned int, unsigned int> violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
@@ -174,7 +317,7 @@ class FlowGraphAlgorithms {
 		//   incremental algorithm from the publication
 		bool updateMinCostFlow(vector<FullEdge>& updatedEdges) {
 			for (auto& edge: updatedEdges) {
-				updateResidualGraph(edge.first, edge.second->destNode, edge.second);
+				updateResidualGraph(edge.first, edge.second.destNode, edge.second);
 			}
 			if (graph.oldFlowIsFeasible) {
 				return true;
@@ -185,12 +328,12 @@ class FlowGraphAlgorithms {
 				// Assume we are violating lower bound on init
 				auto e = edge.second;
 				unsigned int src = edge.first;
-				unsigned int dest = e->destNode; 
-				if (e->flow >= e->lowerBound && e->flow <= e->upperBound) {
+				unsigned int dest = e.destNode; 
+				if (e.flow >= e.lowerBound && e.flow <= e.upperBound) {
 					// All bounds satisfied, try another edge
 					continue;
 				}
-				if (e->flow > e->upperBound) {
+				if (e.flow > e.upperBound) {
 					// Violating upper bound, swap direction of initial violating edge
 					std::swap(src, dest);
 				}
@@ -204,5 +347,119 @@ class FlowGraphAlgorithms {
 			}
 			graph.calculateFlowCost();
 			return graph.checkFlowCost();
+		}
+	
+		// In addition to pruning, hold the affected Val->Var edges in updatedEdges
+		// so we can update the residual graph later accordingly. We do not update
+		// it here, because in case the home space fails due to another
+		// constraint, or if we find a solution from this pruning, we would have 
+		// updated it for no reason, as we wouldn't need to re-check the validity of 
+		// costgcc, the search would backtrack to previous instances.
+		// The reason why 
+		ExecStatus performArcConsistency(Space& home, ViewArray<Int::IntView>& vars, 
+															       vector<FullEdge>& updatedEdges) {
+			graph.addTResidualEdges();
+			vector<int> distances;
+			findShortestPathsNegativeCosts(graph.tNode(), distances);
+			graph.calculateReducedCosts(distances);
+
+			// Edge nodes, along with the actual value the src node
+			// corresponds to 
+			struct EdgeWithVal {
+				int src;
+				int dest;
+				int val;
+				EdgeWithVal(const int src, const int dest, const int val)
+					: src(src), dest(dest), val(val) {}
+			};
+
+			// Hold the edges we decide to prune during arc consistency
+			// We do the actual pruning at the end of this function's iterations
+			vector<EdgeWithVal> edgesToPrune;
+
+			// Gather the targetNodes we want to find shortests paths to from B,
+			// and check early prune conditions to skip finding some
+			for (auto& edge: graph.nodeList[graph.sNode()].edgeList) {
+				if (edge.flow > 0) {
+					unsigned int b = edge.destNode;
+					unordered_set<unsigned int> targetNodes;
+					vector< pair<unsigned int, unsigned int>> ayList;
+					for (auto& edgeBY: graph.nodeList[b].edgeList) {
+						if (edgeBY.flow == 1) {
+							unsigned int y = edgeBY.destNode;
+							for (IntVarValues v(vars[y]); v(); ++v) {
+								unsigned int a = graph.valToNode[v.val()];
+								if (a != b) {
+									if (earlyPrune(a, b, y, graph.costUpperBound - 
+															   graph.flowCost)) {
+										edgesToPrune.push_back(EdgeWithVal(a, y, v.val()));
+										continue;
+									}
+									targetNodes.insert(a);
+									ayList.push_back({a, y});
+								}
+							}
+						}
+					}
+
+					vector<unsigned int> reducedDistances;
+					findShortestPathsReducedCosts(b, targetNodes, reducedDistances, 
+																				graph.costUpperBound - graph.flowCost);
+					
+					for (const auto& ay: ayList) {
+						const int a = ay.first;
+						const int y = ay.second;
+						if (targetNodes.find(a) != targetNodes.end()) {
+							// Shortest paths function normally removes targetNodes as it
+							// computes them. For any targetNodes that remain, we know for 
+							// sure that they can be pruned without checking shortest paths,
+							// because we have explored a node before them with
+							// (dist > costUpperBound - flowCost).
+							// Since all reduced costs are non-negative, we already know
+							// that (dist > costUpperBound - flowCost - costAY - costYB)
+							cout << "\tEARLY PRUNING " << a << " FROM " << y << endl;
+							edgesToPrune.push_back(EdgeWithVal(a, y, 
+																						  graph.nodeToVal.find(a)->second));
+							continue;
+						}
+						ResidualEdge *residualEdge = graph.getResidualEdge(a, y);
+						unsigned int costAY = residualEdge->reducedCost;
+						unsigned int costYB = graph.getResidualEdge(y, b)->reducedCost;
+						if (reducedDistances[a] > graph.costUpperBound - graph.flowCost 
+																		  - costAY - costYB) {
+							cout << "\tPRUNING " << a << " FROM " << y << endl;
+							edgesToPrune.push_back(EdgeWithVal(a, y,
+																							graph.nodeToVal.find(a)->second));
+						}
+					}
+				}
+			}
+
+			// Do the actual pruning and update date structures
+			for (auto& edge: edgesToPrune) {
+				NormalEdge* actualEdge = graph.getEdge(edge.src, edge.dest);
+				assert(actualEdge != NULL);
+				// Push to updatedEdges so we can modify the residual graph accordingly
+				// on the next min cost flow computation
+				updatedEdges.push_back(FullEdge(edge.src, *actualEdge));
+				// Prune
+				GECODE_ME_CHECK(vars[edge.dest].nq(home, edge.val));
+				// Also remove from varToVals
+				auto& vals = graph.varToVals.map.find(edge.dest)->second;
+				vals.erase(edge.val);
+				// Update upper bound
+				actualEdge->upperBound = 0;
+				assert(!actualEdge->flow);
+				if (vars[edge.dest].assigned()) {
+					// If a variable got assigned by pruning, set corresponding edge
+					// lower bound to 1
+					int assignedVal = vars[edge.dest].val();
+					assert(*vals.begin() == assignedVal);
+					auto valNode = graph.valToNode.find(assignedVal)->second;
+					graph.getEdge(valNode, edge.dest)->lowerBound = 1;
+				}
+			}
+
+			return ES_OK;
 		}
 };

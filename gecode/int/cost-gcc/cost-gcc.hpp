@@ -35,10 +35,14 @@ protected:
 		Council<ViewAdvisor> c;
 		FlowGraph* graph;
 		vector<FullEdge> updatedEdges;
+		// TODO: do not store, instead use different post functions?
+		IntPropLevel ipl;
 
 public:
-	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph* graph)
-			: NaryPropagator(home, x), c(home), graph(graph) {
+	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph* graph, 
+					const vector<FullEdge>& updatedEdges, IntPropLevel ipl)
+			: NaryPropagator(home, x), c(home), graph(graph), 
+				updatedEdges(updatedEdges), ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
 			(void)new (home) ViewAdvisor(home, *this, c, x[i], i);
 		}
@@ -51,7 +55,8 @@ public:
 												const IntArgs& inputVals, 
 												const unordered_map<int, unsigned int>& inputValToIndex,
 												const IntArgs& lowerBounds, const IntArgs& upperBounds,
-												const IntArgs& costs, int costUpperBound) {
+												const IntArgs& costs, int costUpperBound, 
+												IntPropLevel ipl) {
 
 		if (pruneOmittedVales(home, vars, varToVals, valToVars, 
 													inputValToIndex) == ES_FAILED) {
@@ -75,7 +80,12 @@ public:
 			return ES_FAILED;
 		}
 
-		(void)new (home) CostGcc(home, vars, graph);
+		vector<FullEdge> updatedEdges;
+		if (ipl == IPL_DOM) {
+			graphAlgorithms.performArcConsistency(home, vars, updatedEdges);
+		}
+
+		(void)new (home) CostGcc(home, vars, graph, updatedEdges, ipl);
 		return ES_OK;
 	}
 
@@ -84,6 +94,7 @@ public:
     x.update(home, p.x);
 		graph = new FlowGraph(*(p.graph));
 		updatedEdges = p.updatedEdges;
+		ipl = p.ipl;
   }
 
 	virtual Propagator *copy(Space& home) {
@@ -109,10 +120,14 @@ public:
 			return ES_FAILED;
 		}
 		updatedEdges.clear();
+
+		if (ipl == IPL_DOM) {
+			graphAlgorithms.performArcConsistency(home, x, updatedEdges);
+		}
 		return ES_FIX;
 	}
 
-	virtual ExecStatus advise(Space&, Advisor& a, const Delta& d) {
+	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
 		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
 		return ES_NOFIX;
@@ -262,6 +277,7 @@ private:
 		varToValsEntry->second.insert(val);
 	}
 
+	#ifndef NDEBUG
 	// Assert that Gecode variable domains and valToVars/varToVals are in sync
 	void static assertCorrectDomains(const ViewArray<Int::IntView>& vars, 
 															 		 const MapToSet<unsigned int, int>& varToVals,
@@ -272,8 +288,8 @@ private:
 			assert(varToValsEntry != varToVals.map.end());
 			for (IntVarValues v(vars[x]); v(); ++v) {
 				assert(varToValsEntry->second.find(v.val()) 
-							 != varToValsEntry->second.end());
-							 
+							!= varToValsEntry->second.end());
+							
 				auto it = valToVars.map.find(v.val());
 				assert(it != valToVars.map.end());
 				assert(it->second.find(x) != it->second.end());
@@ -281,7 +297,7 @@ private:
 		}
 
 		for (auto& x: varToVals.map) {
-			assert(x.first < vars.size());
+			assert((int) x.first < vars.size());
 			assert(x.second.size() == vars[x.first].size());
 			for (auto v: x.second) {
 				assert(vars[x.first].in(v));
@@ -290,9 +306,10 @@ private:
 
 		for (auto& v: valToVars.map) {
 			for (auto x: v.second) {
-				assert(x < vars.size());
+				assert((int) x < vars.size());
 				assert(vars[x].in(v.first));
 			}
 		}
 	}
+	#endif
 };

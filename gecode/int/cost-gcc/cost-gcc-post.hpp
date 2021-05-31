@@ -74,6 +74,6 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 	GECODE_POST;
 	GECODE_ES_FAIL(CostGcc::post(home, views, varToVals, valToVars, vals, 
 															 valToIndex, lowerBounds, upperBounds, costs, 
-															 costUpperBound
+															 costUpperBound, ipl
 															));
 }
