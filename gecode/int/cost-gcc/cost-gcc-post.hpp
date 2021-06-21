@@ -8,7 +8,7 @@ using namespace std;
 
 void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 								const IntArgs& lowerBounds, const IntArgs& upperBounds,
-								const IntArgs& costs, int costUpperBound, 
+								const IntArgs& costs, int costUpperBound,
 								IntPropLevel ipl) {
 
 	using namespace Int;

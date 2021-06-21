@@ -3,6 +3,7 @@
 #include <unordered_set>
 #include <assert.h>
 #include "flow-graph-algorithms.hpp"
+//#include "flow-graph-seq.hpp"
 
 using namespace Gecode;
 using namespace std;
@@ -31,16 +32,15 @@ protected:
 					Advisor::dispose(home, c);
 				}
 		};
-
 		Council<ViewAdvisor> c;
 		FlowGraph* graph;
-		vector<FullEdge> updatedEdges;
+		vector<EdgeNodes> updatedEdges;
 		// TODO: do not store, instead use different post functions?
 		IntPropLevel ipl;
 
 public:
 	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph* graph, 
-					const vector<FullEdge>& updatedEdges, IntPropLevel ipl)
+					const vector<EdgeNodes>& updatedEdges, IntPropLevel ipl)
 			: NaryPropagator(home, x), c(home), graph(graph), 
 				updatedEdges(updatedEdges), ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
@@ -55,7 +55,7 @@ public:
 												const IntArgs& inputVals, 
 												const unordered_map<int, unsigned int>& inputValToIndex,
 												const IntArgs& lowerBounds, const IntArgs& upperBounds,
-												const IntArgs& costs, int costUpperBound, 
+												const IntArgs& costs, int costUpperBound,
 												IntPropLevel ipl) {
 
 		if (pruneOmittedVales(home, vars, varToVals, valToVars, 
@@ -70,19 +70,23 @@ public:
 		#ifndef NDEBUG
 			assertCorrectDomains(vars, varToVals, valToVars);
 		#endif
-
 		FlowGraph* graph = new FlowGraph(vars, varToVals, valToVars, inputVals, 
 																		 lowerBounds, upperBounds, costs, 
 																		 costUpperBound, true);
 
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
+
+		//graphAlgorithms.benchmark();
+		//return ES_FAILED;
+
+
 		if (!graphAlgorithms.findMinCostFlow()) {
 			return ES_FAILED;
 		}
 
-		vector<FullEdge> updatedEdges;
-		if (ipl == IPL_DOM) {
-			graphAlgorithms.performArcConsistency(home, vars, updatedEdges);
+		vector<pair<unsigned int, unsigned int>> updatedEdges;
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges) != ES_OK) {
+				return ES_FAILED;
 		}
 
 		(void)new (home) CostGcc(home, vars, graph, updatedEdges, ipl);
@@ -121,8 +125,8 @@ public:
 		}
 		updatedEdges.clear();
 
-		if (ipl == IPL_DOM) {
-			graphAlgorithms.performArcConsistency(home, x, updatedEdges);
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, updatedEdges) != ES_OK) {
+				return ES_FAILED;
 		}
 		return ES_FIX;
 	}

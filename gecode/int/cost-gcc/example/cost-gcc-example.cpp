@@ -10,34 +10,18 @@ using namespace std;
 class FileOptions : public Options {
 protected:
 	Driver::StringValueOption _file;
+	Driver::IntOption _p;
 public:
 	FileOptions(const char* scriptName) : 
 			Options(scriptName),
-			_file("file","input file name", "") { 
+			_file("file","input file name", ""),
+			_p("print", "print flag", 1) { 
 		add(_file);
+		add(_p);
 	}
   string file(void) const { return _file.value(); }
-
+	int p(void) const { return _p.value(); }
 };
-
-const int vars = 3;
-const int cost = 41;
-
-IntSetArgs domain = {
-	IntSet({6, 9, 777, 888}),
-	IntSet({10, 7, 6, 777, 9}),
-	IntSet({777, 9})
-};
-
-IntArgs lowerBounds = {0, 0, 0, 1};
-IntArgs upperBounds = {2, 1, 1, 4};
-
-IntArgs vals = {9, 7, 10, 777};
-
-IntArgs costs = {
-		14, 15, 16, 17,
-		11, 12, 13, 14,
-		11, 12, 13, 14};
 
 class CountCostsExample : public Script {
 protected:
@@ -54,23 +38,6 @@ public:
 		IntArgs lowerBounds, upperBounds, vals, costs;
 		readInput(opt.file(), vars, domain, vals, lowerBounds, upperBounds, costs, 
 							cost);
-		/*cout << "Vars: " << vars << endl;
-		cout << "Domain: ";
-		for (auto i: domain) {
-			cout << i;
-		}
-		cout << "\n";
-		cout << "Lower bounds: " << lowerBounds << endl;
-		cout << "Upper bounds: " << upperBounds << endl;
-		cout << "Vals: " << vals << endl;
-		cout << "Costs: " << endl;
-		for (int i = 0; i < vars; i++) {
-			for (int j = 0; j < vals.size(); j++) {
-				cout << costs[i*vals.size() + j] << " ";
-			}
-			cout << "\n";
-		}*/
-
 		x = IntVarArray(*this, vars);
 		for (int i = 0; i < vars; i++) {
 			x[i] = IntVar(*this, domain[i]);
@@ -78,7 +45,7 @@ public:
 
 		switch(opt.model()) {
 			case MODEL_SINGLE:
-				countCosts(*this, x, vals, lowerBounds, upperBounds, costs, cost, 
+				countCosts(*this, x, vals, lowerBounds, upperBounds, costs, cost,
 									 opt.ipl());
 
 				branch(*this, x, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
@@ -90,11 +57,11 @@ public:
 				Matrix<BoolVarArgs> m(varValue, vals.size(), x.size());
 				for (int i = 0; i < m.height(); i++) {
 					for (int j = 0; j < m.width(); j++) {
-						rel(*this, x[i], IRT_EQ, vals[j], m(j, i));
+						rel(*this, x[i], IRT_EQ, vals[j], m(j, i), opt.ipl());
 					}
 				}
 				// Constrain the cost
-				linear(*this, costs, varValue, IRT_LQ, cost);
+				linear(*this, costs, varValue, IRT_LQ, cost, opt.ipl());
 
 				// Constrain the value bounds
 				IntSetArgs bounds;
@@ -115,7 +82,7 @@ public:
 		return new CountCostsExample(*this);
 	}
 	void print(ostream& os) const {
-		os << "\tSolution: " << x << endl;
+		os << "\tSolution: " << x << "\n";
 	}
 };
 
