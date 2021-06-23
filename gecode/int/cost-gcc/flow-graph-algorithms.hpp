@@ -179,12 +179,11 @@ class FlowGraphAlgorithms {
 
 		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation) {
 		//	cout << "Violation " << violation.first << "->" << violation.second << "\n";
-		/*if (violation.first == 49 && violation.second == 7) 
-		 { 
+ 
 				cout << "Violation " << violation.first << "->" << violation.second << "\n";
-				graph.print();
+				//graph.print();
 				graph.printResidual();
-			}*/
+			
 			vector<unsigned int> shortestPath, dist, visitedNodes;
 			int pathCost; 
 			if (!findShortestPathNegativeCosts(violation.second, violation.first, 
@@ -578,10 +577,10 @@ class FlowGraphAlgorithms {
 
 		ExecStatus performArcConsistency(Space& home, ViewArray<Int::IntView>& vars, 
 															       vector<EdgeNodes>& updatedEdges) {
-			/*	cout << "Arc consistency on this graph\n";
-				graph.print();
+				cout << "Arc consistency on this graph\n";
+			//	graph.print();
 				graph.printResidual();
-			*/
+			
 //			graph.addTResidualEdges();
 //			cout << "after addTResidualEdges\n";
 		//	graph.printResidual();
@@ -604,20 +603,38 @@ class FlowGraphAlgorithms {
 					: src(src), dest(dest), val(val) {}
 			};
 
+			struct MaxRegret {
+				unsigned int var = NONE_UINT;
+				unsigned int val = NONE_UINT;
+				unsigned int regret = 0;
+			};
+
+			struct MinDist {
+				unsigned int bestVal = NONE_UINT;
+				unsigned int val = NONE_UINT;
+				unsigned int dist = INF_UINT;
+			};
+
 			// Hold the edges we decide to prune during arc consistency
 			// We do the actual pruning at the end of this function's iterations
 			vector<EdgeWithVal> edgesToPrune;
+
+			MaxRegret maxRegret;
+			vector<MinDist> minDist;
+			minDist.assign(graph.totalVarNodes, MinDist());
 
 			// Gather the targetNodes we want to find shortests paths to from B,
 			// and check early prune conditions to skip finding some
 			for (auto& edge: graph.nodeList[graph.sNode()].edgeList) {
 				if (edge.flow > 0) {
+					vector<unsigned int> yList;
 					unsigned int b = edge.destNode;
 					unordered_set<unsigned int> targetNodes;
 					vector< pair<unsigned int, unsigned int>> ayList;
 					for (auto& edgeBY: graph.nodeList[b].edgeList) {
 						if (edgeBY.flow == 1) {
 							unsigned int y = edgeBY.destNode;
+							minDist[y].bestVal = b;
 							for (IntVarValues v(vars[y]); v(); ++v) {
 								unsigned int a = (*graph.valToNode)[v.val()];
 								if (a != b) {
@@ -675,10 +692,25 @@ class FlowGraphAlgorithms {
 							}*/
 							edgesToPrune.push_back(EdgeWithVal(a, y,
 																							graph.nodeToVal->find(a)->second));
+						} else if (reducedDistances[a] < minDist[y].dist) {
+							minDist[y].dist = reducedDistances[a];
+							minDist[y].val = a;
+							//cout << "Min dist of var " << y << " now val " << a << " with dist " << minDist[y].dist << endl;
 						}
 					}
 				}
 			}
+				// Giati bgainoun ola ta dist 0? mipws otan kanw undo ena choice, prepei
+				// anti gia 0 na valw to arxiko?
+			for (unsigned int y = 0; y < minDist.size(); y++) {
+				if (minDist[y].dist != INF_UINT && minDist[y].dist > maxRegret.regret) {
+					maxRegret.regret = minDist[y].dist;
+					maxRegret.var = y;
+					maxRegret.val = minDist[y].val;
+				}
+			}
+
+			//cout << "Max regret var " << maxRegret.var << " val " << (*graph.nodeToVal)[maxRegret.val] <<  " regret " << maxRegret.regret << endl;
 
 			// Do the actual pruning and update data structures
 			for (auto& edge: edgesToPrune) {
