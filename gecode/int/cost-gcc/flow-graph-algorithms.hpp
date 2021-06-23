@@ -172,9 +172,9 @@ class FlowGraphAlgorithms {
 		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation) {
 		//	cout << "Violation " << violation.first << "->" << violation.second << "\n";
  
-		//		cout << "Violation " << violation.first << "->" << violation.second << "\n";
-				//graph.print();
-	//			graph.printResidual();
+				cout << "Violation " << violation.first << "->" << violation.second << "\n";
+				graph.print();
+				graph.printResidual();
 			
 			vector<int> shortestPath, dist;
 			int pathCost; 
@@ -403,7 +403,7 @@ class FlowGraphAlgorithms {
 						dist[edge.destNode] = newDist;
 						prev[edge.destNode] = node;
 						heap.push(HeapItem(edge.destNode, newDist));
-						countt++;
+				//		countt++;
 					}
 				}
 				if (node == dest) {
@@ -585,6 +585,10 @@ class FlowGraphAlgorithms {
 	//		}
 		  graph.calculateReducedCosts(distances);
   		graph.printResidual();
+			if (countt == 2) {
+				exit(1);
+			}
+			countt++;
 
 			// Edge nodes, along with the actual value the src node
 			// corresponds to 
