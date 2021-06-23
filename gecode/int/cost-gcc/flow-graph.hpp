@@ -205,6 +205,14 @@ class FlowGraph {
 			}
 		}*/
 
+		void calculateReducedCosts(const vector<int>& distances) {
+			for (unsigned int i = 0; i < nodeList.size(); i++) {
+				for (auto& edge : nodeList[i].residualEdgeList) {
+					edge.reducedCost = distances[i] + edge.cost - distances[edge.destNode];
+				}
+			}
+		}
+
 		unsigned int getReducedCost(unsigned int source, unsigned int dest, unsigned int cost) const {
 			return cost - nodeList[source].potential + nodeList[dest].potential;
 		}
@@ -259,6 +267,16 @@ class FlowGraph {
 		void printResidual() const; 
 
 		FlowGraph() {}
+
+		void addTResidualEdges() {
+			for (unsigned int var = 0; var < totalVarNodes; var++) {
+				nodeList[tNode()].residualEdgeList.push_back(ResidualEdge(var, 1, 0));
+			}
+		}
+
+		void removeTResidualEdges() {
+			nodeList[tNode()].residualEdgeList.clear();
+		}
 
 		void init(
 			const ViewArray<Int::IntView>& vars, 

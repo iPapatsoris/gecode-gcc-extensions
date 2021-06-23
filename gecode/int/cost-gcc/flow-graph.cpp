@@ -128,7 +128,7 @@
 					}*/
 					if (!x.in(value)) {
 						// Value has been pruned from variable X's domain, update graph
-						//cout << value << " pruned from " << xIndex << endl;
+					//	cout << value << " pruned from " << xIndex << endl;
 						edge->upperBound = 0;
 						if (edge->flow == 1) {
 							oldFlowIsFeasible = false;
@@ -138,7 +138,7 @@
 					}
 					if (x.assigned() && x.val() == value) {
 						// Variable has been assigned with a value, update graph
-						//cout << value << " assigned to " << xIndex << endl;
+				//		cout << value << " assigned to " << xIndex << endl;
 						edge->lowerBound = 1;
 						if (edge->flow == 0) {
 							oldFlowIsFeasible = false;
