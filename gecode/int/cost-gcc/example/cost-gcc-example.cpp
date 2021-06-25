@@ -48,7 +48,7 @@ public:
 				countCosts(*this, x, vals, lowerBounds, upperBounds, costs, cost,
 									 opt.ipl());
 
-				branch(*this, x, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
+				branch(*this, x, INT_VAR_RND(10), INT_VAL_RND(15));
 				break;
 
 			case MODEL_MULTI: 
@@ -70,7 +70,7 @@ public:
 				}
 				count(*this, x, bounds, vals, opt.ipl());
 
-				branch(*this, x, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
+				branch(*this, x, INT_VAR_RND(10), INT_VAL_RND(15));
 				break;
 		}
 	}

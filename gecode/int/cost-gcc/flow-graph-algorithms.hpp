@@ -449,7 +449,7 @@ class FlowGraphAlgorithms {
 			if (edgeSA->flow < edgeSA->upperBound 
 					&& edgeSB->flow > edgeSB->lowerBound 
 					&& edgeAY->reducedCost > m - edgeYB->reducedCost) {
-				cout << "\tCONDITION 1 EARLY PRUNNING " << a << " from " << y << endl; 
+		//		cout << "\tCONDITION 1 EARLY PRUNNING " << a << " from " << y << endl; 
 				return true;
 			} 
 			unsigned int mB = mFactor(b, y, graph);
@@ -578,10 +578,10 @@ class FlowGraphAlgorithms {
 
 		ExecStatus performArcConsistency(Space& home, ViewArray<Int::IntView>& vars, 
 															       vector<EdgeNodes>& updatedEdges) {
-			/*	cout << "Arc consistency on this graph\n";
-				graph.print();
-				graph.printResidual();
-			*/
+		//		cout << "Arc consistency on this graph\n";
+		//		graph.print();
+		//		graph.printResidual();
+			
 //			graph.addTResidualEdges();
 //			cout << "after addTResidualEdges\n";
 		//	graph.printResidual();
@@ -675,7 +675,7 @@ class FlowGraphAlgorithms {
 							}*/
 							edgesToPrune.push_back(EdgeWithVal(a, y,
 																							graph.nodeToVal->find(a)->second));
-						}
+						} 
 					}
 				}
 			}
