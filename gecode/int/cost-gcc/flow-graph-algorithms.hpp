@@ -26,7 +26,7 @@ class FlowGraphAlgorithms {
 		// instead of building the residual graph from scratch, we modify the 
 		// previous one only in the edges that change
 		void updateResidualGraph(unsigned int source, unsigned int dest, 
-														 NormalEdge edge, bool onPath) {
+														 NormalEdge edge, bool onPath, unsigned int specialCost = INF_UINT) {
 			unsigned int residualEdgeIndex;
 			unsigned int residualBackwardsEdgeIndex;
 			ResidualEdge* residualEdgeSearch = graph.getResidualEdge(source, dest, 
@@ -42,7 +42,7 @@ class FlowGraphAlgorithms {
 				graph.setOrCreateResidualEdge(residualEdgeSearch, source, 
 																		  ResidualEdge(dest, 
 																								   edge.upperBound - edge.flow, 
-																									 edge.cost, reducedCost, onPath));
+																									 edge.cost, (specialCost != INF_UINT ? specialCost : reducedCost), onPath));
 			//	cout << "Adding res edge " << source << "->" << dest << endl;
 			} else if (residualEdgeSearch != NULL) {
 				// Delete forward residual edge that should no longer exist
@@ -59,10 +59,10 @@ class FlowGraphAlgorithms {
 				if (!onPath) {
 					reducedCost = (residualBackwardsEdgeSearch != NULL ? residualBackwardsEdgeSearch->reducedCost : residualEdgeSearch->reducedCost);
 				}
-				graph.setOrCreateResidualEdge(residualBackwardsEdgeSearch, dest, 
-																		  ResidualEdge(source, 
-																									 edge.flow - edge.lowerBound, 
-																									 edge.cost, reducedCost, onPath));
+				graph.setOrCreateResidualEdge(residualBackwardsEdgeSearch, dest,
+																			ResidualEdge(source,
+																									 edge.flow - edge.lowerBound,
+																									 edge.cost, (specialCost != INF_UINT ? specialCost : reducedCost), onPath));
 				//graph.orderGraph.addEdge(dest, source);
 			//	cout << "Adding res edge " << dest << "->" << source << endl;
 			} else {
@@ -155,7 +155,7 @@ class FlowGraphAlgorithms {
 					// Path residual edge is a backward edge in the original graph
 					edge = graph.getEdge(*it, prev);
 					edge->flow -= minUpperBound;
-					updateResidualGraph(*it, prev, *edge, prev != violation.first);
+					updateResidualGraph(*it, prev, *edge, prev != violation.first, edge->cost - graph.nodeList[*it].potential + graph.nodeList[prev].potential);
 				}
 				prev = *it;
 			}
