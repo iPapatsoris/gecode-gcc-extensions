@@ -1,3 +1,6 @@
+#ifndef GRAPH_BASE_COMPONENTS
+#define GRAPH_BASE_COMPONENTS
+
 #include <iostream>
 #include <vector>
 
@@ -10,7 +13,7 @@ class Edge
 {
 protected:
 	unsigned int destNode;
-	unsigned int cost;
+	int cost;
 
 	Edge(unsigned int destNode, unsigned int cost) : destNode(destNode), cost(cost) {}
 	Edge() {}
@@ -29,12 +32,12 @@ class NormalEdge : public Edge
 
 public:
 	NormalEdge(unsigned int destNode, unsigned int lowerBound,
-						 unsigned int upperBound, unsigned int cost)
+						 unsigned int upperBound, int cost)
 			: Edge(destNode, cost), lowerBound(lowerBound), upperBound(upperBound),
 				flow(0) {}
 	NormalEdge() {}
 	unsigned int getUpperBound() const { return upperBound; }
-	unsigned int getCost() const { return cost; }
+	int getCost() const { return cost; }
 	unsigned int getDestNode() const { return destNode; }
 	void print() const
 	{
@@ -53,18 +56,16 @@ class ResidualEdge : public Edge
 {
 	unsigned int upperBound;
 	unsigned int reducedCost;
-	bool isBackwards;
 
 public:
-	ResidualEdge(unsigned int destNode, unsigned int upperBound, int cost, int reducedCost, bool isBackwards)
-			: Edge(destNode, cost), upperBound(upperBound), reducedCost(reducedCost), isBackwards(isBackwards) {}
+	ResidualEdge(unsigned int destNode, unsigned int upperBound, int cost)
+			: Edge(destNode, cost), upperBound(upperBound) {}
 	ResidualEdge(const NormalEdge &edge)
-			: Edge(edge.getDestNode(), edge.getCost()), upperBound(edge.getUpperBound()),
-				reducedCost(edge.getCost()), isBackwards(false) {}
+			: Edge(edge.getDestNode(), edge.getCost()), upperBound(edge.getUpperBound()) {}
 	ResidualEdge() {}
 	void print() const
 	{
-		cout << destNode << " upper " << upperBound << " cost " << cost
+		cout << destNode << " upper " << upperBound// << " cost " << cost
 				 << " reduced cost " << reducedCost <<  "\n";
 	}
 
@@ -96,3 +97,5 @@ class Node {
 	friend class OrderGraph;
 
 };
+
+#endif

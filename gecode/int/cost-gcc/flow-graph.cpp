@@ -1,29 +1,18 @@
 #include "flow-graph.hpp"
+#include "example/cost-gcc-example.hpp"
 
-
-// Create FlowGraph. Parameter includePruned controls whether early pruned
-		// values without any matching variables, should be included as edge-less
-		// nodes or not. If propagator post function calls checkLowerBounds,
-		// includePruned should be false, since the lower bounds of the pruned
-		// values have already been checked for validity.
-		// If checkLowerBounds isn't called, it should be true, to include them 
-		// and let the min cost flow algorithm check the lower bounds restrictions.
-		// This is only for testing purposes, to see how much checkLowerBounds helps
-		// performance. 
-		// TODO: Eventually, decide on one way and remove this parameter.
 		FlowGraph::FlowGraph(
 			const ViewArray<Int::IntView>& vars, 
  			const MapToSet<unsigned int, int>& varToVals,
 			const MapToSet<int, unsigned int>& valToVars,
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
 			const IntArgs& upperBounds, const IntArgs& costs, int costUpperBound, 
-			bool includePruned) 
-				: flowCost(0), costUpperBound(costUpperBound), oldFlowIsFeasible(true) {
+			Space& home) 
+				: flowCost(0), costUpperBound(costUpperBound), oldFlowIsFeasible(true), home(home), firstTime(true) {
 			
 			this->varToVals = varToVals;
 			totalVarNodes = vars.size();
-			unsigned int totalValNodes = (includePruned ? inputVals.size() 
-																									: valToVars.map.size());
+			unsigned int totalValNodes = inputVals.size();
 			// Nodes are variable nodes, values nodes, S and T nodes
 			int totalNodes = totalVarNodes + totalValNodes + 2;
 			// S node position
@@ -51,23 +40,17 @@
 			for (int i = 0; i < inputVals.size(); i++) {
 				int val = inputVals[i];
 				auto it = valToVars.map.find(val);
-				if (it != valToVars.map.end() || includePruned) {
+				if (it != valToVars.map.end()) {
 					valToNode->insert({val, nodeList.size()});
 					nodeToVal->insert({nodeList.size(), val});
 					//cout << "node " << nodeList.size() << " corresponds to val " << val
 					//		 << "\n";
-					if (it != valToVars.map.end()) {
-						nodeList.push_back(Node(it->second.size()));
-						for (auto& var : it->second) {
-							int lowerBound = (vars[var].assigned() ? 1 : 0);
-							nodeList.back().edgeList.push_back(NormalEdge(var, lowerBound, 1, 
-																								c(i, var)));
-						}
-					} else if (includePruned) {
-						// This value has been pruned early from all possible variables
-						// Insert it in the graph to respect its lower bound restriction,
-						// but do not add any edges to it
-						nodeList.push_back(Node(0));
+					nodeList.push_back(Node(it->second.size()));
+					// Add edges
+					for (auto &var : it->second) {
+						int lowerBound = (vars[var].assigned() ? 1 : 0);
+						nodeList.back().edgeList.push_back(NormalEdge(var, lowerBound, 1,
+																													c(i, var)));
 					}
 				}
 			}
@@ -93,7 +76,6 @@
 				copy(node.edgeList.begin(), node.edgeList.end(), 
 						 back_inserter(node.residualEdgeList));
 			}
-			// orderGraph.init(nodeList);
 		}
 
 		// Update graph state to match variable X domain pruning/assignment.
@@ -107,7 +89,6 @@
 		// graph later on
 		void FlowGraph::updatePrunedValues(Int::IntView x, unsigned int xIndex, 
 													  vector<EdgeNodes>& updatedEdges) {
-			//cout << "\nIn advisor:\n";
 			// Hold iterators to the values that we end up prunning, so we can also
 			// remove them from valToVars
 			vector< unordered_set<int>::iterator > prunedValues; 
@@ -117,18 +98,10 @@
 				auto value = *valueIt;
 				auto valueNode = valToNode->find(value)->second;
 				NormalEdge* edge = getEdge(valueNode, xIndex);
-			/*	if (valueNode == 49 && xIndex == 7) {
-					cout << "IN UPDATE PRUNED VALS\n";
-					cout << edge->lowerBound << " " << edge->upperBound << " " << edge->flow << "\n";
-				}*/
 				if (!edge->lowerBound && edge->upperBound == 1) {
 					// If edge hasn't already been pruned or assigned
-				/*	if (valueNode == 49 && xIndex == 7) {
-						cout << "first " << !x.in(value) << " second " << (x.assigned() && x.val() == value) << endl;
-					}*/
 					if (!x.in(value)) {
 						// Value has been pruned from variable X's domain, update graph
-						//cout << value << " pruned from " << xIndex << endl;
 						edge->upperBound = 0;
 						if (edge->flow == 1) {
 							oldFlowIsFeasible = false;
@@ -138,7 +111,6 @@
 					}
 					if (x.assigned() && x.val() == value) {
 						// Variable has been assigned with a value, update graph
-						//cout << value << " assigned to " << xIndex << endl;
 						edge->lowerBound = 1;
 						if (edge->flow == 0) {
 							oldFlowIsFeasible = false;
@@ -158,12 +130,13 @@
 		}
 
 // Iterate through each edge that has flow, to find its total cost
-		int FlowGraph::calculateFlowCost() {
+		int FlowGraph::calculateFlowCost(LI& lii) {
 			flowCost = 0;
 			for (unsigned int i = totalVarNodes; i < sNode(); i++) {
 				for (auto& edge: nodeList[i].edgeList) {
 					if (edge.flow > 0) {
 						flowCost += edge.cost;
+						lii[edge.destNode] = (*nodeToVal)[i];
 					}
 				}
 			}

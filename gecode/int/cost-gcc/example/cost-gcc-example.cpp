@@ -1,38 +1,9 @@
-#include <gecode/driver.hh>
-#include <gecode/int.hh>
-#include <gecode/minimodel.hh>
+#include "cost-gcc-example.hpp"
 #include "../cost-gcc-post.hpp"
-#include "read-input.hpp"
+#include "LI.hpp"
+#include "brancher.hpp"
 
-using namespace Gecode;
-using namespace std;
-
-class FileOptions : public Options {
-protected:
-	Driver::StringValueOption _file;
-	Driver::IntOption _p;
-public:
-	FileOptions(const char* scriptName) : 
-			Options(scriptName),
-			_file("file","input file name", ""),
-			_p("print", "print flag", 1) { 
-		add(_file);
-		add(_p);
-	}
-  string file(void) const { return _file.value(); }
-	int p(void) const { return _p.value(); }
-};
-
-class CountCostsExample : public Script {
-protected:
-	IntVarArray x;
-
-public:
-	enum {
-		MODEL_SINGLE, MODEL_MULTI
-	};
-
-	CountCostsExample(const FileOptions& opt) : Script(opt) {
+CountCostsExample::CountCostsExample(const FileOptions& opt) : Script(opt) {
 		int vars, cost;
 		IntSetArgs domain;
 		IntArgs lowerBounds, upperBounds, vals, costs;
@@ -42,13 +13,15 @@ public:
 		for (int i = 0; i < vars; i++) {
 			x[i] = IntVar(*this, domain[i]);
 		}
+		LI li(*this, x.size());
 
 		switch(opt.model()) {
 			case MODEL_SINGLE:
-				countCosts(*this, x, vals, lowerBounds, upperBounds, costs, cost,
+				countCosts(*this, x, vals, lowerBounds, upperBounds, costs, cost, li,
 									 opt.ipl());
 
-				branch(*this, x, INT_VAR_RND(10), INT_VAL_RND(15));
+				//branch(*this, x, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
+				sizemin(*this, x, li);
 				break;
 
 			case MODEL_MULTI: 
@@ -70,21 +43,10 @@ public:
 				}
 				count(*this, x, bounds, vals, opt.ipl());
 
-				branch(*this, x, INT_VAR_RND(10), INT_VAL_RND(15));
+				branch(*this, x, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
 				break;
 		}
 	}
-
-	CountCostsExample(CountCostsExample &s) : Script(s) {
-		x.update(*this, s.x);
-	}
-	virtual Space *copy(void) {
-		return new CountCostsExample(*this);
-	}
-	void print(ostream& os) const {
-		os << "\tSolution: " << x << "\n";
-	}
-};
 
 int main(int argc, char *argv[]) {
 	FileOptions opt("Cost GCC");

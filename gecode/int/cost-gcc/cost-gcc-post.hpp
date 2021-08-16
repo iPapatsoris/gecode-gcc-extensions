@@ -1,3 +1,6 @@
+#ifndef H_COST_GCC_POST
+#define H_COST_GCC_POST
+
 #include <gecode/int.hh>
 #include <unordered_map>
 #include <unordered_set>
@@ -8,7 +11,7 @@ using namespace std;
 
 void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 								const IntArgs& lowerBounds, const IntArgs& upperBounds,
-								const IntArgs& costs, int costUpperBound,
+								const IntArgs& costs, int costUpperBound, LI& li,
 								IntPropLevel ipl) {
 
 	using namespace Int;
@@ -74,6 +77,8 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 	GECODE_POST;
 	GECODE_ES_FAIL(CostGcc::post(home, views, varToVals, valToVars, vals, 
 															 valToIndex, lowerBounds, upperBounds, costs, 
-															 costUpperBound, ipl
+															 costUpperBound, li, ipl
 															));
 }
+
+#endif

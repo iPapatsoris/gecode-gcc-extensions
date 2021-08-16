@@ -15,7 +15,7 @@
 #define NONE_UINT INF_UINT - 1
 
 using namespace std;
-unsigned int countt = 0;
+// unsigned int countt = 0;
 
 class FlowGraphAlgorithms {
 	private:
@@ -33,63 +33,44 @@ class FlowGraphAlgorithms {
 																														&residualEdgeIndex);
 			ResidualEdge* residualBackwardsEdgeSearch = graph.getResidualEdge(dest, source,
 																								 &residualBackwardsEdgeIndex);
-			unsigned int reducedCost = 0;
 			if (edge.flow < edge.upperBound) {
 				// Add / update forward residual edge
-				if (!onPath) {		
-					reducedCost = (residualEdgeSearch != NULL ? residualEdgeSearch->reducedCost : residualBackwardsEdgeSearch->reducedCost);	
-				}
 				graph.setOrCreateResidualEdge(residualEdgeSearch, source, 
 																		  ResidualEdge(dest, 
 																								   edge.upperBound - edge.flow, 
-																									 edge.cost, (specialCost != INF_UINT ? specialCost : reducedCost), onPath));
-			//	cout << "Adding res edge " << source << "->" << dest << endl;
+																									 edge.cost));
 			} else if (residualEdgeSearch != NULL) {
 				// Delete forward residual edge that should no longer exist
 				auto it = graph.nodeList[source].residualEdgeList.begin() + 
 																				 residualEdgeIndex;
 				graph.nodeList[source].residualEdgeList.erase(it);
 			//	graph.orderGraph.removeEdge(source, dest);
-			//	cout << "Deleting res edge " << source << "->" << dest << endl;
 			}
 
-			reducedCost = 0;
 			if (edge.flow > edge.lowerBound) {
 				// Add / update backward residual edge
-				if (!onPath) {
-					reducedCost = (residualBackwardsEdgeSearch != NULL ? residualBackwardsEdgeSearch->reducedCost : residualEdgeSearch->reducedCost);
-				}
-				graph.setOrCreateResidualEdge(residualBackwardsEdgeSearch, dest,
-																			ResidualEdge(source,
-																									 edge.flow - edge.lowerBound,
-																									 edge.cost, (specialCost != INF_UINT ? specialCost : reducedCost), onPath));
+				graph.setOrCreateResidualEdge(residualBackwardsEdgeSearch, dest, 
+																		  ResidualEdge(source, 
+																									 edge.flow - edge.lowerBound, 
+																									 -edge.cost));
 				//graph.orderGraph.addEdge(dest, source);
-			//	cout << "Adding res edge " << dest << "->" << source << endl;
-			} else {
-				/*if (edge.flow == edge.upperBound && edge.flow == edge.lowerBound) {
-					graph.completedResidualEdges.push_back({dest, ResidualEdge(source, 0, edge.cost, 0, true)});
-				} else*/ if (residualBackwardsEdgeSearch != NULL) {
+			} else if (residualBackwardsEdgeSearch != NULL) {
 				// Delete backward residual edge that should no longer exist
 				auto it = graph.nodeList[dest].residualEdgeList.begin() + 
 																			 residualBackwardsEdgeIndex;
 				graph.nodeList[dest].residualEdgeList.erase(it);
-				//graph.orderGraph.removeEdge(dest, source);
-			//	cout << "Deleting res edge " << dest << "->" << source << endl;
-				}
-			//graph.orderGraph.print();
 			}
-	}
+		}
 
 		// Bellman-Ford algorithm for shortest paths with negative costs.
 		// If dest is not NULL, ignore any direct source->dest edge.
 		// This is needed when searching for shortest path to a specific 
 		// destination, by the min cost flow algorithm.
-		// TODO: consider testing the randomized variation improvement
      void bellmanFordShortestPaths(unsigned int source, 
-																	vector<unsigned int>& prev, vector<unsigned int>& dist, 
+																	vector<unsigned int>& prev, vector<int>& dist, 
 																	unsigned int* dest = NULL) const {
 			prev.assign(graph.nodeList.size(), NONE_UINT);
-			dist.assign(graph.nodeList.size(), INF_UINT);
+			dist.assign(graph.nodeList.size(), INF_INT);
 			dist[source] = 0;
 
 			vector<unsigned int> updatedNodes1 = {source};
@@ -102,7 +83,7 @@ class FlowGraphAlgorithms {
 					for (auto &edge : graph.nodeList[node].residualEdgeList) {
 						if ((dest == NULL || 
 							!(node == source && edge.destNode == *dest)) && 
-							dist[node] != INF_UINT && dist[node] + edge.cost < 
+							dist[node] != INF_INT && dist[node] + edge.cost < 
 																			 dist[edge.destNode]) {
 							// Ignore direct source->dest edge when looking for shortest path 
 							// to specific requested destination
@@ -110,7 +91,6 @@ class FlowGraphAlgorithms {
 							prev[edge.destNode] = node;
 							foundUpdate = true;
 							updatedNodesNew->push_back(edge.destNode);
-							countt++;
 						}
 					}
 				}
@@ -121,9 +101,9 @@ class FlowGraphAlgorithms {
 				swap(updatedNodesNew, updatedNodesOld);
 				updatedNodesNew->clear();
 			}
-			//cout << "Total bellman: " << countt << "\n";
 		}
 
+		/*
 		void updatePotentials(vector<unsigned int>& visitedNodes, vector<unsigned int>& dist, int pathCost) {
 			for (unsigned int n = 0; n < visitedNodes.size(); n++) {
 				if (visitedNodes[n]) {
@@ -140,9 +120,9 @@ class FlowGraphAlgorithms {
 					e.reducedCost = (e.isBackwards ? 0 : e.cost - graph.nodeList[i].potential + graph.nodeList[e.destNode].potential);
 				}
 			}
-		}
+		}*/
 
-			void sendFlow(pair<unsigned int, unsigned int>& violation, vector<unsigned int>& shortestPath, unsigned int minUpperBound) {
+			void sendFlow(pair<unsigned int, unsigned int>& violation, vector<int>& shortestPath, unsigned int minUpperBound, LI& li) {
 				// Send flow through the path edges and update residual graph
 			unsigned int prev = violation.first;
 			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
@@ -150,18 +130,25 @@ class FlowGraphAlgorithms {
 				if (edge != NULL) {
 					// Path residual edge is a forward edge in the original graph
 					edge->flow += minUpperBound;
+					graph.flowCost += edge->cost;
+					if (edge->destNode < graph.totalVarNodes) {
+						li[edge->destNode] = (*graph.nodeToVal)[prev];
+					}
 					updateResidualGraph(prev, *it, *edge, prev != violation.first);
 				}	else {
 					// Path residual edge is a backward edge in the original graph
 					edge = graph.getEdge(*it, prev);
 					edge->flow -= minUpperBound;
-					updateResidualGraph(*it, prev, *edge, prev != violation.first, edge->cost - graph.nodeList[*it].potential + graph.nodeList[prev].potential);
+					if (!edge->flow) {
+						graph.flowCost -= edge->cost;
+					}
+					updateResidualGraph(*it, prev, *edge, prev != violation.first);
 				}
 				prev = *it;
 			}
 		}
 
-		unsigned int findMinUpperBound(pair<unsigned int, unsigned int>& violation, vector<unsigned int>& shortestPath) {
+		unsigned int findMinUpperBound(pair<unsigned int, unsigned int>& violation, vector<int>& shortestPath) {
 			// Find min upper bound along shortest path
 			unsigned int prev = violation.first;
 			unsigned int minUpperBound = INF_UINT;
@@ -170,86 +157,24 @@ class FlowGraphAlgorithms {
 				ResidualEdge *edge = graph.getResidualEdge(prev, *it);
 				minUpperBound = min(minUpperBound, edge->upperBound);
 				prev = *it;
-				/*if (violation.first == 49 && violation.second == 7) {
-				cout << *it << (it != shortestPath.rend()-1 ? "->" : "\n");
-				}*/
 			}
 			return minUpperBound;
 		}
 
-		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation) {
-		//	cout << "Violation " << violation.first << "->" << violation.second << "\n";
-		/*if (violation.first == 49 && violation.second == 7) 
-		 { 
-				cout << "Violation " << violation.first << "->" << violation.second << "\n";
-				graph.print();
-				graph.printResidual();
-			}*/
-			vector<unsigned int> shortestPath, dist, visitedNodes;
+		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation, LI& li) {		
+			vector<int> shortestPath, dist;
 			int pathCost; 
 			if (!findShortestPathNegativeCosts(violation.second, violation.first, 
-																				 shortestPath, dist, visitedNodes, pathCost)) {
+																				 shortestPath, dist, pathCost)) {
 				// Constraint is not consistent
 				return false;
 			}
 
+		//	updatePotentials(visitedNodes, dist, pathCost);
+		//	updateCosts();
 
-			updatePotentials(visitedNodes, dist, pathCost);
-
-			/*for (unsigned int n = 0; n < visitedNodes.size(); n++) {
-				if (visitedNodes[n]) {
-					assert(dist[n] != INF_UINT);
-					graph.nodeList[n].potential += (pathCost - dist[n]);
-				}
-			}*/
-
-			updateCosts();
-
-			/*for (unsigned int i = 0; i < graph.nodeList.size(); i++) { // can opt to not iterate all
-				for (auto& e: graph.nodeList[i].residualEdgeList) {
-												// SIGOURA cost edw kai OXI reduced. alliws sto paper bgianoun arnitika
-					e.reducedCost = (e.isBackwards ? 0 : e.cost - graph.nodeList[i].potential + graph.nodeList[e.destNode].potential);
-				}
-			}*/
-
-			unsigned int minUpperBound = findMinUpperBound(violation, shortestPath);
-
-			// Find min upper bound along shortest path
-			/*unsigned int prev = violation.first;
-			unsigned int minUpperBound = INF_UINT;
-			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
-				// Bellman returns the path in reverse, so traverse it in reverse
-				ResidualEdge *edge = graph.getResidualEdge(prev, *it);
-				minUpperBound = min(minUpperBound, edge->upperBound);
-				prev = *it;
-			}*/
-		//	cout << "Graph after reduced costs\n";
-		//	graph.printResidual();
-			//assert(minUpperBound != INF_UINT);
-
-			sendFlow(violation, shortestPath, minUpperBound);
-
-			// Send flow through the path edges and update residual graph
-			/*prev = violation.first;
-			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
-				NormalEdge *edge = graph.getEdge(prev, *it);
-				if (edge != NULL) {
-					// Path residual edge is a forward edge in the original graph
-					edge->flow += minUpperBound;
-					updateResidualGraph(prev, *it, *edge, prev != violation.first);
-				}	else {
-					// Path residual edge is a backward edge in the original graph
-					edge = graph.getEdge(*it, prev);
-					edge->flow -= minUpperBound;
-					updateResidualGraph(*it, prev, *edge, prev != violation.first);
-				}
-				prev = *it;
-			}*/
-//			cout << "New residual graph\n";
-	//		graph.printResidual();
-		/*	if (violation.first == 49 && violation.second == 7) {
-				graph.print();
-			}*/ 
+			unsigned int minUpperBound = findMinUpperBound(violation, shortestPath);		
+			sendFlow(violation, shortestPath, minUpperBound, li);
 			return true;
 		}
 
@@ -257,13 +182,13 @@ class FlowGraphAlgorithms {
 		// Return the shortest path and cost through parameters,
 		// or false as return value in case of no path
 		bool findShortestPathNegativeCosts(unsigned int source, unsigned int dest, 
-																			 vector<unsigned int>& path, vector<unsigned int>& dist,
-																			vector<unsigned int>& visited, int& cost) 
+																			 vector<int>& path, vector<int>& dist,
+																			int& cost) 
 																			 const {
 			vector<unsigned int> prev;
 			
-			// bellmanFordShortestPaths(source, prev, dist, &dest);
-			disjjtra2(source, dest, prev, dist, visited);
+			bellmanFordShortestPaths(source, prev, dist, &dest);
+			//disjjtra2(source, dest, prev, dist, visited);
 
 			/*cout << "SPs from " << source << " to " << dest << endl;
 			for (auto n: dist) {
@@ -275,7 +200,7 @@ class FlowGraphAlgorithms {
 			}*/
 
 			// No path exists
-			if (dist[dest] == INF_UINT) {
+			if (dist[dest] == INF_INT) {
 				return false;
 			}
 			// Trace back shortest path
@@ -412,7 +337,7 @@ class FlowGraphAlgorithms {
 						dist[edge.destNode] = newDist;
 						prev[edge.destNode] = node;
 						heap.push(HeapItem(edge.destNode, newDist));
-						countt++;
+				//		countt++;
 					}
 				}
 				if (node == dest) {
@@ -429,6 +354,7 @@ class FlowGraphAlgorithms {
 
 			auto mFactor = [](unsigned int b, unsigned int y, FlowGraph& graph) {
 				unsigned int min = INF_UINT;
+				bool changed = false;
 				for (unsigned int z = 0 ; z < graph.totalVarNodes ; z++) {
 					ResidualEdge *edgeZB;
 					if (z == y || ((edgeZB = graph.getResidualEdge(z, b)) == NULL)) {
@@ -436,6 +362,7 @@ class FlowGraphAlgorithms {
 					}
 					for (auto& edgeZC: graph.nodeList[z].residualEdgeList) {
 						min = std::min(min, edgeZB->reducedCost + edgeZC.reducedCost);
+						changed = true;
 					}
 				}
 				return min;
@@ -453,23 +380,25 @@ class FlowGraphAlgorithms {
 				return true;
 			} 
 			unsigned int mB = mFactor(b, y, graph);
-			if (edgeSA->flow < edgeSA->upperBound 
+			if (mB != INF_UINT && edgeSA->flow < edgeSA->upperBound 
 					&& edgeSB->flow == edgeSB->lowerBound 
 					&& edgeAY->reducedCost + mB > m) {
-				cout << "\tCONDITION 2 EARLY PRUNNING " << a << " from " << y << endl;
+		//		cout << "\tCONDITION 2 EARLY PRUNNING " << a << " from " << y << endl;
+				cout << edgeSA->flow << " " << edgeSA->upperBound << " " << edgeSB->flow << " " << 
+				edgeSB->lowerBound << " " << edgeAY->reducedCost << " " << mB << " " << m << endl; 
 				return true;
 			}
 			unsigned int mA = mFactor(a, y, graph);
-			if (edgeSA->flow == edgeSA->upperBound 
+			if (mA != INF_UINT && edgeSA->flow == edgeSA->upperBound 
 					&& edgeSB->flow > edgeSB->lowerBound 
 					&& edgeAY->reducedCost + mA > m - edgeYB->reducedCost) {
-				cout << "\tCONDITION 3 EARLY PRUNNING " << a << " from " << y << endl;
+		//		cout << "\tCONDITION 3 EARLY PRUNNING " << a << " from " << y << endl;
 				return true;
 			}
-			if (edgeSA->flow == edgeSA->upperBound 
+			if (mA != INF_UINT && mB != INF_UINT && edgeSA->flow == edgeSA->upperBound 
 					&& edgeSB->flow == edgeSB->lowerBound 
 					&& edgeAY->reducedCost + mA + mB > m) {
-				cout << "\tCONDITION 4 EARLY PRUNNING " << a << " from " << y << endl;
+		//		cout << "\tCONDITION 4 EARLY PRUNNING " << a << " from " << y << endl;
 				return true;
 			}
 			return false;
@@ -497,19 +426,19 @@ class FlowGraphAlgorithms {
 				}
 			}
 
-			cout << "Iterations: " << countt << "\n";
+		//	cout << "Iterations: " << countt << "\n";
 			return;
 		}
 
-		bool findMinCostFlow() {
+		bool findMinCostFlow(LI& li) {
 			pair<unsigned int, unsigned int> violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
-				if (!minCostFlowIteration(violation)) {
+				if (!minCostFlowIteration(violation, li)) {
 					return false;
 				}
 			}
 			graph.oldFlowIsFeasible = true;
-			graph.calculateFlowCost();
+			//graph.calculateFlowCost(li);
 			return graph.checkFlowCost();
 		}
 
@@ -518,22 +447,12 @@ class FlowGraphAlgorithms {
 		// - Update the residual graph to match the changes
 		// - If the old flow is not still feasible, find a new one, using the 
 		//   incremental algorithm from the publication
-		bool updateMinCostFlow(vector<EdgeNodes>& updatedEdges) {
-			//if (graph.printDebug) {
-		//		cout << "Advisor on this (updated) graph\n";
-		//		graph.print();
-		//		graph.printResidual();
-		//	}
+		bool updateMinCostFlow(vector<EdgeNodes>& updatedEdges, LI& li) {
 			vector<NormalEdge*> edgeReference;
 			for (auto& edge: updatedEdges) {
-			//	cout << "Advising " << edge.first << "->" << edge.second.destNode << " feasible " << graph.oldFlowIsFeasible <<  endl;
 				edgeReference.push_back(graph.getEdge(edge.first, edge.second));
 				updateResidualGraph(edge.first, edge.second, *edgeReference.back(), false);
 			}
-			/*if (graph.printDebug) {
-				cout << "Updated residual\n";
-				graph.printResidual();
-			}*/
 			if (graph.oldFlowIsFeasible) {
 				return true;
 			}
@@ -543,10 +462,6 @@ class FlowGraphAlgorithms {
 				auto e = edgeReference[i];
 				unsigned int src = updatedEdges[i].first;
 				unsigned int dest = updatedEdges[i].second;
-				/*	if (src == 49 && dest == 7) {
-					cout << "UPDATEZ\n";
-					cout << e.flow << " " << e.lowerBound << " " << e.upperBound << endl;
-				}*/ 
 				if (e->flow >= e->lowerBound && e->flow <= e->upperBound) {
 					// All bounds satisfied, try another edge
 					continue;
@@ -555,16 +470,11 @@ class FlowGraphAlgorithms {
 					// Violating upper bound, swap direction of initial violating edge
 					std::swap(src, dest);
 				}
-				if (!minCostFlowIteration({src, dest})) {
-				//	cout << "rip violation " << edge.first << " " << e->destNode << endl;
+				if (!minCostFlowIteration({src, dest}, li)) {
 					return false;
 				}
 			}
-			/*if (!foundFeasibleFlow) {
-				return false;
-			}*/
 			graph.oldFlowIsFeasible = true;
-			graph.calculateFlowCost();
 			return graph.checkFlowCost();
 		}
 	
@@ -578,22 +488,12 @@ class FlowGraphAlgorithms {
 
 		ExecStatus performArcConsistency(Space& home, ViewArray<Int::IntView>& vars, 
 															       vector<EdgeNodes>& updatedEdges) {
-		//		cout << "Arc consistency on this graph\n";
-		//		graph.print();
-		//		graph.printResidual();
-			
-//			graph.addTResidualEdges();
-//			cout << "after addTResidualEdges\n";
-		//	graph.printResidual();
-	//		vector<unsigned int> distances;
-	//		cout << "distances\n";
-		//	findShortestPathsNegativeCosts(graph.tNode(), distances);
-		//	for (auto d: distances) {
-			//	cout << d << "\n";
-	//		}
-		//	graph.calculateReducedCosts(distances);
-  	//	graph.printResidual();
-
+			graph.addTResidualEdges();
+			vector<int> distances;
+			vector<unsigned int> prev;
+			bellmanFordShortestPaths(graph.tNode(), prev, distances, NULL);
+		  graph.calculateReducedCosts(distances);
+ 
 			// Edge nodes, along with the actual value the src node
 			// corresponds to 
 			struct EdgeWithVal {
@@ -604,20 +504,38 @@ class FlowGraphAlgorithms {
 					: src(src), dest(dest), val(val) {}
 			};
 
+			struct MaxRegret {
+				unsigned int var = NONE_UINT;
+				unsigned int val = NONE_UINT;
+				unsigned int regret = 0;
+			};
+
+			struct MinDist {
+				unsigned int bestVal = NONE_UINT;
+				unsigned int val = NONE_UINT;
+				unsigned int dist = INF_UINT;
+			};
+
 			// Hold the edges we decide to prune during arc consistency
 			// We do the actual pruning at the end of this function's iterations
 			vector<EdgeWithVal> edgesToPrune;
 
+		/*	MaxRegret maxRegret;
+			vector<MinDist> minDist;
+			minDist.assign(graph.totalVarNodes, MinDist());
+		*/
 			// Gather the targetNodes we want to find shortests paths to from B,
 			// and check early prune conditions to skip finding some
 			for (auto& edge: graph.nodeList[graph.sNode()].edgeList) {
 				if (edge.flow > 0) {
+					vector<unsigned int> yList;
 					unsigned int b = edge.destNode;
 					unordered_set<unsigned int> targetNodes;
 					vector< pair<unsigned int, unsigned int>> ayList;
 					for (auto& edgeBY: graph.nodeList[b].edgeList) {
 						if (edgeBY.flow == 1) {
 							unsigned int y = edgeBY.destNode;
+						//	minDist[y].bestVal = b;
 							for (IntVarValues v(vars[y]); v(); ++v) {
 								unsigned int a = (*graph.valToNode)[v.val()];
 								if (a != b) {
@@ -651,7 +569,7 @@ class FlowGraphAlgorithms {
 							// (dist > costUpperBound - flowCost).
 							// Since all reduced costs are non-negative, we already know
 							// that (dist > costUpperBound - flowCost - costAY - costYB)
-							cout << "\tEARLY PRUNING " << a << " FROM " << y << endl;
+					//		cout << "\tEARLY PRUNING " << a << " FROM " << y << endl;
 							edgesToPrune.push_back(EdgeWithVal(a, y, 
 																						  graph.nodeToVal->find(a)->second));
 							continue;
@@ -659,26 +577,27 @@ class FlowGraphAlgorithms {
 						ResidualEdge *residualEdge = graph.getResidualEdge(a, y);
 						unsigned int costAY = residualEdge->reducedCost;
 						unsigned int costYB = graph.getResidualEdge(y, b)->reducedCost;
-					//	cout << reducedDistances[a] << "\n" << graph.costUpperBound << "\n" << graph.flowCost << "\n" << costAY << "\n" << costYB << "\n" << endl;
-						//cout << graph.costUpperBound - graph.flowCost 
-						//												  - (int)costAY - (int)costYB << endl;
 						if ((int)reducedDistances[a] > (graph.costUpperBound - graph.flowCost 
 																		  - (int)costAY - (int)costYB)) {
-					/*		cout << "\tPRUNING " << a << " FROM " << y << endl;
-							if (a == 49 && y == 7) {
-								graph.print();
-								graph.printResidual();
-								for (auto d: reducedDistances) {
-									cout << d << "\n";
-								}
-								//exit(1);
-							}*/
 							edgesToPrune.push_back(EdgeWithVal(a, y,
 																							graph.nodeToVal->find(a)->second));
-						} 
+						} /*else if (reducedDistances[a] < minDist[y].dist) {
+							minDist[y].dist = reducedDistances[a];
+							minDist[y].val = a;
+							//cout << "Min dist of var " << y << " now val " << a << " with dist " << minDist[y].dist << endl;
+						}*/
 					}
 				}
 			}
+			/*for (unsigned int y = 0; y < minDist.size(); y++) {
+				if (minDist[y].dist != INF_UINT && minDist[y].dist > maxRegret.regret) {
+					maxRegret.regret = minDist[y].dist;
+					maxRegret.var = y;
+					maxRegret.val = minDist[y].val;
+				}
+			}*/
+
+			//cout << "Max regret var " << maxRegret.var << " val " << (*graph.nodeToVal)[maxRegret.val] <<  " regret " << maxRegret.regret << endl;
 
 			// Do the actual pruning and update data structures
 			for (auto& edge: edgesToPrune) {
@@ -705,7 +624,7 @@ class FlowGraphAlgorithms {
 				}
 			}
 
-    //	graph.removeTResidualEdges();
+    	graph.removeTResidualEdges();
 			return ES_OK;
 		}
 
