@@ -1,3 +1,6 @@
+#ifndef GRAPH_BASE_COMPONENTS
+#define GRAPH_BASE_COMPONENTS
+
 #include <iostream>
 #include <vector>
 
@@ -94,3 +97,5 @@ class Node {
 	friend class OrderGraph;
 
 };
+
+#endif
