@@ -6,9 +6,9 @@
  			const MapToSet<unsigned int, int>& varToVals,
 			const MapToSet<int, unsigned int>& valToVars,
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
-			const IntArgs& upperBounds, const IntArgs& costs, int costUpperBound, 
-			Space& home) 
-				: flowCost(0), costUpperBound(costUpperBound), oldFlowIsFeasible(true), home(home), firstTime(true) {
+			const IntArgs& upperBounds, const IntArgs& costs, int costUpperBound) 
+				: flowCost(0), costUpperBound(costUpperBound), oldFlowIsFeasible(true), 
+				firstTime(true) {
 			
 			this->varToVals = varToVals;
 			totalVarNodes = vars.size();

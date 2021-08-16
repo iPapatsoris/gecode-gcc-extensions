@@ -55,7 +55,6 @@ class FlowGraph {
 	friend class FlowGraphAlgorithms;
 	private:
 
-		Space& home;
 		int* bestVals;
 		bool firstTime;
 
@@ -167,9 +166,10 @@ class FlowGraph {
 			}
 		}
 
+		/*
 		unsigned int getReducedCost(unsigned int source, unsigned int dest, unsigned int cost) const {
 			return cost - nodeList[source].potential + nodeList[dest].potential;
-		}
+		}*/
 
 		#ifndef NDEBUG
 		// Assert varToVals is synchronized with Gecode variable X domain
@@ -192,8 +192,7 @@ class FlowGraph {
  			const MapToSet<unsigned int, int>& varToVals,
 			const MapToSet<int, unsigned int>& valToVars,
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
-			const IntArgs& upperBounds, const IntArgs& costs, int costUpperBound, 
-		  Space& home);
+			const IntArgs& upperBounds, const IntArgs& costs, int costUpperBound);
 
 		// Update graph state to match variable X domain pruning/assignment.
 		// Update is made by tightening the bounds of edge V->X as follows:
@@ -227,4 +226,4 @@ class FlowGraph {
 		}
 };
 
-#endif H_FLOW_GRAPH
+#endif

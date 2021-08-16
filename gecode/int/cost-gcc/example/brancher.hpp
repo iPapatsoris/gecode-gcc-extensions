@@ -62,14 +62,14 @@ public:
   virtual Brancher* copy(Space& home) {
     return new (home) SizeMin(home,*this);
   }
-  virtual bool status(const Space& home) const {
+  virtual bool status(const Space&) const {
     for (int i=start; i<x.size(); i++)
       if (!x[i].assigned()) {
         start = i; return true;
       }
     return false;
   }
-  virtual Choice* choice(Space& home) {
+  virtual Choice* choice(Space&) {
 
 		int p = start;
     unsigned int s = x[p].size();
@@ -95,7 +95,7 @@ public:
     else
       return me_failed(x[pos].nq(home,val)) ? ES_FAILED : ES_OK;
   }
-  virtual void print(const Space& home, const Choice& c,
+  virtual void print(const Space&, const Choice& c,
                      unsigned int a,
                      std::ostream& o) const {
     const PosVal& pv = static_cast<const PosVal&>(c);

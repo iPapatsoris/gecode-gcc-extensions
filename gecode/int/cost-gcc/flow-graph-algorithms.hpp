@@ -1,5 +1,5 @@
-#ifndef FLOW-GRAPH-ALGORITHMS
-#define FLOW-GRAPH-ALGORITHMS 
+#ifndef FLOW_GRAPH_ALGORITHMS
+#define FLOW_GRAPH_ALGORITHMS
 
 #include <iostream>
 #include <vector>
@@ -26,7 +26,7 @@ class FlowGraphAlgorithms {
 		// instead of building the residual graph from scratch, we modify the 
 		// previous one only in the edges that change
 		void updateResidualGraph(unsigned int source, unsigned int dest, 
-														 NormalEdge edge, bool onPath, unsigned int specialCost = INF_UINT) {
+														 NormalEdge edge) {
 			unsigned int residualEdgeIndex;
 			unsigned int residualBackwardsEdgeIndex;
 			ResidualEdge* residualEdgeSearch = graph.getResidualEdge(source, dest, 
@@ -134,7 +134,7 @@ class FlowGraphAlgorithms {
 					if (edge->destNode < graph.totalVarNodes) {
 						li[edge->destNode] = (*graph.nodeToVal)[prev];
 					}
-					updateResidualGraph(prev, *it, *edge, prev != violation.first);
+					updateResidualGraph(prev, *it, *edge);
 				}	else {
 					// Path residual edge is a backward edge in the original graph
 					edge = graph.getEdge(*it, prev);
@@ -142,7 +142,7 @@ class FlowGraphAlgorithms {
 					if (!edge->flow) {
 						graph.flowCost -= edge->cost;
 					}
-					updateResidualGraph(*it, prev, *edge, prev != violation.first);
+					updateResidualGraph(*it, prev, *edge);
 				}
 				prev = *it;
 			}
@@ -354,7 +354,6 @@ class FlowGraphAlgorithms {
 
 			auto mFactor = [](unsigned int b, unsigned int y, FlowGraph& graph) {
 				unsigned int min = INF_UINT;
-				bool changed = false;
 				for (unsigned int z = 0 ; z < graph.totalVarNodes ; z++) {
 					ResidualEdge *edgeZB;
 					if (z == y || ((edgeZB = graph.getResidualEdge(z, b)) == NULL)) {
@@ -362,7 +361,6 @@ class FlowGraphAlgorithms {
 					}
 					for (auto& edgeZC: graph.nodeList[z].residualEdgeList) {
 						min = std::min(min, edgeZB->reducedCost + edgeZC.reducedCost);
-						changed = true;
 					}
 				}
 				return min;
@@ -451,7 +449,7 @@ class FlowGraphAlgorithms {
 			vector<NormalEdge*> edgeReference;
 			for (auto& edge: updatedEdges) {
 				edgeReference.push_back(graph.getEdge(edge.first, edge.second));
-				updateResidualGraph(edge.first, edge.second, *edgeReference.back(), false);
+				updateResidualGraph(edge.first, edge.second, *edgeReference.back());
 			}
 			if (graph.oldFlowIsFeasible) {
 				return true;

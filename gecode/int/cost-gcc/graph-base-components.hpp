@@ -65,13 +65,12 @@ public:
 	ResidualEdge() {}
 	void print() const
 	{
-		cout << destNode << " upper " << upperBound// << " cost " << cost
+		cout << destNode << " upper " << upperBound
 				 << " reduced cost " << reducedCost <<  "\n";
 	}
 
 	friend class FlowGraph;
 	friend class FlowGraphAlgorithms;
-	friend class OrderGraph;
 };
 
 // Edge containing both source node and destination info
@@ -87,15 +86,12 @@ public:
 class Node {
 	vector<NormalEdge> edgeList;
 	vector<ResidualEdge> residualEdgeList;
-	int potential;
 
-	Node(unsigned int totalEdges) : potential(0) {
+	Node(unsigned int totalEdges) {
 		edgeList.reserve(totalEdges);
 	}
 	friend class FlowGraph;
 	friend class FlowGraphAlgorithms;
-	friend class OrderGraph;
-
 };
 
 #endif

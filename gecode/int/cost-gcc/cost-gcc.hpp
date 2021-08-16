@@ -72,7 +72,7 @@ public:
 		#endif
 		FlowGraph* graph = new FlowGraph(vars, varToVals, valToVars, inputVals, 
 																		 lowerBounds, upperBounds, costs, 
-																		 costUpperBound, home);
+																		 costUpperBound);
 
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 
