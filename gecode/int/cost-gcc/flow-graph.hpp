@@ -166,11 +166,6 @@ class FlowGraph {
 			}
 		}
 
-		/*
-		unsigned int getReducedCost(unsigned int source, unsigned int dest, unsigned int cost) const {
-			return cost - nodeList[source].potential + nodeList[dest].potential;
-		}*/
-
 		#ifndef NDEBUG
 		// Assert varToVals is synchronized with Gecode variable X domain
 		void assertVarToValsInSync(Int::IntView x, int xIndex) const {

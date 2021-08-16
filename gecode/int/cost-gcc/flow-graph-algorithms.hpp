@@ -188,17 +188,7 @@ class FlowGraphAlgorithms {
 			vector<unsigned int> prev;
 			
 			bellmanFordShortestPaths(source, prev, dist, &dest);
-			//disjjtra2(source, dest, prev, dist, visited);
-
-			/*cout << "SPs from " << source << " to " << dest << endl;
-			for (auto n: dist) {
-				cout << n << "\n";
-			}
-			cout << "\n";
-			for (auto n: prev) {
-				cout << n << endl;
-			}*/
-
+	
 			// No path exists
 			if (dist[dest] == INF_INT) {
 				return false;
@@ -291,61 +281,7 @@ class FlowGraphAlgorithms {
 				}
 			}
 		}
-		void disjjtra2(unsigned int source, unsigned int dest, vector<unsigned int>& prev, 
-																			 vector<unsigned int>& dist, vector<unsigned int>& visited
-																			 ) const {
-			dist.assign(graph.nodeList.size(), INF_UINT);
-			prev.assign(graph.nodeList.size(), NONE_UINT);
-			dist[source] = 0;
-			visited.assign(graph.nodeList.size(), false);
 
-			struct HeapItem {
-				unsigned int node;
-				unsigned int dist;
-
-				HeapItem(unsigned int node, unsigned int dist) : node(node), dist(dist) 
-				{}
-				HeapItem() {}
-				// Overload so we can use STL min-heap
-				int operator() (const HeapItem& a, const HeapItem& b) { 
-					return a.dist > b.dist; 
-				}
-			};		
-
-			priority_queue<HeapItem, vector<HeapItem>, HeapItem> heap;
-			heap.push(HeapItem(source, 0));
-
-			while (!heap.empty()) {
-				struct HeapItem curItem = heap.top();
-				heap.pop();
-				unsigned int node = curItem.node;
-				visited[node] = true; 
-
-				if (dist[node] < curItem.dist) {
-					// We have already found a better path than the one this heap item 
-					// suggests
-					continue;
-				}
-
-				for (auto& edge: graph.nodeList[node].residualEdgeList) {
-					if (visited[edge.destNode] || (node == source && edge.destNode == dest)) {
-						continue;
-					}
-					unsigned int newDist = dist[node] + edge.reducedCost; //graph.getReducedCost(edge, node, edge.destNode);
-					if (newDist < dist[edge.destNode]) {
-						// Found path of lower cost
-						dist[edge.destNode] = newDist;
-						prev[edge.destNode] = node;
-						heap.push(HeapItem(edge.destNode, newDist));
-				//		countt++;
-					}
-				}
-				if (node == dest) {
-					break;
-				}
-			}
-		//	cout << "Total disktra: " << countt << "\n";
-		}
 
 		// Optimization to skip finding shortest paths for GAC, according to 
 		// Practical Improvements section of the research paper
@@ -404,29 +340,6 @@ class FlowGraphAlgorithms {
 
 	public:
 		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
-		
-		void benchmark() const {
-			vector<unsigned int> dist;
-			vector<unsigned int> visitedNodes;
-			vector<unsigned int> prev;
-			for (unsigned int it = 0; it < 5000; it++) {
-				for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
-					for (unsigned int j = 0; j < graph.nodeList.size(); j++) {
-						disjjtra2(i, j, prev, dist, visitedNodes);
-						/*for (unsigned int n = 0; n < visitedNodes.size(); n++) {
-							if (visitedNodes[n]) {
-								assert(dist[n] != INF_UINT);
-								graph.nodeList[n].potential += (dist[j] - dist[n]);
-							}
-						}
-						bellmanFordShortestPaths(i, prev, dist, &j);*/
-					}
-				}
-			}
-
-		//	cout << "Iterations: " << countt << "\n";
-			return;
-		}
 
 		bool findMinCostFlow(LI& li) {
 			pair<unsigned int, unsigned int> violation;
@@ -518,10 +431,6 @@ class FlowGraphAlgorithms {
 			// We do the actual pruning at the end of this function's iterations
 			vector<EdgeWithVal> edgesToPrune;
 
-		/*	MaxRegret maxRegret;
-			vector<MinDist> minDist;
-			minDist.assign(graph.totalVarNodes, MinDist());
-		*/
 			// Gather the targetNodes we want to find shortests paths to from B,
 			// and check early prune conditions to skip finding some
 			for (auto& edge: graph.nodeList[graph.sNode()].edgeList) {
@@ -579,23 +488,10 @@ class FlowGraphAlgorithms {
 																		  - (int)costAY - (int)costYB)) {
 							edgesToPrune.push_back(EdgeWithVal(a, y,
 																							graph.nodeToVal->find(a)->second));
-						} /*else if (reducedDistances[a] < minDist[y].dist) {
-							minDist[y].dist = reducedDistances[a];
-							minDist[y].val = a;
-							//cout << "Min dist of var " << y << " now val " << a << " with dist " << minDist[y].dist << endl;
-						}*/
+						} 
 					}
 				}
 			}
-			/*for (unsigned int y = 0; y < minDist.size(); y++) {
-				if (minDist[y].dist != INF_UINT && minDist[y].dist > maxRegret.regret) {
-					maxRegret.regret = minDist[y].dist;
-					maxRegret.var = y;
-					maxRegret.val = minDist[y].val;
-				}
-			}*/
-
-			//cout << "Max regret var " << maxRegret.var << " val " << (*graph.nodeToVal)[maxRegret.val] <<  " regret " << maxRegret.regret << endl;
 
 			// Do the actual pruning and update data structures
 			for (auto& edge: edgesToPrune) {
