@@ -38,18 +38,21 @@ protected:
 		FlowGraph* graph;
 		vector<EdgeNodes> updatedEdges;
 		LI li;
+		bool usingLocalHandle;
 		// TODO: do not store, instead use different post functions?
 		IntPropLevel ipl;
 
 public:
 	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph* graph, 
-					const vector<EdgeNodes>& updatedEdges, LI& li, IntPropLevel ipl)
+					const vector<EdgeNodes>& updatedEdges, LI* li, IntPropLevel ipl)
 			: NaryPropagator(home, x), c(home), graph(graph), 
-				updatedEdges(updatedEdges), ipl(ipl) {
+				updatedEdges(updatedEdges), usingLocalHandle(li != NULL), ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
 			(void)new (home) ViewAdvisor(home, *this, c, x[i], i);
 		}
-		this->li = li;
+		if (usingLocalHandle) {
+			this->li = *li;
+		}
 		home.notice(*this, AP_DISPOSE);
 	}
 
@@ -59,7 +62,7 @@ public:
 												const IntArgs& inputVals, 
 												const unordered_map<int, unsigned int>& inputValToIndex,
 												const IntArgs& lowerBounds, const IntArgs& upperBounds,
-												const IntArgs& costs, int costUpperBound, LI& li,
+												const IntArgs& costs, int costUpperBound, LI* li,
 												IntPropLevel ipl) {
 
 		if (pruneOmittedVales(home, vars, varToVals, valToVars, 
@@ -92,7 +95,10 @@ public:
 	CostGcc(Space& home, CostGcc& p) : CostGccBase(home, p) {
 		c.update(home, p.c);
     x.update(home, p.x);
-		li.update(home, p.li);
+		usingLocalHandle = p.usingLocalHandle;
+		if (usingLocalHandle) {
+			li.update(home, p.li);
+		}
 		graph = new FlowGraph(*(p.graph));
 		updatedEdges = p.updatedEdges;
 		ipl = p.ipl;
@@ -117,7 +123,7 @@ public:
 
 	virtual ExecStatus propagate(Space& home, const ModEventDelta&) {
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
-		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, li)) {
+		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, usingLocalHandle ? &li : NULL)) {
 			return ES_FAILED;
 		}
 		updatedEdges.clear();

@@ -13,15 +13,22 @@ CountCostsExample::CountCostsExample(const FileOptions& opt) : Script(opt) {
 		for (int i = 0; i < vars; i++) {
 			x[i] = IntVar(*this, domain[i]);
 		}
+
+		// Local object handle, to branch using heuristic information provided by 
+		// the propagator 
 		LI li(*this, x.size());
 
 		switch(opt.model()) {
 			case MODEL_SINGLE:
-				countCosts(*this, x, vals, lowerBounds, upperBounds, costs, cost, li,
+				countCosts(*this, x, vals, lowerBounds, upperBounds, costs, cost, 
+									 (opt.branch() ? &li : NULL),
 									 opt.ipl());
 
-				//branch(*this, x, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
-				sizemin(*this, x, li);
+				if (opt.branch()) {
+					branchBestVal(*this, x, li);
+				} else {
+					branch(*this, x, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
+				}
 				break;
 
 			case MODEL_MULTI: 

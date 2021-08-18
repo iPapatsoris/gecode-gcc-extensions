@@ -11,9 +11,9 @@ using namespace std;
 
 void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 								const IntArgs& lowerBounds, const IntArgs& upperBounds,
-								const IntArgs& costs, int costUpperBound, LI& li,
+								const IntArgs& costs, int costUpperBound, LI* li,
 								IntPropLevel ipl) {
-
+								
 	using namespace Int;
 
 	int n = vars.size(); 

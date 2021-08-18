@@ -122,7 +122,7 @@ class FlowGraphAlgorithms {
 			}
 		}*/
 
-			void sendFlow(pair<unsigned int, unsigned int>& violation, vector<int>& shortestPath, unsigned int minUpperBound, LI& li) {
+			void sendFlow(pair<unsigned int, unsigned int>& violation, vector<int>& shortestPath, unsigned int minUpperBound, LI* li) {
 				// Send flow through the path edges and update residual graph
 			unsigned int prev = violation.first;
 			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
@@ -131,8 +131,8 @@ class FlowGraphAlgorithms {
 					// Path residual edge is a forward edge in the original graph
 					edge->flow += minUpperBound;
 					graph.flowCost += edge->cost;
-					if (edge->destNode < graph.totalVarNodes) {
-						li[edge->destNode] = (*graph.nodeToVal)[prev];
+					if (edge->destNode < graph.totalVarNodes && li != NULL) {
+						(*li)[edge->destNode] = (*graph.nodeToVal)[prev];
 					}
 					updateResidualGraph(prev, *it, *edge);
 				}	else {
@@ -161,7 +161,7 @@ class FlowGraphAlgorithms {
 			return minUpperBound;
 		}
 
-		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation, LI& li) {		
+		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation, LI* li) {		
 			vector<int> shortestPath, dist;
 			int pathCost; 
 			if (!findShortestPathNegativeCosts(violation.second, violation.first, 
@@ -341,7 +341,7 @@ class FlowGraphAlgorithms {
 	public:
 		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
 
-		bool findMinCostFlow(LI& li) {
+		bool findMinCostFlow(LI* li) {
 			pair<unsigned int, unsigned int> violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
 				if (!minCostFlowIteration(violation, li)) {
@@ -358,7 +358,7 @@ class FlowGraphAlgorithms {
 		// - Update the residual graph to match the changes
 		// - If the old flow is not still feasible, find a new one, using the 
 		//   incremental algorithm from the publication
-		bool updateMinCostFlow(vector<EdgeNodes>& updatedEdges, LI& li) {
+		bool updateMinCostFlow(vector<EdgeNodes>& updatedEdges, LI* li) {
 			vector<NormalEdge*> edgeReference;
 			for (auto& edge: updatedEdges) {
 				edgeReference.push_back(graph.getEdge(edge.first, edge.second));

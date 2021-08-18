@@ -13,17 +13,17 @@ using namespace std;
 class FileOptions : public Options {
 protected:
 	Driver::StringValueOption _file;
-	Driver::IntOption _p;
+	Driver::BoolOption _branch;
 public:
 	FileOptions(const char* scriptName) : 
 			Options(scriptName),
 			_file("file","input file name", ""),
-			_p("print", "print flag", 1) { 
+			_branch("branch", "branch heuristic flag", true) { 
 		add(_file);
-		add(_p);
+		add(_branch);
 	}
   string file(void) const { return _file.value(); }
-	int p(void) const { return _p.value(); }
+	bool branch(void) const { return _branch.value(); }
 };
 
 class CountCostsExample : public Script {

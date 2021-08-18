@@ -5,6 +5,7 @@
 
 using namespace Gecode;
 
+// Local Object Handle for an array of integers on the heap
 class LI : public LocalHandle {
 protected:
   class LIO : public LocalObject {

@@ -29,7 +29,7 @@
 
 using namespace Gecode;
 
-class SizeMin : public Brancher {
+class BestVal : public Brancher {
 protected:
   ViewArray<Int::IntView> x;
   mutable int start;
@@ -37,7 +37,7 @@ protected:
   class PosVal : public Choice {
   public:
     int pos; int val;
-    PosVal(const SizeMin& b, int p, int v)
+    PosVal(const BestVal& b, int p, int v)
       : Choice(b,2), pos(p), val(v) {}
     virtual void archive(Archive& e) const {
       Choice::archive(e);
@@ -45,22 +45,22 @@ protected:
     }
   };
 public:
-  SizeMin(Home home, ViewArray<Int::IntView>& x0, LI& li)
+  BestVal(Home home, ViewArray<Int::IntView>& x0, LI& li)
     : Brancher(home), x(x0), start(0), li(li) {}
   static void post(Home home, ViewArray<Int::IntView>& x, LI& li) {
-    (void) new (home) SizeMin(home, x, li);
+    (void) new (home) BestVal(home, x, li);
   }
   virtual size_t dispose(Space& home) {
     (void) Brancher::dispose(home);
     return sizeof(*this);
   }
-  SizeMin(Space& home, SizeMin& b)
+  BestVal(Space& home, BestVal& b)
     : Brancher(home,b), start(b.start)  {
     x.update(home,b.x);
 		li.update(home, b.li);
   }
   virtual Brancher* copy(Space& home) {
-    return new (home) SizeMin(home,*this);
+    return new (home) BestVal(home,*this);
   }
   virtual bool status(const Space&) const {
     for (int i=start; i<x.size(); i++)
@@ -77,7 +77,6 @@ public:
       if (!x[i].assigned() && (x[i].size() < s)) {
         p = i; s = x[p].size();
       }
-		//cout << "branch var " << p << " " << " on " << li[p] << endl;
     return new PosVal(*this,p, li[p]);
   }
   virtual Choice* choice(const Space&, Archive& e) {
@@ -107,8 +106,8 @@ public:
   }
 };
 
-void sizemin(Home home, const IntVarArgs& x, LI& li) {
+void branchBestVal(Home home, const IntVarArgs& x, LI& li) {
   if (home.failed()) return;
   ViewArray<Int::IntView> y(home,x);
-  SizeMin::post(home, y, li);
+  BestVal::post(home, y, li);
 }
