@@ -55,9 +55,6 @@ class FlowGraph {
 	friend class FlowGraphAlgorithms;
 	private:
 
-		int* bestVals;
-		bool firstTime;
-
 		// The node order in nodeList is variables,values,S,T.
 		vector<Node> nodeList;
 		unsigned int totalVarNodes; 
@@ -91,6 +88,10 @@ class FlowGraph {
 		unsigned int sNode() const { return nodeList.size() - 2; }
 		// Position of T node
 		unsigned int tNode() const { return nodeList.size() - 1; }
+
+		// Mark the first time we find a solution. The first solution is of minimal
+		// cost, use this variable to print it for debugging or testing
+		bool firstTimeValidCost;
 
 		// Search for an edge flow violating lower bounds
 		// Return false if none exists
@@ -151,8 +152,8 @@ class FlowGraph {
 		int calculateFlowCost(LI &lii);
 
 		bool checkFlowCost() {
-			if (firstTime && flowCost <= costUpperBound) {
-				firstTime = false;
+			if (firstTimeValidCost && flowCost <= costUpperBound) {
+				firstTimeValidCost = false;
 				cout << flowCost << endl;
 			}
 			return flowCost <= costUpperBound;
@@ -162,6 +163,7 @@ class FlowGraph {
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				for (auto& edge : nodeList[i].residualEdgeList) {
 					edge.reducedCost = distances[i] + edge.cost - distances[edge.destNode];
+					//cout << i << "->" << edge.destNode << " " << edge.reducedCost << " = " << distances[i] << " + " << edge.cost << " - " << distances[edge.destNode] << endl;
 				}
 			}
 		}

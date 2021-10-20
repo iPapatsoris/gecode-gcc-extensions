@@ -73,16 +73,6 @@ public:
 	friend class FlowGraphAlgorithms;
 };
 
-// Edge containing both source node and destination info
-// Normally source is not included in Edge class, because node ID N corresponds
-// to the N-th position in the node list arrays
-// It is typically used in updatedEdges vectors, which hold which edges got
-// updated due to some pruning or assignment, and need to be checked on when
-// we next update the residual graph. It is important to have NormalEdge object
-// and not NormalEdge*, because when search finds a solution or fails, it will
-// clone the graph and destroy the original, thus invalidating the pointer.
-//typedef pair<unsigned int, NormalEdge> FullEdge;
-
 class Node {
 	vector<NormalEdge> edgeList;
 	vector<ResidualEdge> residualEdgeList;

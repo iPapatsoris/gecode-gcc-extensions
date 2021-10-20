@@ -15,7 +15,6 @@
 #define NONE_UINT INF_UINT - 1
 
 using namespace std;
-// unsigned int countt = 0;
 
 class FlowGraphAlgorithms {
 	private:
@@ -103,27 +102,8 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-		/*
-		void updatePotentials(vector<unsigned int>& visitedNodes, vector<unsigned int>& dist, int pathCost) {
-			for (unsigned int n = 0; n < visitedNodes.size(); n++) {
-				if (visitedNodes[n]) {
-					//assert(dist[n] != INF_UINT);
-					graph.nodeList[n].potential += (pathCost - dist[n]);
-				}
-			}
-		}
-
-		void updateCosts() {
-		for (unsigned int i = 0; i < graph.nodeList.size(); i++) { // can opt to not iterate all
-				for (auto& e: graph.nodeList[i].residualEdgeList) {
-												// SIGOURA cost edw kai OXI reduced. alliws sto paper bgianoun arnitika
-					e.reducedCost = (e.isBackwards ? 0 : e.cost - graph.nodeList[i].potential + graph.nodeList[e.destNode].potential);
-				}
-			}
-		}*/
-
-			void sendFlow(pair<unsigned int, unsigned int>& violation, vector<int>& shortestPath, unsigned int minUpperBound, LI* li) {
-				// Send flow through the path edges and update residual graph
+		void sendFlow(pair<unsigned int, unsigned int>& violation, vector<int>& shortestPath, unsigned int minUpperBound, LI* li) {
+			// Send flow through the path edges and update residual graph
 			unsigned int prev = violation.first;
 			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
 				NormalEdge *edge = graph.getEdge(prev, *it);
@@ -282,7 +262,6 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-
 		// Optimization to skip finding shortest paths for GAC, according to 
 		// Practical Improvements section of the research paper
 		bool earlyPrune(unsigned int a, unsigned int b, unsigned int y, 
@@ -312,14 +291,19 @@ class FlowGraphAlgorithms {
 					&& edgeAY->reducedCost > m - edgeYB->reducedCost) {
 		//		cout << "\tCONDITION 1 EARLY PRUNNING " << a << " from " << y << endl; 
 				return true;
-			} 
+			}
+			return false; 
 			unsigned int mB = mFactor(b, y, graph);
 			if (mB != INF_UINT && edgeSA->flow < edgeSA->upperBound 
 					&& edgeSB->flow == edgeSB->lowerBound 
 					&& edgeAY->reducedCost + mB > m) {
-		//		cout << "\tCONDITION 2 EARLY PRUNNING " << a << " from " << y << endl;
+				//if (a == 10 && !y) return false;
+				cout << "\tCONDITION 2 EARLY PRUNNING " << a << " (val "  << (*graph.nodeToVal)[a] << ") from " << y << endl;
 				cout << edgeSA->flow << " " << edgeSA->upperBound << " " << edgeSB->flow << " " << 
 				edgeSB->lowerBound << " " << edgeAY->reducedCost << " " << mB << " " << m << endl; 
+				//graph.print();
+				//graph.printResidual();
+				//if (a == 12 && !y) exit(1);
 				return true;
 			}
 			unsigned int mA = mFactor(a, y, graph);
@@ -404,6 +388,7 @@ class FlowGraphAlgorithms {
 			vector<unsigned int> prev;
 			bellmanFordShortestPaths(graph.tNode(), prev, distances, NULL);
 		  graph.calculateReducedCosts(distances);
+			//graph.printResidual();
  
 			// Edge nodes, along with the actual value the src node
 			// corresponds to 
@@ -492,6 +477,7 @@ class FlowGraphAlgorithms {
 					}
 				}
 			}
+
 
 			// Do the actual pruning and update data structures
 			for (auto& edge: edgesToPrune) {

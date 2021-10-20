@@ -8,7 +8,7 @@
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
 			const IntArgs& upperBounds, const IntArgs& costs, int costUpperBound) 
 				: flowCost(0), costUpperBound(costUpperBound), oldFlowIsFeasible(true), 
-				firstTime(true) {
+				firstTimeValidCost(true) {
 			
 			this->varToVals = varToVals;
 			totalVarNodes = vars.size();
