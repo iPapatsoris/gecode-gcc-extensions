@@ -15,7 +15,7 @@ enum {
 } mode;
 
 void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
-							 IntArgs& lowerBounds, IntArgs& upperBounds, 
+							 IntArgs& lowerValBounds, IntArgs& upperValBounds, 
 							 IntArgs& lowerVarBounds, IntArgs& upperVarBounds) {
 	string line;
   ifstream file(fileName);
@@ -54,11 +54,11 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 					mode = LOWER_BOUNDS;
 					break;
 				case LOWER_BOUNDS:
-					lowerBounds = numbers;
+					lowerValBounds = numbers;
 					mode = UPPER_BOUNDS;
 					break;
 				case UPPER_BOUNDS:
-					upperBounds = numbers;
+					upperValBounds = numbers;
 					mode = LOWER_VAR_BOUNDS;
 					break;
 				case LOWER_VAR_BOUNDS:

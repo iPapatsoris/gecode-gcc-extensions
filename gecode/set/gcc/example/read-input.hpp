@@ -6,5 +6,5 @@
 using namespace Gecode;
 
 bool readInput(std::string fileName, int &vars, IntSetArgs &domain, 
-							 IntArgs &vals, IntArgs &lowerBounds, IntArgs &upperBounds, 
+							 IntArgs &vals, IntArgs &lowerValBounds, IntArgs &upperValBounds, 
 							 IntArgs &lowerVarBounds, IntArgs &upperVarBounds);
