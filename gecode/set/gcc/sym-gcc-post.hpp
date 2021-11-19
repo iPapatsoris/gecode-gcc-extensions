@@ -4,19 +4,13 @@
 #include <gecode/set.hh>
 #include <unordered_map>
 #include <unordered_set>
-//#include "cost-gcc.hpp"
+#include "util.hpp"
+#include "sym-gcc.hpp"
 
 using namespace Gecode;
 using namespace std;
 
-template <class T1, class T2>
-struct MapToSet {
-	unordered_map<T1, unordered_set<T2>> map;
-	MapToSet() {}
-	MapToSet(const MapToSet &c) {
-		map = c.map;
-	}
-};
+
 
 void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 								const IntArgs& lowerValBounds, const IntArgs& upperValBounds,
@@ -52,17 +46,20 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 		}
 	}
 
-	// Map values to their variables
-	// Helps do fast lookups, for early pruning and FlowGraph creation
-	MapToSet<int, unsigned int> valToVars;
+	unordered_set<int> valsSet;
+	for (auto v: vals) {
+		valsSet.insert(v);
+	}
+
 	// Map variables to their values
 	// Is used to compare old domain with current Gecode domain, to find which
 	// values got pruned between executions
-	MapToSet<unsigned int, int> varToVals;
+	MapToSet<int, unsigned int> valToVars;
 	for (int x = 0; x < vars.size(); x++) {
-		auto varToValsEntry = varToVals.map.insert({x, unordered_set<int>()});
 		for (SetVarLubValues i(vars[x]); i(); ++i) {
-			varToValsEntry.first->second.insert(i.val());
+			if (valsSet.find(i.val()) == valsSet.end()) {
+				throw ArgumentSizeMismatch("Int::symmetricGCC domain value doesn't exist in values array");
+			}
 			auto it = valToVars.map.find(i.val());
 			if (it == valToVars.map.end()) {
 				valToVars.map.insert({i.val(), 
@@ -95,10 +92,10 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 	
 	ViewArray<Set::SetView> views(home, vars);
 	GECODE_POST;
-	/*GECODE_ES_FAIL(CostGcc::post(home, views, varToVals, valToVars, vals, 
-															 valToIndex, lowerValBounds, upperValBounds, costs, 
-															 costUpperBound, li, ipl
-															));*/
+	GECODE_ES_FAIL(SymGcc::post(home, views, valToVars, vals, lowerValBounds, 
+															upperValBounds, lowerVarBounds, upperVarBounds, //li, 
+															ipl
+															));
 }
 
 #endif

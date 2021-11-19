@@ -46,7 +46,7 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) : Script(opt) {
 				symmetricGCC(*this, x, vals, lowerValBounds, upperValBounds, 
 										 lowerVarBounds, upperVarBounds,
 									 opt.ipl());
-
+			//dom(*this, x[4], SRT_EQ, IntSet{3, 5});
 				/*if (opt.branch()) {
 					branchBestVal(*this, x, li);
 				} else {*/
