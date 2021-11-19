@@ -489,7 +489,7 @@ class FlowGraphAlgorithms {
 				// Prune
 				GECODE_ME_CHECK(vars[edge.dest].nq(home, edge.val));
 				// Also remove from varToVals
-				auto& vals = graph.varToVals.map.find(edge.dest)->second;
+				auto& vals = graph.varToVals[edge.dest];
 				vals.erase(edge.val);
 				// Update upper bound
 				actualEdge->upperBound = 0;

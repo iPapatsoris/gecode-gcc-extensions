@@ -3,7 +3,7 @@
 
 		FlowGraph::FlowGraph(
 			const ViewArray<Int::IntView>& vars, 
- 			const MapToSet<unsigned int, int>& varToVals,
+ 			const vector<unordered_set<int> >& varToVals,
 			const MapToSet<int, unsigned int>& valToVars,
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
 			const IntArgs& upperBounds, const IntArgs& costs, int costUpperBound) 
@@ -40,12 +40,13 @@
 			for (int i = 0; i < inputVals.size(); i++) {
 				int val = inputVals[i];
 				auto it = valToVars.map.find(val);
-				if (it != valToVars.map.end()) {
-					valToNode->insert({val, nodeList.size()});
-					nodeToVal->insert({nodeList.size(), val});
-					//cout << "node " << nodeList.size() << " corresponds to val " << val
-					//		 << "\n";
-					nodeList.push_back(Node(it->second.size()));
+				valToNode->insert({val, nodeList.size()});
+				nodeToVal->insert({nodeList.size(), val});
+				//cout << "node " << nodeList.size() << " corresponds to val " << val
+				//		 << "\n";
+				bool valIsPruned = (it == valToVars.map.end());
+				nodeList.push_back(Node(valIsPruned ? 0 : it->second.size()));
+				if (!valIsPruned) {
 					// Add edges
 					for (auto &var : it->second) {
 						int lowerBound = (vars[var].assigned() ? 1 : 0);
@@ -60,10 +61,8 @@
 			for (int i = 0; i < inputVals.size(); i++) {
 				int val = inputVals[i];
 				auto valNode = valToNode->find(val);
-				if (valNode != valToNode->end()) {
-					nodeList.back().edgeList.push_back(NormalEdge(valNode->second, 
-																				    lowerBounds[i], upperBounds[i], 0));
-				}
+				nodeList.back().edgeList.push_back(NormalEdge(valNode->second, 
+																				   lowerBounds[i], upperBounds[i], 0));
 			}
 
 			// Insert T node and T->S edge
@@ -93,7 +92,7 @@
 			// remove them from valToVars
 			vector< unordered_set<int>::iterator > prunedValues; 
 			// Iterate all values for which there is an edge to X
-			auto& values = varToVals.map.find(xIndex)->second;
+			auto& values = varToVals[xIndex];
 			for (auto valueIt = values.begin(); valueIt != values.end(); valueIt++) {
 				auto value = *valueIt;
 				auto valueNode = valToNode->find(value)->second;

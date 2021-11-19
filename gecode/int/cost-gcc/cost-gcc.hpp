@@ -57,18 +57,12 @@ public:
 	}
 
 	static ExecStatus post(Space& home, ViewArray<Int::IntView>& vars,
-												MapToSet<unsigned int, int>& varToVals,
+												vector<unordered_set<int> >& varToVals,
 												MapToSet<int, unsigned int>& valToVars,
 												const IntArgs& inputVals, 
-												const unordered_map<int, unsigned int>& inputValToIndex,
 												const IntArgs& lowerBounds, const IntArgs& upperBounds,
 												const IntArgs& costs, int costUpperBound, LI* li,
 												IntPropLevel ipl) {
-
-		if (pruneOmittedVales(home, vars, varToVals, valToVars, 
-													inputValToIndex) == ES_FAILED) {
-			return ES_FAILED;
-		}
 
 		#ifndef NDEBUG
 			assertCorrectDomains(vars, varToVals, valToVars);
@@ -141,48 +135,18 @@ public:
 	}
 
 private:
-	// Prune values that belong to a domain, but are not mentioned in the 
-	// inputVals array/set
-	ExecStatus static pruneOmittedVales(
-											Space& home, ViewArray<Int::IntView>& vars, 
-											MapToSet<unsigned int, int>& varToVals,
-											MapToSet<int, unsigned int>& valToVars,
-											const unordered_map<int, unsigned int>& inputValToIndex) {
-		
-		unordered_set<int> prunedVals;
-		for (auto& v: valToVars.map) {
-			auto value = v.first;
-			if (inputValToIndex.find(value) == inputValToIndex.end()) {
-				for (auto& x: v.second) {
-					GECODE_ME_CHECK(vars[x].nq(home, value));
-					varToVals.map.find(x)->second.erase(value);
-					cout << "Prunning " << value << " from " << x << 
-									" (not mentioned in values array)\n";
-				}
-				prunedVals.insert(value);
-			}
-		}
-
-		// Also mirror the changes to valToVars
-		for (auto& val: prunedVals) {
-			valToVars.map.erase(val);
-		}
-
-		return ES_OK;
-	}
-
 	#ifndef NDEBUG
 	// Assert that Gecode variable domains and valToVars/varToVals are in sync
 	void static assertCorrectDomains(const ViewArray<Int::IntView>& vars, 
-															 		 const MapToSet<unsigned int, int>& varToVals,
+															 		 vector<unordered_set<int> >& varToVals,
 																	 const MapToSet<int, unsigned int>& valToVars
 																	) {
+		assert(varToVals.size() == vars.size());
 		for (int x = 0; x < vars.size(); x++) {
-			auto varToValsEntry = varToVals.map.find(x);
-			assert(varToValsEntry != varToVals.map.end());
+			auto varToValsEntry = varToVals[x];
 			for (IntVarValues v(vars[x]); v(); ++v) {
-				assert(varToValsEntry->second.find(v.val()) 
-							!= varToValsEntry->second.end());
+				assert(varToValsEntry.find(v.val()) 
+							!= varToValsEntry.end());
 							
 				auto it = valToVars.map.find(v.val());
 				assert(it != valToVars.map.end());
@@ -190,11 +154,10 @@ private:
 			} 
 		}
 
-		for (auto& x: varToVals.map) {
-			assert((int) x.first < vars.size());
-			assert(x.second.size() == vars[x.first].size());
-			for (auto v: x.second) {
-				assert(vars[x.first].in(v));
+		for (int x = 0; x < varToVals.size(); x++) {
+			assert(varToVals[x].size() == vars[x].size());
+			for (auto v: varToVals[x]) {
+				assert(vars[x].in(v));
 			}
 		}
 

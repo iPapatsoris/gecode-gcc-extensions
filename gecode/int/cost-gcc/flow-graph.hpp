@@ -67,7 +67,7 @@ class FlowGraph {
 		// We know which variables got changed by using advisors, so domain
 		// comparison is only done among those.
 		// Should be kept up to date with assignments and pruning.
-		MapToSet<unsigned int, int> varToVals;
+		vector<unordered_set<int> > varToVals;
 
 		// Total flow through the graph, starts at 0. Is calculated at once using
 		// appropriate function, not gradually
@@ -171,7 +171,7 @@ class FlowGraph {
 		#ifndef NDEBUG
 		// Assert varToVals is synchronized with Gecode variable X domain
 		void assertVarToValsInSync(Int::IntView x, int xIndex) const {
-			auto vals = varToVals.map.find(xIndex)->second;
+			auto vals = varToVals[xIndex];
 			assert(vals.size() == x.size());
 			for (IntVarValues v(x); v(); ++v) {
 				assert(vals.find(v.val()) != vals.end());
@@ -186,7 +186,7 @@ class FlowGraph {
 
 		FlowGraph(
 			const ViewArray<Int::IntView>& vars, 
- 			const MapToSet<unsigned int, int>& varToVals,
+ 			const vector<unordered_set<int> >& varToVals,
 			const MapToSet<int, unsigned int>& valToVars,
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
 			const IntArgs& upperBounds, const IntArgs& costs, int costUpperBound);

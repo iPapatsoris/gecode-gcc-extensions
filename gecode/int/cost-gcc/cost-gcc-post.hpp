@@ -44,11 +44,14 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 	// Map variables to their values
 	// Is used to compare old domain with current Gecode domain, to find which
 	// values got pruned between executions
-	MapToSet<unsigned int, int> varToVals;
+	vector<unordered_set<int> > varToVals;
 	for (int x = 0; x < vars.size(); x++) {
-		auto varToValsEntry = varToVals.map.insert({x, unordered_set<int>()});
+		varToVals.push_back(unordered_set<int>());
 		for (IntVarValues i(vars[x]); i(); ++i) {
-			varToValsEntry.first->second.insert(i.val());
+			if (valToIndex.find(i.val()) == valToIndex.end()) {
+				throw ArgumentSizeMismatch("Int::costcGCC domain value doesn't exist in values array");
+			}
+			varToVals.back().insert(i.val());
 			auto it = valToVars.map.find(i.val());
 			if (it == valToVars.map.end()) {
 				valToVars.map.insert({i.val(), 
@@ -76,8 +79,8 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 	ViewArray<Int::IntView> views(home, vars);
 	GECODE_POST;
 	GECODE_ES_FAIL(CostGcc::post(home, views, varToVals, valToVars, vals, 
-															 valToIndex, lowerBounds, upperBounds, costs, 
-															 costUpperBound, li, ipl
+															 lowerBounds, upperBounds, costs, costUpperBound, 
+															 li, ipl
 															));
 }
 
