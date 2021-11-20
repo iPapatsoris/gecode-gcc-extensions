@@ -36,19 +36,19 @@ protected:
 				}
 		};
 		Council<ViewAdvisor> c;
-		//FlowGraph* graph;
-		//vector<EdgeNodes> updatedEdges;
+		FlowGraph* graph;
+		vector<EdgeNodes> updatedEdges;
 		//LI li;
 		//bool usingLocalHandle;
 		// TODO: do not store, instead use different post functions?
 		IntPropLevel ipl;
 
 public:
-	SymGcc(Space& home, ViewArray<Set::SetView> x, //FlowGraph* graph, 
-					//const vector<EdgeNodes>& updatedEdges, LI* li, 
+	SymGcc(Space& home, ViewArray<Set::SetView> x, FlowGraph* graph, 
+					const vector<EdgeNodes>& updatedEdges, //LI* li, 
 					IntPropLevel ipl)
-			: NaryPropagator(home, x), c(home), //graph(graph), 
-				//updatedEdges(updatedEdges), usingLocalHandle(li != NULL), 
+			: NaryPropagator(home, x), c(home), graph(graph), 
+				updatedEdges(updatedEdges), //usingLocalHandle(li != NULL), 
 				ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
 			(void)new (home) ViewAdvisor(home, *this, c, x[i], i);
@@ -80,14 +80,14 @@ public:
 
 		if (!graphAlgorithms.findMinCostFlow(li)) {
 			return ES_FAILED;
-		}
+		}*/
 
 		vector<pair<unsigned int, unsigned int>> updatedEdges;
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges) != ES_OK) {
+		/*if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges) != ES_OK) {
 				return ES_FAILED;
 		}*/
 
-		(void)new (home) SymGcc(home, vars, //graph, updatedEdges, li, 
+		(void)new (home) SymGcc(home, vars, graph, updatedEdges, //li, 
 		ipl);
 		return ES_OK;
 	}
@@ -98,9 +98,9 @@ public:
 		//usingLocalHandle = p.usingLocalHandle;
 		/*if (usingLocalHandle) {
 			li.update(home, p.li);
-		}
+		}*/
 		graph = new FlowGraph(*(p.graph));
-		updatedEdges = p.updatedEdges;*/
+		updatedEdges = p.updatedEdges;
 		ipl = p.ipl;
   }
 
@@ -114,8 +114,8 @@ public:
 
 	virtual size_t dispose(Space& home) {
 		home.ignore(*this, AP_DISPOSE);
-		//delete graph;
-		//updatedEdges.~vector();
+		delete graph;
+		updatedEdges.~vector();
     c.dispose(home);
     (void) SymGccBase::dispose(home);
     return sizeof(*this);
@@ -164,19 +164,28 @@ public:
 		/*FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, usingLocalHandle ? &li : NULL)) {
 			return ES_FAILED;
-		}
+		}*/
 		updatedEdges.clear();
-
+/*
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, updatedEdges) != ES_OK) {
 				return ES_FAILED;
 		}*/
+
+		graph->print();
+
+
 		return ES_FIX;
 	}
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
-		//graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
-		return ES_NOFIX; // graph->getOldFlowIsFeasible() ? ES_FIX : ES_NOFIX;
+		cout << "\nadvisor on " << xIndex << endl;
+		graph->printBounds(xIndex);
+		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
+		for (auto e: updatedEdges) {
+			cout << e.first << "->" << e.second << endl;
+		}
+		return graph->getOldFlowIsFeasible() ? ES_FIX : ES_NOFIX;
 	}
 
 private:

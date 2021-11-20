@@ -151,12 +151,12 @@ class FlowGraph {
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		void updatePrunedValues(Int::IntView x, unsigned int xIndex, 
+		void updatePrunedValues(Set::SetView x, unsigned int xIndex, 
 													  vector<EdgeNodes>& updatedEdges); 
 
 		void print() const;
-
 		void printResidual() const; 
+		void printBounds(int x) const;
 
 
 		bool getOldFlowIsFeasible() const {

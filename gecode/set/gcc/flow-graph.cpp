@@ -86,8 +86,6 @@ FlowGraph::FlowGraph(
 		copy(node.edgeList.begin(), node.edgeList.end(), 
 				 back_inserter(node.residualEdgeList));
 	}
-
-	print();
 }
 
 //	TODO: update this comment
@@ -101,47 +99,61 @@ FlowGraph::FlowGraph(
 // that is not used by it, set oldFlowIsFeasible to false.
 // Populate updatedEdges, so we know where we should update the old residual
 // graph later on
-/*void FlowGraph::updatePrunedValues(Int::IntView x, unsigned int xIndex, 
-												vector<EdgeNodes>& updatedEdges) {
+void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex, 
+																   vector<EdgeNodes>& updatedEdges) {
 	// Hold iterators to the values that we end up prunning, so we can also
 	// remove them from valToVars
 	vector< unordered_set<int>::iterator > prunedValues; 
-	// Iterate all values for which there is an edge to X
-	auto& values = varToVals.map.find(xIndex)->second;
-	for (auto valueIt = values.begin(); valueIt != values.end(); valueIt++) {
-		auto value = *valueIt;
-		auto valueNode = valToNode->find(value)->second;
-		NormalEdge* edge = getEdge(valueNode, xIndex);
-		if (!edge->lowerBound && edge->upperBound == 1) {
-			// If edge hasn't already been pruned or assigned
-			if (!x.in(value)) {
-				// Value has been pruned from variable X's domain, update graph
+	for (auto valIt = varToLub[xIndex].begin(); valIt != varToLub[xIndex].end(); valIt++) {
+		auto val = *valIt;
+		if (x.notContains(*valIt)) {
+			// Value has been pruned from variable's X's domain
+			auto valNode = valToNode->find(val)->second;
+			NormalEdge* edge = getEdge(valNode, xIndex);
+			if (!edge->lowerBound && edge->upperBound == 1) {
+				// If edge hasn't already been pruned or assigned, update graph
 				edge->upperBound = 0;
 				if (edge->flow == 1) {
 					oldFlowIsFeasible = false;
 				}
-				updatedEdges.push_back({valueNode, xIndex});
-				prunedValues.push_back(valueIt);
+				updatedEdges.push_back({valNode, xIndex});
+				prunedValues.push_back(valIt);
 			}
-			if (x.assigned() && x.val() == value) {
-				// Variable has been assigned with a value, update graph
+		}
+	}	
+	
+	for (auto it: prunedValues) {
+		varToLub[xIndex].erase(it);
+	}
+
+	vector<int> valuesToAdd;
+	for (SetVarLubValues i(x); i(); ++i) {
+		auto val = i.val();
+		if (varToGlb[xIndex].find(val) == varToGlb[xIndex].end()) {
+			// Value has been included in variable X's domain
+			auto valNode = valToNode->find(val)->second;
+			NormalEdge* edge = getEdge(valNode, xIndex);
+			if (!edge->lowerBound && edge->upperBound == 1) {
+				// If edge hasn't already been pruned or assigned, update grap
 				edge->lowerBound = 1;
-				if (edge->flow == 0) {
+				if (!edge->flow) {
 					oldFlowIsFeasible = false;
 				}
-				updatedEdges.push_back({valueNode, xIndex});
-			}	
+				updatedEdges.push_back({valNode, xIndex});
+				valuesToAdd.push_back(val);
+			}
 		}
+	}	
+	
+	for (auto val: valuesToAdd) {
+		varToGlb[xIndex].insert(val);
 	}
 
-	for (auto it: prunedValues) {
-		values.erase(it);
-	}
-
-	#ifndef NDEBUG
-		assertVarToValsInSync(x, xIndex);
-	#endif
-}*/
+	// Update Var->T edge bounds
+	auto& edge = nodeList[xIndex].edgeList[0];
+	edge.lowerBound = x.cardMin();
+	edge.upperBound = x.cardMax();
+}
 
 void FlowGraph::print() const {
 	for (unsigned int i = 0; i < nodeList.size(); i++) {
@@ -165,4 +177,15 @@ void FlowGraph::printResidual() const {
 		}
 	}
 	cout << endl;
+}
+
+void FlowGraph::printBounds(int x) const {
+	cout << "glb\n";
+	for (auto v: varToGlb[x]) {
+		cout << v << " ";
+	}
+	cout << "lub\n";
+	for (auto v: varToLub[x]) {
+		cout << v << " ";
+	}
 }
