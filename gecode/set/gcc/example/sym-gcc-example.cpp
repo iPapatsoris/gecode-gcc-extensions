@@ -10,10 +10,8 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) : Script(opt) {
 		readInput(opt.file(), vars, domain, vals, lowerValBounds, upperValBounds, 
 						  lowerVarBounds, upperVarBounds);
 		
-		x = SetVarArray(*this, vars);
-		for (int i = 0; i < vars; i++) {
-			x[i] = SetVar(*this, IntSet::empty, domain[i], lowerVarBounds[i], upperVarBounds[i]);
-		}
+		x = SetVarArray(*this, 0);
+		y = IntVarArray(*this, 0);
 
 		/*
 		for (auto& x: x) {
@@ -43,6 +41,10 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) : Script(opt) {
 
 		switch(opt.model()) {
 			case MODEL_SINGLE:
+				x = SetVarArray(*this, vars);
+				for (int i = 0; i < vars; i++) {
+					x[i] = SetVar(*this, IntSet::empty, domain[i], lowerVarBounds[i], upperVarBounds[i]);
+				}
 				symmetricGCC(*this, x, vals, lowerValBounds, upperValBounds, 
 										 lowerVarBounds, upperVarBounds,
 									 opt.ipl());
@@ -54,27 +56,44 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) : Script(opt) {
 				//}
 				break;
 
-			/*case MODEL_MULTI: 
-				// Boolean flags for each variable-value assignment. Needed for cost
-				BoolVarArgs varValue(*this, costs.size(), 0, 1);
-				Matrix<BoolVarArgs> m(varValue, vals.size(), x.size());
-				for (int i = 0; i < m.height(); i++) {
-					for (int j = 0; j < m.width(); j++) {
-						rel(*this, x[i], IRT_EQ, vals[j], m(j, i), opt.ipl());
-					}
-				}
-				// Constrain the cost
-				linear(*this, costs, varValue, IRT_LQ, cost, opt.ipl());
-
+			case MODEL_MULTI: 
 				// Constrain the value bounds
 				IntSetArgs bounds;
 				for (int i = 0; i < vals.size(); i++) {
 					bounds << IntSet(lowerValBounds[i], upperValBounds[i]);
 				}
-				count(*this, x, bounds, vals, opt.ipl());
 
-				branch(*this, x, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
-				break; */
+				// Constrain the var bounds
+				IntSetArgs varBounds;
+				IntArgs ones;
+				for (int i = 0; i < vars; i++) {
+					varBounds << IntSet(lowerVarBounds[i], upperVarBounds[i]);
+					ones << 1;
+				}
+
+				// Boolean flags for each variable-value assignment. Needed for cost
+				y = IntVarArray(*this, vars * vals.size(), 0, 1);
+				Matrix<IntVarArray> m(y, vals.size(), vars);
+				// Assign 0 to the illegal domain values
+				for (int i = 0; i < m.height(); i++) {
+					for (int j = 0; j < m.width(); j++) {
+						if (!domain[i].in(vals[j])) {
+							dom(*this, m(j,i), 0, 0);
+						}
+					}
+				}
+				for (int i = 0; i < m.height(); i++) {
+					count(*this, m.row(i), 1, IRT_GQ, lowerVarBounds[i]);
+					count(*this, m.row(i), 1, IRT_LQ, upperVarBounds[i]);
+					//count(*this, m.row(i), varBounds[i], 1);
+				}
+				for (int j = 0; j < m.width(); j++) {
+					count(*this, m.col(j), 1, IRT_GQ, lowerValBounds[j]);
+					count(*this, m.col(j), 1, IRT_LQ, upperValBounds[j]);
+					//count(*this, m.col(j), bounds, ones);
+				}
+				branch(*this, y, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
+				break;
 		}
 	}
 

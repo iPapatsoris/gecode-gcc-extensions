@@ -29,6 +29,7 @@ public:
 class SymmetricGccExample : public Script {
 protected:
 	SetVarArray x;
+	IntVarArray y;
 
 public:
 	enum {
@@ -37,13 +38,21 @@ public:
 
 	SymmetricGccExample(const FileOptions& opt);
 	SymmetricGccExample(SymmetricGccExample &s) : Script(s) {
-		x.update(*this, s.x);
+	//	x.update(*this, s.x);
+		y.update(*this, s.y);
 	}
 	virtual Space *copy(void) {
 		return new SymmetricGccExample(*this);
 	}
 	void print(ostream& os) const {
-		os << "\tSolution: " << x << "\n";
+	//	os << "\tSolution: " << x << "\n";
+		os << "\tSolution: \n";
+		for (int i = 0; i < 6; i++) {
+			for (int j = 0; j < 7; j++) {
+				cout << y[7*i + j] << " ";
+			}
+			cout << "\n";
+		}
 	}
 };
 
