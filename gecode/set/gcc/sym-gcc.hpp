@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <assert.h>
 #include "util.hpp"
-#include "flow-graph.hpp"
+#include "flow-graph-algorithms.hpp"
 
 using namespace Gecode;
 using namespace std;
@@ -76,11 +76,11 @@ public:
 																		 lowerValBounds, upperValBounds, 
 																		 lowerVarBounds, upperVarBounds);
 
-		/*FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
+		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 
-		if (!graphAlgorithms.findMinCostFlow(li)) {
+		if (!graphAlgorithms.findMinCostFlow()) {
 			return ES_FAILED;
-		}*/
+		}
 
 		vector<pair<unsigned int, unsigned int>> updatedEdges;
 		/*if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges) != ES_OK) {
@@ -161,10 +161,11 @@ public:
 			exit(1);
 		*/
 
-		/*FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
-		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, usingLocalHandle ? &li : NULL)) {
+		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
+		if (!graphAlgorithms.updateMinCostFlow(updatedEdges//, usingLocalHandle ? &li : NULL
+			 )) {
 			return ES_FAILED;
-		}*/
+		}
 		updatedEdges.clear();
 /*
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, updatedEdges) != ES_OK) {
