@@ -49,7 +49,7 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) : Script(opt) {
 			//dom(*this, x[4], SRT_EQ, IntSet{3, 5});
 				/*if (opt.branch()) {
 					branchBestVal(*this, x, li);
-				} else {*/
+				} else {*/ 
 					branch(*this, x, SET_VAR_DEGREE_MIN(), SET_VAL_MIN_INC());
 				//}
 				break;

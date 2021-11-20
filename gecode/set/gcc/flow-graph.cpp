@@ -123,18 +123,19 @@ void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex,
 	}	
 	
 	for (auto it: prunedValues) {
+		cout << "\npruning from lub " << *it;
 		varToLub[xIndex].erase(it);
 	}
 
 	vector<int> valuesToAdd;
-	for (SetVarLubValues i(x); i(); ++i) {
+	for (SetVarGlbValues i(x); i(); ++i) {
 		auto val = i.val();
 		if (varToGlb[xIndex].find(val) == varToGlb[xIndex].end()) {
 			// Value has been included in variable X's domain
 			auto valNode = valToNode->find(val)->second;
 			NormalEdge* edge = getEdge(valNode, xIndex);
 			if (!edge->lowerBound && edge->upperBound == 1) {
-				// If edge hasn't already been pruned or assigned, update grap
+				// If edge hasn't already been pruned or assigned, update graph
 				edge->lowerBound = 1;
 				if (!edge->flow) {
 					oldFlowIsFeasible = false;
@@ -146,6 +147,7 @@ void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex,
 	}	
 	
 	for (auto val: valuesToAdd) {
+		cout << "\nadding to glb " << val;
 		varToGlb[xIndex].insert(val);
 	}
 
@@ -153,6 +155,7 @@ void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex,
 	auto& edge = nodeList[xIndex].edgeList[0];
 	edge.lowerBound = x.cardMin();
 	edge.upperBound = x.cardMax();
+	cout << "\ncard " << edge.lowerBound << " " << edge.upperBound << "\n";
 }
 
 void FlowGraph::print() const {
@@ -184,8 +187,10 @@ void FlowGraph::printBounds(int x) const {
 	for (auto v: varToGlb[x]) {
 		cout << v << " ";
 	}
-	cout << "lub\n";
+	cout << "\nlub\n";
 	for (auto v: varToLub[x]) {
 		cout << v << " ";
 	}
+	cout << "\ncard " << nodeList[x].edgeList.front().lowerBound
+			 << " " << nodeList[x].edgeList.front().upperBound << "\n";
 }

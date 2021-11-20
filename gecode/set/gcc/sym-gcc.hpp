@@ -11,7 +11,7 @@
 using namespace Gecode;
 using namespace std;
 
-typedef NaryPropagator<Set::SetView, Int::PC_INT_NONE> SymGccBase;
+typedef NaryPropagator<Set::SetView, Set::PC_SET_ANY> SymGccBase;
 
 class SymGcc : public SymGccBase {
 
@@ -180,7 +180,6 @@ public:
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
 		cout << "\nadvisor on " << xIndex << endl;
-		graph->printBounds(xIndex);
 		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
 		for (auto e: updatedEdges) {
 			cout << e.first << "->" << e.second << endl;
