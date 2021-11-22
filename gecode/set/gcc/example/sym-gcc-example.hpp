@@ -30,28 +30,57 @@ class SymmetricGccExample : public Script {
 protected:
 	SetVarArray x;
 	IntVarArray y;
+	BoolVarArray z;
+	int varsCount;
+	int valsCount;
+
 
 public:
-	enum {
-		MODEL_SINGLE, MODEL_MULTI
+	enum Model {
+		MODEL_SINGLE, MODEL_COUNT, MODEL_LINEAR
 	};
+
+	Model model;
 
 	SymmetricGccExample(const FileOptions& opt);
 	SymmetricGccExample(SymmetricGccExample &s) : Script(s) {
-	//	x.update(*this, s.x);
-		y.update(*this, s.y);
+		model = s.model;
+		varsCount = s.varsCount;
+		valsCount = s.valsCount;
+		switch (model) {
+			case MODEL_SINGLE:
+				x.update(*this, s.x);
+				break;
+			case MODEL_COUNT:
+				y.update(*this, s.y);
+				break;
+			case MODEL_LINEAR:
+				z.update(*this, s.z);
+				break;
+			}
 	}
 	virtual Space *copy(void) {
 		return new SymmetricGccExample(*this);
 	}
 	void print(ostream& os) const {
-	//	os << "\tSolution: " << x << "\n";
-		os << "\tSolution: \n";
-		for (int i = 0; i < 6; i++) {
-			for (int j = 0; j < 7; j++) {
-				cout << y[7*i + j] << " ";
-			}
-			cout << "\n";
+		switch (model) {
+			case MODEL_SINGLE:
+				os << "\tSolution: " << x << "\n";
+				break;
+			case MODEL_COUNT:
+			case MODEL_LINEAR:
+				os << "\tSolution: \n";
+				for (int i = 0; i < varsCount; i++) {
+					for (int j = 0; j < valsCount; j++) {
+						if (model == MODEL_COUNT) {
+							cout << y[valsCount*i + j] << " ";
+						} else if (model == MODEL_LINEAR) {
+							cout << z[valsCount*i + j] << " ";
+						}
+					}
+					cout << "\n";
+				}
+				break;
 		}
 	}
 };

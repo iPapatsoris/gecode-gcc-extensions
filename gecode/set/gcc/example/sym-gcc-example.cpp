@@ -1,17 +1,22 @@
 #include "sym-gcc-example.hpp"
 #include "../sym-gcc-post.hpp"
+
 //#include "LI.hpp"
 //#include "brancher.hpp"
 
-SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) : Script(opt) {
-		int vars;
+SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) 
+	: Script(opt), model((Model) opt.model())
+																																 {
 		IntSetArgs domain;
-		IntArgs lowerValBounds, upperValBounds, vals, lowerVarBounds, upperVarBounds;
-		readInput(opt.file(), vars, domain, vals, lowerValBounds, upperValBounds, 
+		IntArgs vals, lowerValBounds, upperValBounds, lowerVarBounds, upperVarBounds;
+		readInput(opt.file(), varsCount, domain, vals, lowerValBounds, upperValBounds, 
 						  lowerVarBounds, upperVarBounds);
+		valsCount = vals.size();
+		cout << valsCount << endl;
 		
 		x = SetVarArray(*this, 0);
 		y = IntVarArray(*this, 0);
+		z = BoolVarArray(*this, 0);
 
 		/*
 		for (auto& x: x) {
@@ -41,8 +46,8 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) : Script(opt) {
 
 		switch(opt.model()) {
 			case MODEL_SINGLE:
-				x = SetVarArray(*this, vars);
-				for (int i = 0; i < vars; i++) {
+				x = SetVarArray(*this, varsCount);
+				for (int i = 0; i < varsCount; i++) {
 					x[i] = SetVar(*this, IntSet::empty, domain[i], lowerVarBounds[i], upperVarBounds[i]);
 				}
 				symmetricGCC(*this, x, vals, lowerValBounds, upperValBounds, 
@@ -56,24 +61,10 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) : Script(opt) {
 				//}
 				break;
 
-			case MODEL_MULTI: 
-				// Constrain the value bounds
-				IntSetArgs bounds;
-				for (int i = 0; i < vals.size(); i++) {
-					bounds << IntSet(lowerValBounds[i], upperValBounds[i]);
-				}
-
-				// Constrain the var bounds
-				IntSetArgs varBounds;
-				IntArgs ones;
-				for (int i = 0; i < vars; i++) {
-					varBounds << IntSet(lowerVarBounds[i], upperVarBounds[i]);
-					ones << 1;
-				}
-
+			case MODEL_COUNT: {
 				// Boolean flags for each variable-value assignment. Needed for cost
-				y = IntVarArray(*this, vars * vals.size(), 0, 1);
-				Matrix<IntVarArray> m(y, vals.size(), vars);
+				y = IntVarArray(*this, varsCount * vals.size(), 0, 1);
+				Matrix<IntVarArray> m(y, vals.size(), varsCount);
 				// Assign 0 to the illegal domain values
 				for (int i = 0; i < m.height(); i++) {
 					for (int j = 0; j < m.width(); j++) {
@@ -92,17 +83,44 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) : Script(opt) {
 					count(*this, m.col(j), 1, IRT_LQ, upperValBounds[j]);
 					//count(*this, m.col(j), bounds, ones);
 				}
-				branch(*this, y, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
+				branch(*this, y, INT_VAL_MAX());
+				break;
+			}
+			case MODEL_LINEAR:
+				z = BoolVarArray(*this, varsCount * vals.size(), 0, 1);
+				Matrix<BoolVarArray> mB(z, vals.size(), varsCount);
+				// Assign 0 to the illegal domain values
+				for (int i = 0; i < mB.height(); i++) {
+					for (int j = 0; j < mB.width(); j++) {
+						if (!domain[i].in(vals[j])) {
+							rel(*this, mB(j,i), IRT_EQ, 0);
+						}
+					}
+				}
+				for (int i = 0; i < mB.height(); i++) {
+					linear(*this, mB.row(i), IRT_GQ, lowerVarBounds[i]);
+					linear(*this, mB.row(i), IRT_LQ, upperVarBounds[i]);
+					//count(*this, m.row(i), varBounds[i], 1);
+				}
+				for (int j = 0; j < mB.width(); j++) {
+					linear(*this, mB.col(j), IRT_GQ, lowerValBounds[j]);
+					linear(*this, mB.col(j), IRT_LQ, upperValBounds[j]);
+					//count(*this, m.col(j), bounds, ones);
+				}
+				branch(*this, z, BOOL_VAL_MAX());
 				break;
 		}
+
 	}
 
 int main(int argc, char *argv[]) {
 	FileOptions opt("Cost GCC");
 	opt.model(SymmetricGccExample::MODEL_SINGLE,
 						"single", "use single costgcc");
-	opt.model(SymmetricGccExample::MODEL_MULTI,
-						"multi", "use multiple constraints");
+	opt.model(SymmetricGccExample::MODEL_COUNT,
+						"count", "use count constraints");
+	opt.model(SymmetricGccExample::MODEL_LINEAR,
+						"linear", "use linear constraints");
 	opt.model(SymmetricGccExample::MODEL_SINGLE);
 	opt.ipl(IPL_DOM);
 	opt.solutions(0);
