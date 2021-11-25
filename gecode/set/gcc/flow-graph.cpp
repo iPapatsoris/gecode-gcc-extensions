@@ -100,7 +100,7 @@ FlowGraph::FlowGraph(
 // Populate updatedEdges, so we know where we should update the old residual
 // graph later on
 void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex, 
-																   vector<EdgeNodes>& updatedEdges) {
+																   vector<EdgeNodes>& updatedEdges, LI* li) {
 	// Hold iterators to the values that we end up prunning, so we can also
 	// remove them from valToVars
 	vector< unordered_set<int>::iterator > prunedValues; 
@@ -115,6 +115,9 @@ void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex,
 				edge->upperBound = 0;
 				if (edge->flow == 1) {
 					oldFlowIsFeasible = false;
+					if (li != NULL) {
+						(*li)[xIndex].erase(val);
+					}
 				}
 				updatedEdges.push_back({valNode, xIndex});
 				prunedValues.push_back(valIt);
@@ -139,7 +142,17 @@ void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex,
 				edge->lowerBound = 1;
 				if (!edge->flow) {
 					oldFlowIsFeasible = false;
-				}
+				} /*else if (li != NULL) {
+					for (SetVarUnknownValues nextVal(x); nextVal(); ++nextVal) {
+						auto nextValNode = (*valToNode)[nextVal.val()];
+						auto nextValEdge = getEdge(nextValNode, xIndex);
+						cout << "checking val " << nextVal.val(); 
+						if (nextValEdge->flow) {
+							cout << "ok";
+							(*li)[xIndex] = val;
+						}
+					}
+				}*/
 				updatedEdges.push_back({valNode, xIndex});
 				valuesToAdd.push_back(val);
 			}
@@ -155,7 +168,13 @@ void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex,
 	auto& edge = nodeList[xIndex].edgeList[0];
 	edge.lowerBound = x.cardMin();
 	edge.upperBound = x.cardMax();
+	if (edge.flow < edge.lowerBound || edge.flow > edge.upperBound) {
+		oldFlowIsFeasible = false;
+		updatedEdges.push_back({xIndex, tNode()});
+	}
 	cout << "\ncard " << edge.lowerBound << " " << edge.upperBound << "\n";
+
+	cout << "end of update: feasible flow " << oldFlowIsFeasible << endl; 
 }
 
 void FlowGraph::print() const {

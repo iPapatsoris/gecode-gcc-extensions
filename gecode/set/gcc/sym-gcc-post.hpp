@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include "util.hpp"
 #include "sym-gcc.hpp"
+#include "example/LI.hpp"
 
 using namespace Gecode;
 using namespace std;
@@ -15,7 +16,7 @@ using namespace std;
 void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 								const IntArgs& lowerValBounds, const IntArgs& upperValBounds,
 								const IntArgs& lowerVarBounds, const IntArgs& upperVarBounds,
-								IntPropLevel ipl) {
+								LI* li, IntPropLevel ipl) {
 								
 	using namespace Int;
 
@@ -93,8 +94,8 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 	ViewArray<Set::SetView> views(home, vars);
 	GECODE_POST;
 	GECODE_ES_FAIL(SymGcc::post(home, views, valToVars, vals, lowerValBounds, 
-															upperValBounds, lowerVarBounds, upperVarBounds, //li, 
-															ipl
+															upperValBounds, lowerVarBounds, upperVarBounds, 
+															li, ipl
 															));
 }
 

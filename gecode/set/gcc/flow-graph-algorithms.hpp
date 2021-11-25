@@ -59,7 +59,9 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-		void sendFlow(pair<unsigned int, unsigned int>& violation, vector<unsigned int>& shortestPath, unsigned int minUpperBound//, LI* li
+		void sendFlow(pair<unsigned int, unsigned int>& violation, 
+								  vector<unsigned int>& shortestPath, 
+									unsigned int minUpperBound, LI* li
 		) {
 			// Send flow through the path edges and update residual graph
 			unsigned int prev = violation.first;
@@ -68,9 +70,10 @@ class FlowGraphAlgorithms {
 				if (edge != NULL) {
 					// Path residual edge is a forward edge in the original graph
 					edge->flow += minUpperBound;
-					/*if (edge->destNode < graph.totalVarNodes //&& li != NULL) {
-						(*li)[edge->destNode] = (*graph.nodeToVal)[prev];
-					}*/
+					if (edge->destNode < graph.totalVarNodes && li != NULL) {
+						cout << "Adding " << (*graph.nodeToVal)[prev] << " to li" << endl; 
+						(*li)[edge->destNode].insert((*graph.nodeToVal)[prev]);
+					}
 					updateResidualGraph(prev, *it, *edge);
 				}	else {
 					// Path residual edge is a backward edge in the original graph
@@ -82,7 +85,8 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-		unsigned int findMinUpperBound(pair<unsigned int, unsigned int>& violation, vector<unsigned int>& shortestPath) {
+		unsigned int findMinUpperBound(pair<unsigned int, unsigned int>& violation, 
+																	 vector<unsigned int>& shortestPath) {
 			// Find min upper bound along shortest path
 			unsigned int prev = violation.first;
 			unsigned int minUpperBound = INF_UINT;
@@ -95,26 +99,40 @@ class FlowGraphAlgorithms {
 			return minUpperBound;
 		}
 
-		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation//, LI* li
+		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation, LI* li
 		) {		
-			graph.printResidual();
-			cout << "Violation " << violation.first << " " << violation.second 
-					 << endl;
+			//graph.printResidual();
+			//cout << "Violation " << violation.first << " " << violation.second 
+			//		 << endl;
 			vector<unsigned int> path;
 			if (!findPath(violation.second, violation.first, path)) {
 				// Constraint is not consistent
 				return false;
 			}
-			for (vector<unsigned int>::reverse_iterator i = path.rbegin(); 
+			/*for (vector<unsigned int>::reverse_iterator i = path.rbegin(); 
            i != path.rend(); 
 					 ++i ) { 			
 				cout << *i << (i != path.rend()-1 ? "->" : "");
 			}
-			cout << endl;
+			cout << endl;*/
 
 			unsigned int minUpperBound = findMinUpperBound(violation, path);		
-			sendFlow(violation, path, minUpperBound//, li
-			);
+			sendFlow(violation, path, minUpperBound, li);
+
+			if (li != NULL) {
+				for (int i = 0; i < graph.totalVarNodes; i++) {
+					for (auto& v: (*li)[i])
+						cout << v << endl;
+				}
+				for (int i = graph.totalVarNodes; i < graph.sNode(); i++) {
+					for (auto& e: graph.nodeList[i].edgeList) {
+						if (e.flow) {
+							cout << "flow for var " << e.destNode << " with val " << (*graph.nodeToVal)[i] << endl;
+						}
+					}
+				}
+			}
+
 			return true;
 		}
 
@@ -148,7 +166,6 @@ class FlowGraphAlgorithms {
 			frontier.push(source);
 			while (!frontier.empty()) {
 				unsigned int node = frontier.top();
-				cout << "exploring " << node << endl;				
 				frontier.pop();
 				for (auto& e: graph.nodeList[node].residualEdgeList) {
 					if ((prev[e.destNode] != NONE_UINT) || 
@@ -167,11 +184,11 @@ class FlowGraphAlgorithms {
 	public:
 		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
 
-		bool findMinCostFlow(//LI* li
+		bool findMinCostFlow(LI* li
 		) {
 			pair<unsigned int, unsigned int> violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
-				if (!minCostFlowIteration(violation)) {
+				if (!minCostFlowIteration(violation, li)) {
 					return false;
 				}
 			}
@@ -184,7 +201,7 @@ class FlowGraphAlgorithms {
 		// - Update the residual graph to match the changes
 		// - If the old flow is not still feasible, find a new one, using the 
 		//   incremental algorithm from the publication
-		bool updateMinCostFlow(vector<EdgeNodes>& updatedEdges) {
+		bool updateMinCostFlow(vector<EdgeNodes>& updatedEdges, LI* li) {
 			vector<NormalEdge*> edgeReference;
 			for (auto& edge: updatedEdges) {
 				edgeReference.push_back(graph.getEdge(edge.first, edge.second));
@@ -207,7 +224,7 @@ class FlowGraphAlgorithms {
 					// Violating upper bound, swap direction of initial violating edge
 					std::swap(src, dest);
 				}
-				if (!minCostFlowIteration({src, dest})) {
+				if (!minCostFlowIteration({src, dest}, li)) {
 					return false;
 				}
 			}

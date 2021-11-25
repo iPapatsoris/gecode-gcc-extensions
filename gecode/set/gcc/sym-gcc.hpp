@@ -38,24 +38,24 @@ protected:
 		Council<ViewAdvisor> c;
 		FlowGraph* graph;
 		vector<EdgeNodes> updatedEdges;
-		//LI li;
-		//bool usingLocalHandle;
+		LI li;
+		bool usingLocalHandle;
 		// TODO: do not store, instead use different post functions?
 		IntPropLevel ipl;
 
 public:
 	SymGcc(Space& home, ViewArray<Set::SetView> x, FlowGraph* graph, 
-					const vector<EdgeNodes>& updatedEdges, //LI* li, 
+					const vector<EdgeNodes>& updatedEdges, LI* li, 
 					IntPropLevel ipl)
 			: NaryPropagator(home, x), c(home), graph(graph), 
-				updatedEdges(updatedEdges), //usingLocalHandle(li != NULL), 
+				updatedEdges(updatedEdges), usingLocalHandle(li != NULL), 
 				ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
 			(void)new (home) ViewAdvisor(home, *this, c, x[i], i);
 		}
-		/*if (usingLocalHandle) {
+		if (usingLocalHandle) {
 			this->li = *li;
-		}*/
+		}
 		home.notice(*this, AP_DISPOSE);
 	}
 
@@ -65,8 +65,7 @@ public:
 												const IntArgs& lowerValBounds, 
 												const IntArgs& upperValBounds,
 												const IntArgs& lowerVarBounds, 
-												const IntArgs& upperVarBounds,
-												//LI* li,
+												const IntArgs& upperVarBounds, LI* li,
 												IntPropLevel ipl) {
 
 		#ifndef NDEBUG
@@ -78,7 +77,7 @@ public:
 
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 
-		if (!graphAlgorithms.findMinCostFlow()) {
+		if (!graphAlgorithms.findMinCostFlow(li)) {
 			return ES_FAILED;
 		}
 
@@ -87,18 +86,18 @@ public:
 				return ES_FAILED;
 		}*/
 
-		(void)new (home) SymGcc(home, vars, graph, updatedEdges, //li, 
-		ipl);
+		(void)new (home) SymGcc(home, vars, graph, updatedEdges, li, ipl);
 		return ES_OK;
 	}
 
 	SymGcc(Space& home, SymGcc& p) : SymGccBase(home, p) {
 		c.update(home, p.c);
     x.update(home, p.x);
-		//usingLocalHandle = p.usingLocalHandle;
-		/*if (usingLocalHandle) {
+		usingLocalHandle = p.usingLocalHandle;
+		if (usingLocalHandle) {
 			li.update(home, p.li);
-		}*/
+			//cout << "SymGcc copy: " << p.li[0] << endl;
+		}
 		graph = new FlowGraph(*(p.graph));
 		updatedEdges = p.updatedEdges;
 		ipl = p.ipl;
@@ -121,7 +120,7 @@ public:
     return sizeof(*this);
   }
 
-	virtual ExecStatus propagate(Space& home, const ModEventDelta&) {
+	virtual ExecStatus propagate(Space&, const ModEventDelta&) {
 		/*
 		GECODE_ME_CHECK(x[4].cardMin(home, 2));
 		GECODE_ME_CHECK(x[4].include(home, 3));
@@ -160,10 +159,12 @@ public:
 
 			exit(1);
 		*/
-
+		cout << "propagate" << endl;
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
-		if (!graphAlgorithms.updateMinCostFlow(updatedEdges//, usingLocalHandle ? &li : NULL
+		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, 
+																					 usingLocalHandle ? &li : NULL
 			 )) {
+			cout << "yo updateMinCostFlow fail lmao" << endl;
 			return ES_FAILED;
 		}
 		updatedEdges.clear();
@@ -172,19 +173,18 @@ public:
 				return ES_FAILED;
 		}*/
 
-		graph->print();
-
-
+		//graph->print();
 		return ES_FIX;
 	}
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
 		cout << "\nadvisor on " << xIndex << endl;
-		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
-		for (auto e: updatedEdges) {
+		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges, 
+															usingLocalHandle ? &li : NULL);
+		/*for (auto e: updatedEdges) {
 			cout << e.first << "->" << e.second << endl;
-		}
+		}*/
 		return graph->getOldFlowIsFeasible() ? ES_FIX : ES_NOFIX;
 	}
 

@@ -2,7 +2,7 @@
 #define H_FLOW_GRAPH
 
 #include "graph-base-components.hpp"
-//#include "LI.hpp"
+#include "LI.hpp"
 #include "util.hpp"
 #include <iostream>
 #include <vector>
@@ -152,7 +152,7 @@ class FlowGraph {
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
 		void updatePrunedValues(Set::SetView x, unsigned int xIndex, 
-													  vector<EdgeNodes>& updatedEdges); 
+													  vector<EdgeNodes>& updatedEdges, LI* li); 
 
 		void print() const;
 		void printResidual() const; 
