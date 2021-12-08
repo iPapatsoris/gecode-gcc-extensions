@@ -73,7 +73,7 @@ class FlowGraphAlgorithms {
 					if (edge->destNode < graph.totalVarNodes && li != NULL) {
 						cout << "Adding " << (*graph.nodeToVal)[prev] << " to li" << endl;
 						auto pos = graph.varUtil.getXFromInputVarVal(edge->destNode, (*graph.nodeToVal)[prev]); 
-						(*li)[pos] = (*graph.nodeToVal)[prev];
+						(*li)[pos] = 1;
 					}
 					updateResidualGraph(prev, *it, *edge);
 				}	else {
@@ -83,7 +83,7 @@ class FlowGraphAlgorithms {
 					if (prev < graph.totalVarNodes && li != NULL) {
 						cout << "Removing " << (*graph.nodeToVal)[*it] << " from li" << endl;
 						auto pos = graph.varUtil.getXFromInputVarVal(edge->destNode, (*graph.nodeToVal)[*it]); 
-						(*li)[pos] = (*graph.nodeToVal)[*it];
+						(*li)[pos] = 0;
 					}
 					updateResidualGraph(*it, prev, *edge);
 				}

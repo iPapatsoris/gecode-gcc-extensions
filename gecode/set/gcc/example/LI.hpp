@@ -15,6 +15,9 @@ protected:
     LIO(Space& home, int n0)
      : LocalObject(home), data(heap.alloc<int>(n0)), n(n0) {
       home.notice(*this,AP_DISPOSE);
+			for (unsigned int i = 0; i < n0; i++) {
+				data[i] = 0;
+			}
     }
     LIO(Space& home, LIO& l)
       : LocalObject(home,l), data(heap.alloc<int>(l.n)), n(l.n) {

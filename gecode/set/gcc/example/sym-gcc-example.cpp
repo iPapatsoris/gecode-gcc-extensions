@@ -78,7 +78,7 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt)
 										opt.ipl());
 		//dom(*this, x[4], SRT_EQ, IntSet{3, 5});
 			if (opt.branch()) {
-				//bestval(*this, x, li);
+				branchBestVal(*this, x, li);
 			} else { 
 				branch(*this, x, BOOL_VAL_MAX());
 			}
