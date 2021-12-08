@@ -2,41 +2,30 @@
 #define H_LI
 
 #include <gecode/kernel.hh>
-#include <vector>
-#include <unordered_set>
 
 using namespace Gecode;
-typedef unordered_set<int> BestValsType;
-
-/*struct BestValsWrapper {
-	bool emptySet;
-
-}*/
 
 // Local Object Handle for an array of integers on the heap
 class LI : public LocalHandle {
 protected:
   class LIO : public LocalObject {
   public:
-    BestValsType* data;
+    int* data;
     int n;
     LIO(Space& home, int n0)
-     : LocalObject(home), data(heap.alloc<BestValsType>(n0)), n(n0) {
-			 cout << n0 << endl;
+     : LocalObject(home), data(heap.alloc<int>(n0)), n(n0) {
       home.notice(*this,AP_DISPOSE);
     }
     LIO(Space& home, LIO& l)
-      : LocalObject(home,l), data(heap.alloc<BestValsType>(l.n)), n(l.n) {
+      : LocalObject(home,l), data(heap.alloc<int>(l.n)), n(l.n) {
 				heap.copy(data, l.data, l.n);
 			}
     virtual LocalObject* copy(Space& home) {
       return new (home) LIO(home,*this);
     }
     virtual size_t dispose(Space& home) {
-			cout << "destructor" << endl;
-			//cout << *(*data).find(0) << endl;
       home.ignore(*this,AP_DISPOSE);
-      heap.free<BestValsType>(data,n);
+      heap.free<int>(data,n);
       return sizeof(*this);
     }
   };
@@ -49,10 +38,10 @@ public:
   LI& operator =(const LI& li) {
     return static_cast<LI&>(LocalHandle::operator =(li));
   }
-  BestValsType operator [](int i) const {
+  int operator [](int i) const {
     return static_cast<const LIO*>(object())->data[i];
   }
-  BestValsType& operator [](int i) {
+  int& operator [](int i) {
     return static_cast<LIO*>(object())->data[i];
   }
 };

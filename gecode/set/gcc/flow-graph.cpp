@@ -5,25 +5,16 @@
 #define INF_UINT UINT_MAX
 
 FlowGraph::FlowGraph( 
-	const ViewArray<Set::SetView>& vars, 
-	const MapToSet<int, unsigned int>& valToVars,
+	const ViewArray<Int::BoolView>& vars, 
+	const MapToSet<int, unsigned int>& valToVars, const vector<unordered_set<int> >& varToVals,
 	const IntArgs& inputVals, const IntArgs& lowerValBounds, 
 	const IntArgs& upperValBounds, const IntArgs& lowerVarBounds, 
-	const IntArgs& upperVarBounds) 
-		: oldFlowIsFeasible(true) {
-	
-	varToGlb.assign(vars.size(), unordered_set<int>());
-	varToLub.assign(vars.size(), unordered_set<int>());
-	for (int x = 0; x < vars.size(); x++) {
-		for (SetVarGlbValues i(vars[x]); i(); ++i) {
-			varToGlb[x].insert(i.val());
-		}
-		for (SetVarLubValues i(vars[x]); i(); ++i) {
-			varToLub[x].insert(i.val());
-		}
-	}
+	const IntArgs& upperVarBounds, const VarUtil& varUtil) 
+		: oldFlowIsFeasible(true), varToVals(varToVals), varUtil(varUtil) {
 
-	totalVarNodes = vars.size();
+
+
+	totalVarNodes = varToVals.size();
 	unsigned int totalValNodes = inputVals.size();
 	// Nodes are variable nodes, values nodes, S and T nodes
 	int totalNodes = totalVarNodes + totalValNodes + 2;
@@ -59,8 +50,8 @@ FlowGraph::FlowGraph(
 			nodeList.push_back(Node(valIsPruned ? 0 : it->second.size()));
 		if (!valIsPruned) {
 			// Add edges
-			for (auto &var : it->second) {
-				int lowerBound = (vars[var].assigned() ? 1 : 0);
+			for (auto &var : it->second) {				
+				int lowerBound = (varUtil.inputVarIsAssigned(var, vars) ? 1 : 0);
 				nodeList.back().edgeList.push_back(NormalEdge(var, lowerBound, 1));
 			}
 		}
@@ -99,85 +90,62 @@ FlowGraph::FlowGraph(
 // that is not used by it, set oldFlowIsFeasible to false.
 // Populate updatedEdges, so we know where we should update the old residual
 // graph later on
-void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex, 
+void FlowGraph::updatePrunedValues(Int::BoolView x, unsigned int xIndex, 
 																   vector<EdgeNodes>& updatedEdges, LI* li) {
-	// Hold iterators to the values that we end up prunning, so we can also
-	// remove them from valToVars
-	vector< unordered_set<int>::iterator > prunedValues; 
-	for (auto valIt = varToLub[xIndex].begin(); valIt != varToLub[xIndex].end(); valIt++) {
-		auto val = *valIt;
-		if (x.notContains(*valIt)) {
-			// Value has been pruned from variable's X's domain
-			auto valNode = valToNode->find(val)->second;
-			NormalEdge* edge = getEdge(valNode, xIndex);
-			if (!edge->lowerBound && edge->upperBound == 1) {
-				// If edge hasn't already been pruned or assigned, update graph
-				edge->upperBound = 0;
-				if (edge->flow == 1) {
-					oldFlowIsFeasible = false;
-					if (li != NULL) {
-						(*li)[xIndex].erase(val);
-					}
-				}
-				updatedEdges.push_back({valNode, xIndex});
-				prunedValues.push_back(valIt);
-			}
-		}
-	}	
+	unsigned int xNodeIndex = varUtil.getInputVarFromXIndex(xIndex);		
+	int val = varUtil.getValFromXIndex(xIndex);						
 	
-	for (auto it: prunedValues) {
-		cout << "\npruning from lub " << *it;
-		varToLub[xIndex].erase(it);
+	auto valNode = valToNode->find(val)->second;
+	NormalEdge* edge = getEdge(valNode, xNodeIndex);
+	if (edge->lowerBound == 1 || !edge->upperBound) {
+		// Edge has already been updated
+		cout << "end of update: feasible flow " << oldFlowIsFeasible << endl; 
+		return;
 	}
 
-	vector<int> valuesToAdd;
-	for (SetVarGlbValues i(x); i(); ++i) {
-		auto val = i.val();
-		if (varToGlb[xIndex].find(val) == varToGlb[xIndex].end()) {
-			// Value has been included in variable X's domain
-			auto valNode = valToNode->find(val)->second;
-			NormalEdge* edge = getEdge(valNode, xIndex);
-			if (!edge->lowerBound && edge->upperBound == 1) {
-				// If edge hasn't already been pruned or assigned, update graph
-				edge->lowerBound = 1;
-				if (!edge->flow) {
-					oldFlowIsFeasible = false;
-				} /*else if (li != NULL) {
-					for (SetVarUnknownValues nextVal(x); nextVal(); ++nextVal) {
-						auto nextValNode = (*valToNode)[nextVal.val()];
-						auto nextValEdge = getEdge(nextValNode, xIndex);
-						cout << "checking val " << nextVal.val(); 
-						if (nextValEdge->flow) {
-							cout << "ok";
-							(*li)[xIndex] = val;
-						}
-					}
-				}*/
-				updatedEdges.push_back({valNode, xIndex});
-				valuesToAdd.push_back(val);
-			}
+	updatedEdges.push_back({valNode, xNodeIndex});
+	if (!x.val()) {
+		// Value has been pruned from variable X domain
+		edge->upperBound = 0;
+		if (edge->flow == 1) {
+			oldFlowIsFeasible = false;
 		}
-	}	
-	
-	for (auto val: valuesToAdd) {
-		cout << "\nadding to glb " << val;
-		varToGlb[xIndex].insert(val);
+	} else if (x.val() == 1) {
+		// Value has been assigned to variable X domain
+		edge->lowerBound = 1;
+		if (!edge->flow) {
+			oldFlowIsFeasible = false;
+		}
 	}
 
 	// Update Var->T edge bounds
-	auto& edge = nodeList[xIndex].edgeList[0];
+	/*auto& edge = nodeList[xNodeIndex].edgeList[0];
 	edge.lowerBound = x.cardMin();
 	edge.upperBound = x.cardMax();
 	if (edge.flow < edge.lowerBound || edge.flow > edge.upperBound) {
 		oldFlowIsFeasible = false;
-		updatedEdges.push_back({xIndex, tNode()});
+		updatedEdges.push_back({xNodeIndex, tNode()});
 	}
-	cout << "\ncard " << edge.lowerBound << " " << edge.upperBound << "\n";
+	cout << "\ncard " << edge.lowerBound << " " << edge.upperBound << "\n";*/
 
 	cout << "end of update: feasible flow " << oldFlowIsFeasible << endl; 
 }
 
 void FlowGraph::print() const {
+
+	for (unsigned int inputVarIndex = 0; inputVarIndex < varToVals.size(); inputVarIndex++) {
+		cout << "Input var " << inputVarIndex << " has vals:\n";
+		for (auto val: varToVals[inputVarIndex]) {
+			cout << val << " which maps to node " << (*valToNode)[val] << "\n";
+		}
+		cout << "\n";
+	}
+
+	for (auto& n: *nodeToVal) {
+		cout << "Node " << n.first << " maps to val " << n.second << "\n";
+	}
+	cout << "\n";
+
 	for (unsigned int i = 0; i < nodeList.size(); i++) {
 		auto& node = nodeList[i];
 		for (unsigned int j = 0; j < node.edgeList.size(); j++) {
@@ -201,7 +169,7 @@ void FlowGraph::printResidual() const {
 	cout << endl;
 }
 
-void FlowGraph::printBounds(int x) const {
+/*void FlowGraph::printBounds(int x) const {
 	cout << "glb\n";
 	for (auto v: varToGlb[x]) {
 		cout << v << " ";
@@ -213,3 +181,4 @@ void FlowGraph::printBounds(int x) const {
 	cout << "\ncard " << nodeList[x].edgeList.front().lowerBound
 			 << " " << nodeList[x].edgeList.front().upperBound << "\n";
 }
+*/

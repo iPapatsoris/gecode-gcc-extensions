@@ -3,18 +3,19 @@
 
 #include "LI.hpp"
 #include "brancher.hpp"
+#include "../util.hpp"
 
 SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) 
 	: Script(opt), model((Model) opt.model())
 																																 {
-	IntSetArgs domain;
+	vector<unordered_set<int> > domains;
 	IntArgs vals, lowerValBounds, upperValBounds, lowerVarBounds, upperVarBounds;
-	readInput(opt.file(), varsCount, domain, vals, lowerValBounds, upperValBounds, 
+	readInput(opt.file(), inputVarsCount, domains, vals, lowerValBounds, upperValBounds, 
 						lowerVarBounds, upperVarBounds);
 	valsCount = vals.size();
 	cout << valsCount << endl;
 	
-	x = SetVarArray(*this, 0);
+	x = BoolVarArray(*this, 0);
 	y = IntVarArray(*this, 0);
 	z = BoolVarArray(*this, 0);
 
@@ -42,33 +43,55 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt)
 
 	// Local object handle, to branch using heuristic information provided by 
 	// the propagator 
-	LI li(*this, varsCount);
+	LI li(*this, inputVarsCount);
 
 	switch(opt.model()) {
-		case MODEL_SINGLE:
-			x = SetVarArray(*this, varsCount);
-			for (int i = 0; i < varsCount; i++) {
-				x[i] = SetVar(*this, IntSet::empty, domain[i], lowerVarBounds[i], upperVarBounds[i]);
+		case MODEL_SINGLE: {
+			int xCount = 0;
+			VarUtil varUtil;
+			VarUtil::InputVarInfo inputVarInfo;
+
+			for (unsigned int inputVarIndex = 0; inputVarIndex < domains.size(); inputVarIndex++) {
+				unsigned int localValCount = 0;
+				VarUtil::InputVarInfo inputVarInfo;
+				auto& inputVarDomain = domains[inputVarIndex];
+				for (auto it = inputVarDomain.begin(); it != inputVarDomain.end(); it++) {
+					inputVarInfo.valToValIndex.insert({*it, localValCount});
+
+					VarUtil::XInfo xInfo;
+					xInfo.varIndex = inputVarIndex;
+					xInfo.val = *it;
+					varUtil.xToInputVar.push_back(xInfo);
+
+					localValCount++;
+				}
+				inputVarInfo.xIndex = xCount;
+				varUtil.inputVarToXIndex.push_back(inputVarInfo);
+				
+				xCount += inputVarDomain.size();
 			}
-			symmetricGCC(*this, x, vals, lowerValBounds, upperValBounds, 
-										lowerVarBounds, upperVarBounds, opt.branch() ? &li : NULL, 
+			
+			x = BoolVarArray(*this, xCount, 0, 1);
+			LI li(*this, xCount);
+			symmetricGCC(*this, x, domains, vals, lowerValBounds, upperValBounds, 
+										lowerVarBounds, upperVarBounds, varUtil, opt.branch() ? &li : NULL, 
 										opt.ipl());
 		//dom(*this, x[4], SRT_EQ, IntSet{3, 5});
 			if (opt.branch()) {
-				bestval(*this, x, li);
+				//bestval(*this, x, li);
 			} else { 
-				branch(*this, x, SET_VAL_MIN_INC());
+				branch(*this, x, BOOL_VAL_MAX());
 			}
 			break;
-
+		}
 		case MODEL_COUNT: {
 			// Boolean flags for each variable-value assignment. Needed for cost
-			y = IntVarArray(*this, varsCount * vals.size(), 0, 1);
-			Matrix<IntVarArray> m(y, vals.size(), varsCount);
-			// Assign 0 to the illegal domain values
+			y = IntVarArray(*this, inputVarsCount * vals.size(), 0, 1);
+			Matrix<IntVarArray> m(y, vals.size(), inputVarsCount);
+			// Assign 0 to the illegal domains values
 			for (int i = 0; i < m.height(); i++) {
 				for (int j = 0; j < m.width(); j++) {
-					if (!domain[i].in(vals[j])) {
+					if (domains[i].find(vals[j]) == domains[i].end()) {
 						dom(*this, m(j,i), 0, 0);
 					}
 				}
@@ -87,12 +110,12 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt)
 			break;
 		}
 		case MODEL_LINEAR:
-			z = BoolVarArray(*this, varsCount * vals.size(), 0, 1);
-			Matrix<BoolVarArray> mB(z, vals.size(), varsCount);
-			// Assign 0 to the illegal domain values
+			z = BoolVarArray(*this, inputVarsCount * vals.size(), 0, 1);
+			Matrix<BoolVarArray> mB(z, vals.size(), inputVarsCount);
+			// Assign 0 to the illegal domains values
 			for (int i = 0; i < mB.height(); i++) {
 				for (int j = 0; j < mB.width(); j++) {
-					if (!domain[i].in(vals[j])) {
+					if (domains[i].find(vals[j]) == domains[i].end()) {
 						rel(*this, mB(j,i), IRT_EQ, 0);
 					}
 				}

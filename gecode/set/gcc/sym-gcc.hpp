@@ -11,17 +11,17 @@
 using namespace Gecode;
 using namespace std;
 
-typedef NaryPropagator<Set::SetView, Set::PC_SET_ANY> SymGccBase;
+typedef NaryPropagator<Int::BoolView, Int::PC_BOOL_VAL> SymGccBase;
 
 class SymGcc : public SymGccBase {
 
 protected:
 		class ViewAdvisor : public Advisor {
 			public:
-				Set::SetView x;
+				Int::BoolView x;
 				unsigned int xIndex;
 				ViewAdvisor(Space& home, Propagator& p, Council<ViewAdvisor>& c, 
-										Set::SetView x, unsigned int xIndex) 
+										Int::BoolView x, unsigned int xIndex) 
 					: Advisor(home, p, c), x(x), xIndex(xIndex) {
 					x.subscribe(home, *this);
 				}
@@ -44,7 +44,7 @@ protected:
 		IntPropLevel ipl;
 
 public:
-	SymGcc(Space& home, ViewArray<Set::SetView> x, FlowGraph* graph, 
+	SymGcc(Space& home, ViewArray<Int::BoolView> x, FlowGraph* graph, 
 					const vector<EdgeNodes>& updatedEdges, LI* li, 
 					IntPropLevel ipl)
 			: NaryPropagator(home, x), c(home), graph(graph), 
@@ -59,21 +59,27 @@ public:
 		home.notice(*this, AP_DISPOSE);
 	}
 
-	static ExecStatus post(Space& home, ViewArray<Set::SetView>& vars,
+	static ExecStatus post(Space& home, ViewArray<Int::BoolView>& vars,
 												MapToSet<int, unsigned int>& valToVars,
+												const vector<unordered_set<int> >& varToVals,
 												const IntArgs& inputVals, 
 												const IntArgs& lowerValBounds, 
 												const IntArgs& upperValBounds,
 												const IntArgs& lowerVarBounds, 
-												const IntArgs& upperVarBounds, LI* li,
+												const IntArgs& upperVarBounds,
+												const VarUtil& varUtil,
+											  LI* li,
 												IntPropLevel ipl) {
 
 		#ifndef NDEBUG
 			//assertCorrectDomains(vars, valToVars);
 		#endif
-		FlowGraph* graph = new FlowGraph(vars, valToVars, inputVals, 
+		FlowGraph* graph = new FlowGraph(vars, valToVars, varToVals, inputVals, 
 																		 lowerValBounds, upperValBounds, 
-																		 lowerVarBounds, upperVarBounds);
+																		 lowerVarBounds, upperVarBounds,
+																		 varUtil);
+
+		graph->print();
 
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 
@@ -191,7 +197,7 @@ public:
 private:
 	/*#ifndef NDEBUG
 	// Assert that Gecode variable domains and valToVars are in sync
-	void static assertCorrectDomains(const ViewArray<Set::SetView>& vars, 
+	void static assertCorrectDomains(const ViewArray<Int::BoolView>& vars, 
 																	 const MapToSet<int, unsigned int>& valToVars
 																	) {
 		for (int x = 0; x < vars.size(); x++) {

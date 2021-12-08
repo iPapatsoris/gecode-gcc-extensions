@@ -71,14 +71,20 @@ class FlowGraphAlgorithms {
 					// Path residual edge is a forward edge in the original graph
 					edge->flow += minUpperBound;
 					if (edge->destNode < graph.totalVarNodes && li != NULL) {
-						cout << "Adding " << (*graph.nodeToVal)[prev] << " to li" << endl; 
-						(*li)[edge->destNode].insert((*graph.nodeToVal)[prev]);
+						cout << "Adding " << (*graph.nodeToVal)[prev] << " to li" << endl;
+						auto pos = graph.varUtil.getXFromInputVarVal(edge->destNode, (*graph.nodeToVal)[prev]); 
+						(*li)[pos] = (*graph.nodeToVal)[prev];
 					}
 					updateResidualGraph(prev, *it, *edge);
 				}	else {
 					// Path residual edge is a backward edge in the original graph
 					edge = graph.getEdge(*it, prev);
 					edge->flow -= minUpperBound;
+					if (prev < graph.totalVarNodes && li != NULL) {
+						cout << "Removing " << (*graph.nodeToVal)[*it] << " from li" << endl;
+						auto pos = graph.varUtil.getXFromInputVarVal(edge->destNode, (*graph.nodeToVal)[*it]); 
+						(*li)[pos] = (*graph.nodeToVal)[*it];
+					}
 					updateResidualGraph(*it, prev, *edge);
 				}
 				prev = *it;
@@ -119,7 +125,7 @@ class FlowGraphAlgorithms {
 			unsigned int minUpperBound = findMinUpperBound(violation, path);		
 			sendFlow(violation, path, minUpperBound, li);
 
-			if (li != NULL) {
+			/*if (li != NULL) {
 				for (int i = 0; i < graph.totalVarNodes; i++) {
 					for (auto& v: (*li)[i])
 						cout << v << endl;
@@ -131,7 +137,7 @@ class FlowGraphAlgorithms {
 						}
 					}
 				}
-			}
+			}*/
 
 			return true;
 		}

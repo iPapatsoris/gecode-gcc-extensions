@@ -1,7 +1,7 @@
 #ifndef H_SYM_GCC_POST
 #define H_SYM_GCC_POST
 
-#include <gecode/set.hh>
+#include <gecode/int.hh>
 #include <unordered_map>
 #include <unordered_set>
 #include "util.hpp"
@@ -13,18 +13,19 @@ using namespace std;
 
 
 
-void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
+void symmetricGCC(Space& home, const BoolVarArgs& x, const vector<unordered_set<int> > domains, const IntArgs& vals,
 								const IntArgs& lowerValBounds, const IntArgs& upperValBounds,
-								const IntArgs& lowerVarBounds, const IntArgs& upperVarBounds,
+								const IntArgs& lowerVarBounds, const IntArgs& upperVarBounds, 
+								const VarUtil& varUtil,
 								LI* li, IntPropLevel ipl) {
 								
 	using namespace Int;
 
-	int n = vars.size(); 
+	int n = x.size(); 
 	if (!n) {
 		throw TooFewArguments("Int::symmetricGCC");
 	}
-	if (same(vars)) {
+	if (same(x)) {
 		throw ArgumentSame("Int::symmetricGCC");
 	}
 
@@ -34,7 +35,7 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 	}
 
 	// Var bounds arrays must be same size as vars array
-	if (vars.size() != lowerVarBounds.size() || vars.size() != upperVarBounds.size()) {
+	if (varUtil.inputVarToXIndex.size() != lowerVarBounds.size() || varUtil.inputVarToXIndex.size() != upperVarBounds.size()) {
 		throw ArgumentSizeMismatch("Int::symmetricGCC");
 	}
 
@@ -56,17 +57,17 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 	// Is used to compare old domain with current Gecode domain, to find which
 	// values got pruned between executions
 	MapToSet<int, unsigned int> valToVars;
-	for (int x = 0; x < vars.size(); x++) {
-		for (SetVarLubValues i(vars[x]); i(); ++i) {
-			if (valsSet.find(i.val()) == valsSet.end()) {
+	for (int i = 0; i < domains.size(); i++) {
+		for (auto v: domains[i]) {
+			if (valsSet.find(v) == valsSet.end()) {
 				throw ArgumentSizeMismatch("Int::symmetricGCC domain value doesn't exist in values array");
 			}
-			auto it = valToVars.map.find(i.val());
+			auto it = valToVars.map.find(v);
 			if (it == valToVars.map.end()) {
-				valToVars.map.insert({i.val(), 
-														  unordered_set<unsigned int>({(unsigned int) x})});
+				valToVars.map.insert({v, 
+														  unordered_set<unsigned int>({(unsigned int) i})});
 			} else {
-				it->second.insert(x);
+				it->second.insert(i);
 			}
 		}
 	}
@@ -83,7 +84,7 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 
 	// Variable bounds must be nonnegative and lowerBound smaller or equal to 
 	// upperBounb
-	for (auto i = 0; i < vars.size(); i++) {
+	for (auto i = 0; i < varUtil.inputVarToXIndex.size(); i++) {
 		Int::Limits::nonnegative(lowerVarBounds[i], "Int::symmetricGCC");
 		Int::Limits::nonnegative(upperVarBounds[i], "Int::symmetricGCC");
 		if (upperVarBounds[i] < lowerVarBounds[i]) {
@@ -91,10 +92,13 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 		}
 	}
 	
-	ViewArray<Set::SetView> views(home, vars);
+	ViewArray<Int::BoolView> views(home, x);
+
+
 	GECODE_POST;
-	GECODE_ES_FAIL(SymGcc::post(home, views, valToVars, vals, lowerValBounds, 
+	GECODE_ES_FAIL(SymGcc::post(home, views, valToVars, domains, vals, lowerValBounds, 
 															upperValBounds, lowerVarBounds, upperVarBounds, 
+															varUtil,
 															li, ipl
 															));
 }

@@ -60,8 +60,8 @@ class FlowGraph {
 		// We know which variables got changed by using advisors, so domain
 		// comparison is only done among those.
 		// Should be kept up to date with assignments and pruning.
-		vector< unordered_set<int> > varToGlb;
-		vector< unordered_set<int> > varToLub;
+		vector< unordered_set<int> > varToVals;
+		VarUtil varUtil;
 
 		// When values are pruned or variables are assigned, we update the 
 		// bounds of the corresponding edges. At that point, set this variable
@@ -134,11 +134,12 @@ class FlowGraph {
 	public:
 
 		FlowGraph(
-			const ViewArray<Set::SetView>& vars, 
-			const MapToSet<int, unsigned int>& valToVars,
+			const ViewArray<Int::BoolView>& vars, 
+			const MapToSet<int, unsigned int>& valToVars, const vector<unordered_set<int> >& varToVals,
 			const IntArgs& inputVals, const IntArgs& lowerValBounds, 
 			const IntArgs& upperValBounds, const IntArgs& lowerVarBounds, 
-			const IntArgs& upperVarBounds);
+			const IntArgs& upperVarBounds,
+			const VarUtil& varUtil);
 
 		// TODO: update this comment
 
@@ -151,7 +152,7 @@ class FlowGraph {
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		void updatePrunedValues(Set::SetView x, unsigned int xIndex, 
+		void updatePrunedValues(Int::BoolView x, unsigned int xIndex, 
 													  vector<EdgeNodes>& updatedEdges, LI* li); 
 
 		void print() const;

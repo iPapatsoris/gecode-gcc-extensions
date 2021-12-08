@@ -28,10 +28,10 @@ public:
 
 class SymmetricGccExample : public Script {
 protected:
-	SetVarArray x;
+	BoolVarArray x;
 	IntVarArray y;
 	BoolVarArray z;
-	int varsCount;
+	int inputVarsCount;
 	int valsCount;
 
 
@@ -45,7 +45,7 @@ public:
 	SymmetricGccExample(const FileOptions& opt);
 	SymmetricGccExample(SymmetricGccExample &s) : Script(s) {
 		model = s.model;
-		varsCount = s.varsCount;
+		inputVarsCount = s.inputVarsCount;
 		valsCount = s.valsCount;
 		switch (model) {
 			case MODEL_SINGLE:
@@ -70,7 +70,7 @@ public:
 			case MODEL_COUNT:
 			case MODEL_LINEAR:
 				os << "\tSolution: \n";
-				for (int i = 0; i < varsCount; i++) {
+				for (int i = 0; i < inputVarsCount; i++) {
 					for (int j = 0; j < valsCount; j++) {
 						if (model == MODEL_COUNT) {
 							cout << y[valsCount*i + j] << " ";

@@ -25,144 +25,89 @@
  *
  */
 
-#include <gecode/set.hh>
-#include "LI.hpp"
+#include <gecode/int.hh>
 
 using namespace Gecode;
 
 class BestVal : public Brancher {
 protected:
-  ViewArray<Set::SetView> x;
+  ViewArray<Int::BoolView> x;
   mutable int start;
 	LI li;
   class PosVal : public Choice {
   public:
-    int pos; BestValsType val;
-		bool isEmptySetVal;
-    PosVal(const BestVal& b, int p, BestValsType v, bool emptySet)
-      : Choice(b,3), pos(p), val(v), isEmptySetVal(emptySet) {}
+    int pos; int val;
+    PosVal(const BestVal& b, int p, int v)
+      : Choice(b,2), pos(p), val(v) {}
     virtual void archive(Archive& e) const {
       Choice::archive(e);
-      //e << pos << val;
+      e << pos << val;
     }
   };
 public:
-  BestVal(Home home, ViewArray<Set::SetView>& x0, LI& li)
+  BestVal(Home home, ViewArray<Int::BoolView>& x0, LI& li)
     : Brancher(home), x(x0), start(0), li(li) {}
-  static void post(Home home, ViewArray<Set::SetView>& x, LI& li) {
-    (void) new (home) BestVal(home,x,li);
+  static void post(Home home, ViewArray<Int::BoolView>& x, LI& li) {
+    (void) new (home) BestVal(home, x, li);
   }
   virtual size_t dispose(Space& home) {
     (void) Brancher::dispose(home);
     return sizeof(*this);
   }
   BestVal(Space& home, BestVal& b)
-    : Brancher(home,b), start(b.start) {
+    : Brancher(home,b), start(b.start)  {
     x.update(home,b.x);
-		li.update(home,b.li);
-		//cout << "BestVal copy: " << b.li[0] << endl;
+		li.update(home, b.li);
   }
   virtual Brancher* copy(Space& home) {
     return new (home) BestVal(home,*this);
   }
   virtual bool status(const Space&) const {
-		cout << "status ";
     for (int i=start; i<x.size(); i++)
       if (!x[i].assigned()) {
-        start = i; cout << "true on " << i << endl; return true;
+        start = i; return true;
       }
-		cout << "false lol" << endl;
     return false;
   }
   virtual Choice* choice(Space&) {
-    int p = start;
-    //unsigned int s = x[p].unknownSize();
-    /*for (int i=start+1; i<x.size(); i++)
-      if (!x[i].assigned() /*&& (x[i].unknownSize() < s*)) {
-        p = i;// s = x[p].unknownSize();
-      }*/
-		cout << "p is " << p << endl;
-		cout << "li[p] is \n";
-		for (auto v: li[p]) {
-			cout << v << " ";
-		}
-		cout << endl;
 
-		return new PosVal(*this, p, li[p], false);
-
-		/*for (auto& v: li[p]) {
-			cout << v << endl;
-			if (!x[p].contains(v) && !x[p].notContains(v)) {
-				cout << "branch on var " << p << " val " << v << endl;  
-				return new PosVal(*this, p, v, false);
-			}
-		}
-		return new PosVal(*this, p, 0, true);*/
-		//for (SetVarUnknownValues i(x[p]); i(); ++i) {
-		//}    
+		int p = start;
+    unsigned int s = x[p].size();
+    for (int i=start+1; i<x.size(); i++)
+      if (!x[i].assigned() && (x[i].size() < s)) {
+        p = i; s = x[p].size();
+      }
+    return new PosVal(*this,p, li[p]);
   }
   virtual Choice* choice(const Space&, Archive& e) {
-    int pos;
-		BestValsType val;
-		bool isEmptySetVal;
-    //e >> pos >> val >> isEmptySetVal;
-    return new PosVal(*this, pos, val, isEmptySetVal);
+    int pos, val;
+    e >> pos >> val;
+    return new PosVal(*this, pos, val);
   }
   virtual ExecStatus commit(Space& home, 
                             const Choice& c,
                             unsigned int a) {
     const PosVal& pv = static_cast<const PosVal&>(c);
-    int pos=pv.pos;
-		if (!pv.val.size()) {
-			if (a == 0)
-				return me_failed(x[pos].cardMax(home, 0)) ? ES_FAILED : ES_OK;
-			else if (a == 1)
-				return me_failed(x[pos].cardMin(home, 1)) ? ES_FAILED : ES_OK;
-			else 
-				return ES_FAILED;
-		} else {
-			int v;
-			for (SetVarUnknownValues i(x[pos]); i(); ++i) {
-				if (pv.val.find(i.val()) != pv.val.end()) {
-					v = i.val();
-					break;
-				}
-			}
-
-			if (a < 2) {
-				if (me_failed(x[pos].include(home, v))) {
-					return ES_FAILED;
-				}
-			} else {
-				if (me_failed(x[pos].exclude(home, v))) {
-					return ES_FAILED;
-				}
-			}
-			if (a == 0) {
-				return me_failed(x[pos].cardMax(home, x[pos].glbSize())) ? ES_FAILED : ES_OK;
-			} else if (a == 1) {
-				if (x[pos].cardMin() == x[pos].glbSize()) {
-					return me_failed(x[pos].cardMin(home, x[pos].cardMin() + 1)) ? ES_FAILED : ES_OK;
-				}
-			}
-			return ES_OK;
-		}
+    int pos=pv.pos, val=pv.val;
+    if (a == 0)
+      return me_failed(x[pos].eq(home,val)) ? ES_FAILED : ES_OK;
+    else
+      return me_failed(x[pos].nq(home,val)) ? ES_FAILED : ES_OK;
   }
-
   virtual void print(const Space&, const Choice& c,
                      unsigned int a,
                      std::ostream& o) const {
     const PosVal& pv = static_cast<const PosVal&>(c);
-    int pos=pv.pos;
+    int pos=pv.pos, val=pv.val;
     if (a == 0)
-      o << "x[" << pos << "] = ";// << pv.val;
+      o << "x[" << pos << "] = " << val;
     else
-      o << "x[" << pos << "] != ";// << pv.val;
+      o << "x[" << pos << "] != " << val;
   }
 };
 
-void bestval(Home home, const SetVarArgs& x, LI& li) {
+void branchBestVal(Home home, const BoolVarArgs& x, LI& li) {
   if (home.failed()) return;
-  ViewArray<Set::SetView> y(home,x);
-  BestVal::post(home,y,li);
+  ViewArray<Int::BoolView> y(home,x);
+  BestVal::post(home, y, li);
 }

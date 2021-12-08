@@ -3,8 +3,8 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <vector>
 #include <gecode/int.hh>
+#include "read-input.hpp"
 
 using namespace std;
 using namespace Gecode;
@@ -14,7 +14,7 @@ enum {
 	UPPER_VAR_BOUNDS
 } mode;
 
-void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
+void readInput(string fileName, int& vars, vector<unordered_set<int> >& domain, IntArgs& vals,
 							 IntArgs& lowerValBounds, IntArgs& upperValBounds, 
 							 IntArgs& lowerVarBounds, IntArgs& upperVarBounds) {
 	string line;
@@ -41,9 +41,9 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 					mode = DOMAIN;
 					break;
 				case DOMAIN: {
-					IntSet tmp;
-					IntSetInit<IntArgs>::init(tmp, IntArgs(numbers));
-					domain << tmp;
+					unordered_set<int> d(numbers.begin(), numbers.end());
+					
+					domain.push_back(d);
 					if (domain.size() == vars) {
 						mode = VALS;
 					}
