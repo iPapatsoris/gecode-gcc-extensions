@@ -237,6 +237,113 @@ class FlowGraphAlgorithms {
 			graph.oldFlowIsFeasible = true;
 			return true;
 		}
+
+
+		void findOneSCC(unsigned int src, vector<unsigned int>& ids, vector<unsigned int>& low, 
+										stack<unsigned int>& localVisited, vector<bool>& onLocalVisited, 
+										unsigned int* id, unsigned int* sccCount) const {
+			stack<pair<unsigned int, unsigned int>> frontier;
+			frontier.push({src, 0});
+			localVisited.push(src);
+			onLocalVisited[src] = true;
+			ids[src] = low[src] = *id;
+			(*id)++;
+			while (!frontier.empty()) {
+				unsigned int node = frontier.top().first;
+				unsigned int curEdgeIndex = frontier.top().second;
+				auto& edges = graph.nodeList[node].residualEdgeList;
+				unsigned int destNode = edges[curEdgeIndex].destNode;
+				if (curEdgeIndex < edges.size()) {
+					if (ids[destNode] == NONE_UINT) {
+						// start of call here
+						localVisited.push(destNode);
+						onLocalVisited[destNode] = true;
+						ids[destNode] = low[destNode] = *id;
+						(*id)++;
+						frontier.push({destNode, 0});
+					} else {
+						if (onLocalVisited[destNode]) {
+							low[node] = min(low[node], low[destNode]);
+						}
+						frontier.pop();
+						frontier.push({node, ++curEdgeIndex});
+					}
+					continue;
+				}
+
+				// last part here
+				if (ids[node] == low[node]) {
+					while (!localVisited.empty()) {
+						unsigned int tmp = localVisited.top();
+						localVisited.pop();
+						onLocalVisited[tmp] = false;
+						low[tmp] = ids[node];
+						if (tmp == node) {
+							break;
+						}
+					}
+					(*sccCount)++;
+				}
+
+				frontier.pop();
+				if (!frontier.empty()) {
+					node = frontier.top().first;
+					curEdgeIndex = frontier.top().second;
+					destNode = graph.nodeList[node].residualEdgeList[curEdgeIndex].destNode;
+					
+				  // process here as at, to
+					if (onLocalVisited[destNode]) {
+						low[node] = min(low[node], low[destNode]);
+					}
+					
+					frontier.pop();
+					frontier.push({node, ++curEdgeIndex});
+				}
+			}
+		}
+
+
+		void findSCC() const {
+
+			graph.nodeList.clear();
+			for (unsigned int i = 0; i < 8; i++) {
+				graph.nodeList.push_back(Node(0));
+			}	
+			graph.nodeList[0].residualEdgeList.push_back(ResidualEdge(5, 0));
+			graph.nodeList[0].residualEdgeList.push_back(ResidualEdge(7, 0));
+			graph.nodeList[1].residualEdgeList.push_back(ResidualEdge(3, 0));
+			graph.nodeList[1].residualEdgeList.push_back(ResidualEdge(4, 0));
+			graph.nodeList[2].residualEdgeList.push_back(ResidualEdge(6, 0));
+			graph.nodeList[3].residualEdgeList.push_back(ResidualEdge(1, 0));
+			graph.nodeList[3].residualEdgeList.push_back(ResidualEdge(0, 0));
+			graph.nodeList[4].residualEdgeList.push_back(ResidualEdge(0, 0));
+			graph.nodeList[5].residualEdgeList.push_back(ResidualEdge(2, 0));
+			graph.nodeList[6].residualEdgeList.push_back(ResidualEdge(5, 0));
+			graph.nodeList[7].residualEdgeList.push_back(ResidualEdge(6, 0));
+			graph.nodeList[7].residualEdgeList.push_back(ResidualEdge(4, 0));
+			graph.nodeList[7].residualEdgeList.push_back(ResidualEdge(5, 0));
+
+			vector<unsigned int> ids;
+			vector<unsigned int> low;
+			vector<bool> onLocalVisited;
+			stack<unsigned int> localVisited;
+			ids.assign(graph.nodeList.size(), NONE_UINT);
+			low.assign(graph.nodeList.size(), NONE_UINT);
+			onLocalVisited.assign(graph.nodeList.size(), false);
+
+			unsigned int id = 0;
+			unsigned int sccCount = 0;
+			
+			for (unsigned int src = 0; src < graph.nodeList.size(); src++) {
+				if (ids[src] == NONE_UINT) {
+					findOneSCC(src, ids, low, localVisited, onLocalVisited, &id, &sccCount);
+				}
+			}
+			
+			for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
+				cout << "Node " << i << " in SCC " << low[i] << "\n";
+			}
+		}
 	
 		// In addition to pruning, hold the affected Val->Var edges in updatedEdges
 		// so we can update the residual graph later accordingly. We do not update
@@ -246,7 +353,7 @@ class FlowGraphAlgorithms {
 		// costgcc, the search would backtrack to previous instances.
 		// The reason why 
 
-		/*ExecStatus performArcConsistency(Space& home, ViewArray<Int::IntView>& vars, 
+		ExecStatus performArcConsistency(Space& home, ViewArray<Int::BoolView>& x, 
 															       vector<EdgeNodes>& updatedEdges) {
 			// Edge nodes, along with the actual value the src node
 			// corresponds to 
@@ -266,7 +373,7 @@ class FlowGraphAlgorithms {
 
 
 			// Do the actual pruning and update data structures
-			for (auto& edge: edgesToPrune) {
+			/*for (auto& edge: edgesToPrune) {
 				NormalEdge* actualEdge = graph.getEdge(edge.src, edge.dest);
 				assert(actualEdge != NULL);
 				// Push to updatedEdges so we can modify the residual graph accordingly
@@ -290,9 +397,9 @@ class FlowGraphAlgorithms {
 				}
 			}
 
-    	graph.removeTResidualEdges();
+    	graph.removeTResidualEdges();*/
 			return ES_OK;
-		}*/
+		}
 
 };
 

@@ -82,6 +82,8 @@ public:
 		graph->print();
 
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
+		graphAlgorithms.findSCC();
+		exit(1);
 
 		if (!graphAlgorithms.findMinCostFlow(li)) {
 			return ES_FAILED;
