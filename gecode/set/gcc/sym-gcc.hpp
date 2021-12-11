@@ -82,17 +82,15 @@ public:
 		graph->print();
 
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
-		graphAlgorithms.findSCC();
-		exit(1);
 
 		if (!graphAlgorithms.findMinCostFlow(li)) {
 			return ES_FAILED;
 		}
 
 		vector<pair<unsigned int, unsigned int>> updatedEdges;
-		/*if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges) != ES_OK) {
 				return ES_FAILED;
-		}*/
+		}
 
 		(void)new (home) SymGcc(home, vars, graph, updatedEdges, li, ipl);
 		return ES_OK;
@@ -128,7 +126,7 @@ public:
     return sizeof(*this);
   }
 
-	virtual ExecStatus propagate(Space&, const ModEventDelta&) {
+	virtual ExecStatus propagate(Space& home, const ModEventDelta&) {
 		/*
 		GECODE_ME_CHECK(x[4].cardMin(home, 2));
 		GECODE_ME_CHECK(x[4].include(home, 3));
@@ -176,10 +174,10 @@ public:
 			return ES_FAILED;
 		}
 		updatedEdges.clear();
-/*
+
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, updatedEdges) != ES_OK) {
 				return ES_FAILED;
-		}*/
+		}
 
 		//graph->print();
 		return ES_FIX;

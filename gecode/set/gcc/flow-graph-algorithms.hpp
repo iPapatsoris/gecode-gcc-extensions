@@ -252,8 +252,9 @@ class FlowGraphAlgorithms {
 				unsigned int node = frontier.top().first;
 				unsigned int curEdgeIndex = frontier.top().second;
 				auto& edges = graph.nodeList[node].residualEdgeList;
-				unsigned int destNode = edges[curEdgeIndex].destNode;
+				unsigned int destNode; 
 				if (curEdgeIndex < edges.size()) {
+					destNode = edges[curEdgeIndex].destNode;
 					if (ids[destNode] == NONE_UINT) {
 						// start of call here
 						localVisited.push(destNode);
@@ -303,32 +304,12 @@ class FlowGraphAlgorithms {
 		}
 
 
-		void findSCC() const {
-
-			graph.nodeList.clear();
-			for (unsigned int i = 0; i < 8; i++) {
-				graph.nodeList.push_back(Node(0));
-			}	
-			graph.nodeList[0].residualEdgeList.push_back(ResidualEdge(5, 0));
-			graph.nodeList[0].residualEdgeList.push_back(ResidualEdge(7, 0));
-			graph.nodeList[1].residualEdgeList.push_back(ResidualEdge(3, 0));
-			graph.nodeList[1].residualEdgeList.push_back(ResidualEdge(4, 0));
-			graph.nodeList[2].residualEdgeList.push_back(ResidualEdge(6, 0));
-			graph.nodeList[3].residualEdgeList.push_back(ResidualEdge(1, 0));
-			graph.nodeList[3].residualEdgeList.push_back(ResidualEdge(0, 0));
-			graph.nodeList[4].residualEdgeList.push_back(ResidualEdge(0, 0));
-			graph.nodeList[5].residualEdgeList.push_back(ResidualEdge(2, 0));
-			graph.nodeList[6].residualEdgeList.push_back(ResidualEdge(5, 0));
-			graph.nodeList[7].residualEdgeList.push_back(ResidualEdge(6, 0));
-			graph.nodeList[7].residualEdgeList.push_back(ResidualEdge(4, 0));
-			graph.nodeList[7].residualEdgeList.push_back(ResidualEdge(5, 0));
-
+		void findSCC(vector<unsigned int>& scc) const {
 			vector<unsigned int> ids;
-			vector<unsigned int> low;
 			vector<bool> onLocalVisited;
 			stack<unsigned int> localVisited;
 			ids.assign(graph.nodeList.size(), NONE_UINT);
-			low.assign(graph.nodeList.size(), NONE_UINT);
+			scc.assign(graph.nodeList.size(), NONE_UINT);
 			onLocalVisited.assign(graph.nodeList.size(), false);
 
 			unsigned int id = 0;
@@ -336,13 +317,13 @@ class FlowGraphAlgorithms {
 			
 			for (unsigned int src = 0; src < graph.nodeList.size(); src++) {
 				if (ids[src] == NONE_UINT) {
-					findOneSCC(src, ids, low, localVisited, onLocalVisited, &id, &sccCount);
+					findOneSCC(src, ids, scc, localVisited, onLocalVisited, &id, &sccCount);
 				}
 			}
 			
-			for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
+			/*for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
 				cout << "Node " << i << " in SCC " << low[i] << "\n";
-			}
+			}*/
 		}
 	
 		// In addition to pruning, hold the affected Val->Var edges in updatedEdges
@@ -368,36 +349,45 @@ class FlowGraphAlgorithms {
 			// Hold the edges we decide to prune during arc consistency
 			// We do the actual pruning at the end of this function's iterations
 			vector<EdgeWithVal> edgesToPrune;
+			vector<unsigned int> scc;
+			findSCC(scc);
 
-			
+			for (unsigned int n = graph.totalVarNodes; n < graph.sNode(); n++) {
+				for (auto& e: graph.nodeList[n].edgeList) {
+					if (!e.flow && scc[n] != scc[e.destNode]) {
+						int val = (*graph.nodeToVal)[n];
+						edgesToPrune.push_back(EdgeWithVal(n, e.destNode, val));
+					}
+				}
+			}
 
 
 			// Do the actual pruning and update data structures
-			/*for (auto& edge: edgesToPrune) {
+			for (auto& edge: edgesToPrune) {
 				NormalEdge* actualEdge = graph.getEdge(edge.src, edge.dest);
 				assert(actualEdge != NULL);
 				// Push to updatedEdges so we can modify the residual graph accordingly
 				// on the next min cost flow computation
 				updatedEdges.push_back(EdgeNodes(edge.src, edge.dest));
 				// Prune
-				GECODE_ME_CHECK(vars[edge.dest].nq(home, edge.val));
+				unsigned int xIndex = graph.varUtil.getXFromInputVarVal(edge.dest, edge.val);
+				cout << "Prunning val " << edge.val << " from " << edge.dest << endl;
+				GECODE_ME_CHECK(x[xIndex].eq(home, 0));
 				// Also remove from varToVals
 				auto& vals = graph.varToVals[edge.dest];
 				vals.erase(edge.val);
 				// Update upper bound
 				actualEdge->upperBound = 0;
 				assert(!actualEdge->flow);
-				if (vars[edge.dest].assigned()) {
+				/*if (x[xIndex].assigned()) {
 					// If a variable got assigned by pruning, set corresponding edge
 					// lower bound to 1
 					int assignedVal = vars[edge.dest].val();
 					assert(*vals.begin() == assignedVal);
 					auto valNode = graph.valToNode->find(assignedVal)->second;
 					graph.getEdge(valNode, edge.dest)->lowerBound = 1;
-				}
+				}*/
 			}
-
-    	graph.removeTResidualEdges();*/
 			return ES_OK;
 		}
 
