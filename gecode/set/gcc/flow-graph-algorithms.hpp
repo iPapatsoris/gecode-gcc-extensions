@@ -232,6 +232,93 @@ class FlowGraphAlgorithms {
 			return true;
 		}
 	
+	void findOneSCC(unsigned int src, vector<unsigned int>& ids, vector<unsigned int>& low, 
+										stack<unsigned int>& localVisited, vector<bool>& onLocalVisited, 
+										unsigned int* id, unsigned int* sccCount) const {
+			stack<pair<unsigned int, unsigned int>> frontier;
+			frontier.push({src, 0});
+			localVisited.push(src);
+			onLocalVisited[src] = true;
+			ids[src] = low[src] = *id;
+			(*id)++;
+			while (!frontier.empty()) {
+				unsigned int node = frontier.top().first;
+				unsigned int curEdgeIndex = frontier.top().second;
+				auto& edges = graph.nodeList[node].residualEdgeList;
+				unsigned int destNode; 
+				if (curEdgeIndex < edges.size()) {
+					destNode = edges[curEdgeIndex].destNode;
+					if (ids[destNode] == NONE_UINT) {
+						// start of call here
+						localVisited.push(destNode);
+						onLocalVisited[destNode] = true;
+						ids[destNode] = low[destNode] = *id;
+						(*id)++;
+						frontier.push({destNode, 0});
+					} else {
+						if (onLocalVisited[destNode]) {
+							low[node] = min(low[node], low[destNode]);
+						}
+						frontier.pop();
+						frontier.push({node, ++curEdgeIndex});
+					}
+					continue;
+				}
+
+				// last part here
+				if (ids[node] == low[node]) {
+					while (!localVisited.empty()) {
+						unsigned int tmp = localVisited.top();
+						localVisited.pop();
+						onLocalVisited[tmp] = false;
+						low[tmp] = ids[node];
+						if (tmp == node) {
+							break;
+						}
+					}
+					(*sccCount)++;
+				}
+
+				frontier.pop();
+				if (!frontier.empty()) {
+					node = frontier.top().first;
+					curEdgeIndex = frontier.top().second;
+					destNode = graph.nodeList[node].residualEdgeList[curEdgeIndex].destNode;
+					
+				  // process here as at, to
+					if (onLocalVisited[destNode]) {
+						low[node] = min(low[node], low[destNode]);
+					}
+					
+					frontier.pop();
+					frontier.push({node, ++curEdgeIndex});
+				}
+			}
+		}
+
+
+		void findSCC(vector<unsigned int>& scc) const {
+			vector<unsigned int> ids;
+			vector<bool> onLocalVisited;
+			stack<unsigned int> localVisited;
+			ids.assign(graph.nodeList.size(), NONE_UINT);
+			scc.assign(graph.nodeList.size(), NONE_UINT);
+			onLocalVisited.assign(graph.nodeList.size(), false);
+
+			unsigned int id = 0;
+			unsigned int sccCount = 0;
+			
+			for (unsigned int src = 0; src < graph.nodeList.size(); src++) {
+				if (ids[src] == NONE_UINT) {
+					findOneSCC(src, ids, scc, localVisited, onLocalVisited, &id, &sccCount);
+				}
+			}
+			
+			/*for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
+				cout << "Node " << i << " in SCC " << low[i] << "\n";
+			}*/
+		}
+	
 		// In addition to pruning, hold the affected Val->Var edges in updatedEdges
 		// so we can update the residual graph later accordingly. We do not update
 		// it here, because in case the home space fails due to another
@@ -240,7 +327,7 @@ class FlowGraphAlgorithms {
 		// costgcc, the search would backtrack to previous instances.
 		// The reason why 
 
-		/*ExecStatus performArcConsistency(Space& home, ViewArray<Int::IntView>& vars, 
+		ExecStatus performArcConsistency(Space& home, ViewArray<Set::SetView>& x, 
 															       vector<EdgeNodes>& updatedEdges) {
 			// Edge nodes, along with the actual value the src node
 			// corresponds to 
@@ -255,8 +342,17 @@ class FlowGraphAlgorithms {
 			// Hold the edges we decide to prune during arc consistency
 			// We do the actual pruning at the end of this function's iterations
 			vector<EdgeWithVal> edgesToPrune;
+			vector<unsigned int> scc;
+			findSCC(scc);
 
-			
+			for (unsigned int n = graph.totalVarNodes; n < graph.sNode(); n++) {
+				for (auto& e: graph.nodeList[n].edgeList) {
+					if (!e.flow && scc[n] != scc[e.destNode]) {
+						int val = (*graph.nodeToVal)[n];
+						edgesToPrune.push_back(EdgeWithVal(n, e.destNode, val));
+					}
+				}
+			}
 
 
 			// Do the actual pruning and update data structures
@@ -267,26 +363,25 @@ class FlowGraphAlgorithms {
 				// on the next min cost flow computation
 				updatedEdges.push_back(EdgeNodes(edge.src, edge.dest));
 				// Prune
-				GECODE_ME_CHECK(vars[edge.dest].nq(home, edge.val));
+				cout << "Prunning val " << edge.val << " from " << edge.dest << endl;
+				GECODE_ME_CHECK(x[edge.dest].exclude(home, edge.val));
 				// Also remove from varToVals
-				auto& vals = graph.varToVals[edge.dest];
+				auto& vals = graph.varToLub[edge.dest];
 				vals.erase(edge.val);
 				// Update upper bound
 				actualEdge->upperBound = 0;
 				assert(!actualEdge->flow);
-				if (vars[edge.dest].assigned()) {
+				if (x[edge.dest].assigned()) {
 					// If a variable got assigned by pruning, set corresponding edge
 					// lower bound to 1
-					int assignedVal = vars[edge.dest].val();
-					assert(*vals.begin() == assignedVal);
-					auto valNode = graph.valToNode->find(assignedVal)->second;
-					graph.getEdge(valNode, edge.dest)->lowerBound = 1;
+					for (SetVarGlbValues v(x[edge.dest]); v(); ++v) {
+						auto valNode = graph.valToNode->find(v.val())->second;
+						graph.getEdge(valNode, edge.dest)->lowerBound = 1;
+					}
 				}
 			}
-
-    	graph.removeTResidualEdges();
 			return ES_OK;
-		}*/
+		}
 
 };
 
