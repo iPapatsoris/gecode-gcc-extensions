@@ -165,12 +165,12 @@ public:
 
 			exit(1);
 		*/
-		cout << "propagate" << endl;
+		//cout << "propagate" << endl;
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, 
 																					 usingLocalHandle ? &li : NULL
 			 )) {
-			cout << "yo updateMinCostFlow fail lmao" << endl;
+			//cout << "yo updateMinCostFlow fail lmao" << endl;
 			return ES_FAILED;
 		}
 		updatedEdges.clear();
@@ -185,7 +185,7 @@ public:
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
-		cout << "\nadvisor on " << xIndex << endl;
+		//cout << "\nadvisor on " << xIndex << endl;
 		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges, 
 															usingLocalHandle ? &li : NULL);
 		/*for (auto e: updatedEdges) {

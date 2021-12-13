@@ -71,7 +71,7 @@ class FlowGraphAlgorithms {
 					// Path residual edge is a forward edge in the original graph
 					edge->flow += minUpperBound;
 					if (edge->destNode < graph.totalVarNodes && li != NULL) {
-						cout << "Adding " << (*graph.nodeToVal)[prev] << " to li" << endl;
+						//cout << "Adding " << (*graph.nodeToVal)[prev] << " to li" << endl;
 						auto pos = graph.varUtil.getXFromInputVarVal(edge->destNode, (*graph.nodeToVal)[prev]); 
 						(*li)[pos] = 1;
 					}
@@ -81,7 +81,7 @@ class FlowGraphAlgorithms {
 					edge = graph.getEdge(*it, prev);
 					edge->flow -= minUpperBound;
 					if (prev < graph.totalVarNodes && li != NULL) {
-						cout << "Removing " << (*graph.nodeToVal)[*it] << " from li" << endl;
+						//cout << "Removing " << (*graph.nodeToVal)[*it] << " from li" << endl;
 						auto pos = graph.varUtil.getXFromInputVarVal(edge->destNode, (*graph.nodeToVal)[*it]); 
 						(*li)[pos] = 0;
 					}
@@ -371,7 +371,7 @@ class FlowGraphAlgorithms {
 				updatedEdges.push_back(EdgeNodes(edge.src, edge.dest));
 				// Prune
 				unsigned int xIndex = graph.varUtil.getXFromInputVarVal(edge.dest, edge.val);
-				cout << "Prunning val " << edge.val << " from " << edge.dest << endl;
+				//cout << "Prunning val " << edge.val << " from " << edge.dest << endl;
 				GECODE_ME_CHECK(x[xIndex].eq(home, 0));
 				// Also remove from varToVals
 				auto& vals = graph.varToVals[edge.dest];

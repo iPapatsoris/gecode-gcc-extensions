@@ -13,7 +13,6 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt)
 	readInput(opt.file(), inputVarsCount, domains, vals, lowerValBounds, upperValBounds, 
 						lowerVarBounds, upperVarBounds);
 	valsCount = vals.size();
-	cout << valsCount << endl;
 	
 	x = BoolVarArray(*this, 0);
 	y = IntVarArray(*this, 0);

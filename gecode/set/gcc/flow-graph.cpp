@@ -99,7 +99,7 @@ void FlowGraph::updatePrunedValues(Int::BoolView x, unsigned int xIndex,
 	NormalEdge* edge = getEdge(valNode, xNodeIndex);
 	if (edge->lowerBound == 1 || !edge->upperBound) {
 		// Edge has already been updated
-		cout << "end of update: feasible flow " << oldFlowIsFeasible << endl; 
+		//cout << "end of update: feasible flow " << oldFlowIsFeasible << endl; 
 		return;
 	}
 
@@ -128,7 +128,7 @@ void FlowGraph::updatePrunedValues(Int::BoolView x, unsigned int xIndex,
 	}
 	cout << "\ncard " << edge.lowerBound << " " << edge.upperBound << "\n";*/
 
-	cout << "end of update: feasible flow " << oldFlowIsFeasible << endl; 
+	//cout << "end of update: feasible flow " << oldFlowIsFeasible << endl; 
 }
 
 void FlowGraph::print() const {

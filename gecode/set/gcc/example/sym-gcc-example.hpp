@@ -68,7 +68,11 @@ public:
 				os << "\tSolution: " << x << "\n";
 				break;
 			case MODEL_COUNT:
+				os << "\tSolution: " << y << "\n";
+				break;
 			case MODEL_LINEAR:
+				os << "\tSolution: " << z << "\n";
+				/*
 				os << "\tSolution: \n";
 				for (int i = 0; i < inputVarsCount; i++) {
 					for (int j = 0; j < valsCount; j++) {
@@ -79,7 +83,7 @@ public:
 						}
 					}
 					cout << "\n";
-				}
+				}*/
 				break;
 		}
 	}

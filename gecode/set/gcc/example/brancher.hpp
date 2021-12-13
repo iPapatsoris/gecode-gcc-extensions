@@ -77,7 +77,7 @@ public:
       if (!x[i].assigned() && (x[i].size() < s)) {
         p = i; s = x[p].size();
       }
-		cout << "LI pos " << p << " val " << li[p] << endl;
+		//cout << "LI pos " << p << " val " << li[p] << endl;
     return new PosVal(*this,p, li[p]);
   }
   virtual Choice* choice(const Space&, Archive& e) {
