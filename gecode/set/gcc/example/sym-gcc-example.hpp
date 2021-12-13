@@ -63,6 +63,7 @@ public:
 		return new SymmetricGccExample(*this);
 	}
 	void print(ostream& os) const {
+		return;
 		switch (model) {
 			case MODEL_SINGLE:
 				os << "\tSolution: " << x << "\n";

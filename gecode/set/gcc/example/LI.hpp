@@ -22,7 +22,6 @@ protected:
     int n;
     LIO(Space& home, int n0)
      : LocalObject(home), data(heap.alloc<BestValsType>(n0)), n(n0) {
-			 cout << n0 << endl;
       home.notice(*this,AP_DISPOSE);
     }
     LIO(Space& home, LIO& l)
@@ -33,7 +32,6 @@ protected:
       return new (home) LIO(home,*this);
     }
     virtual size_t dispose(Space& home) {
-			cout << "destructor" << endl;
 			//cout << *(*data).find(0) << endl;
       home.ignore(*this,AP_DISPOSE);
       heap.free<BestValsType>(data,n);

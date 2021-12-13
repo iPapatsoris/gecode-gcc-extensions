@@ -12,7 +12,6 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt)
 	readInput(opt.file(), varsCount, domain, vals, lowerValBounds, upperValBounds, 
 						lowerVarBounds, upperVarBounds);
 	valsCount = vals.size();
-	cout << valsCount << endl;
 	
 	x = SetVarArray(*this, 0);
 	y = IntVarArray(*this, 0);
@@ -57,7 +56,7 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt)
 			if (opt.branch()) {
 				bestval(*this, x, li);
 			} else { 
-				branch(*this, x, SET_VAL_MIN_INC());
+				branch(*this, x, SET_VAR_DEGREE_MIN(), SET_VAL_MIN_EXC());
 			}
 			break;
 

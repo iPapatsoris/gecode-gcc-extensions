@@ -71,7 +71,7 @@ class FlowGraphAlgorithms {
 					// Path residual edge is a forward edge in the original graph
 					edge->flow += minUpperBound;
 					if (edge->destNode < graph.totalVarNodes && li != NULL) {
-						cout << "Adding " << (*graph.nodeToVal)[prev] << " to li" << endl; 
+					//	cout << "Adding " << (*graph.nodeToVal)[prev] << " to li" << endl; 
 						(*li)[edge->destNode].insert((*graph.nodeToVal)[prev]);
 					}
 					updateResidualGraph(prev, *it, *edge);
@@ -119,7 +119,7 @@ class FlowGraphAlgorithms {
 			unsigned int minUpperBound = findMinUpperBound(violation, path);		
 			sendFlow(violation, path, minUpperBound, li);
 
-			if (li != NULL) {
+		/*	if (li != NULL) {
 				for (int i = 0; i < graph.totalVarNodes; i++) {
 					for (auto& v: (*li)[i])
 						cout << v << endl;
@@ -131,7 +131,7 @@ class FlowGraphAlgorithms {
 						}
 					}
 				}
-			}
+			}*/
 
 			return true;
 		}
@@ -363,7 +363,7 @@ class FlowGraphAlgorithms {
 				// on the next min cost flow computation
 				updatedEdges.push_back(EdgeNodes(edge.src, edge.dest));
 				// Prune
-				cout << "Prunning val " << edge.val << " from " << edge.dest << endl;
+				//cout << "Prunning val " << edge.val << " from " << edge.dest << endl;
 				GECODE_ME_CHECK(x[edge.dest].exclude(home, edge.val));
 				// Also remove from varToVals
 				auto& vals = graph.varToLub[edge.dest];

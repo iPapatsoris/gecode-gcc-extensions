@@ -66,12 +66,10 @@ public:
     return new (home) BestVal(home,*this);
   }
   virtual bool status(const Space&) const {
-		cout << "status ";
     for (int i=start; i<x.size(); i++)
       if (!x[i].assigned()) {
-        start = i; cout << "true on " << i << endl; return true;
+        start = i; return true;
       }
-		cout << "false lol" << endl;
     return false;
   }
   virtual Choice* choice(Space&) {
@@ -81,12 +79,6 @@ public:
       if (!x[i].assigned() /*&& (x[i].unknownSize() < s*)) {
         p = i;// s = x[p].unknownSize();
       }*/
-		cout << "p is " << p << endl;
-		cout << "li[p] is \n";
-		for (auto v: li[p]) {
-			cout << v << " ";
-		}
-		cout << endl;
 
 		return new PosVal(*this, p, li[p], false);
 

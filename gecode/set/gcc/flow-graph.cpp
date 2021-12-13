@@ -126,7 +126,7 @@ void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex,
 	}	
 	
 	for (auto it: prunedValues) {
-		cout << "\npruning from lub " << *it;
+		//cout << "\npruning from lub " << *it;
 		varToLub[xIndex].erase(it);
 	}
 
@@ -160,7 +160,7 @@ void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex,
 	}	
 	
 	for (auto val: valuesToAdd) {
-		cout << "\nadding to glb " << val;
+		//cout << "\nadding to glb " << val;
 		varToGlb[xIndex].insert(val);
 	}
 
@@ -172,9 +172,9 @@ void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex,
 		oldFlowIsFeasible = false;
 		updatedEdges.push_back({xIndex, tNode()});
 	}
-	cout << "\ncard " << edge.lowerBound << " " << edge.upperBound << "\n";
+	//cout << "\ncard " << edge.lowerBound << " " << edge.upperBound << "\n";
 
-	cout << "end of update: feasible flow " << oldFlowIsFeasible << endl; 
+	//cout << "end of update: feasible flow " << oldFlowIsFeasible << endl; 
 }
 
 void FlowGraph::print() const {
