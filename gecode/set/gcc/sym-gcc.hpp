@@ -108,7 +108,7 @@ public:
 	}
 
 	virtual PropCost cost(const Space&, const ModEventDelta&) const {
-		return PropCost::cubic(PropCost::LO, x.size());
+		return PropCost::cubic(PropCost::HI, x.size());
 	}
 
 	virtual size_t dispose(Space& home) {
