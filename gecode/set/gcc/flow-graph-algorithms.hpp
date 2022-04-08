@@ -181,6 +181,28 @@ class FlowGraphAlgorithms {
 			} 
 		}
 
+		void BFS(unsigned int source, unsigned int dest, vector<unsigned int>& prev) 
+		const { 
+			prev.assign(graph.nodeList.size(), NONE_UINT);
+			queue<unsigned int> frontier;
+			frontier.push(source);
+			while (!frontier.empty()) {
+				unsigned int node = frontier.front();
+				frontier.pop();
+				for (auto& e: graph.nodeList[node].residualEdgeList) {
+					if ((prev[e.destNode] != NONE_UINT) || 
+							(node == source && e.destNode == dest)) {
+						continue;
+					}
+					prev[e.destNode] = node;					
+					if (e.destNode == dest) {
+						return;
+					}
+					frontier.push(e.destNode);
+				}
+			} 
+		}
+
 	public:
 		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
 
