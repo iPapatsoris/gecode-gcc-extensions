@@ -11,6 +11,7 @@ using namespace Gecode;
 using namespace std;
 
 typedef NaryPropagator<Int::IntView, Int::PC_INT_NONE> CostGccBase;
+int failCount = 0;
 
 class CostGcc : public CostGccBase {
 
@@ -36,7 +37,7 @@ protected:
 		};
 		Council<ViewAdvisor> c;
 		FlowGraph* graph;
-		vector<EdgeNodes> updatedEdges;
+		vector<EdgeUpdate> updatedEdges;
 		LI li;
 		bool usingLocalHandle;
 		// TODO: do not store, instead use different post functions?
@@ -44,7 +45,7 @@ protected:
 
 public:
 	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph* graph, 
-					const vector<EdgeNodes>& updatedEdges, LI* li, IntPropLevel ipl)
+					const vector<EdgeUpdate>& updatedEdges, LI* li, IntPropLevel ipl)
 			: NaryPropagator(home, x), c(home), graph(graph), 
 				updatedEdges(updatedEdges), usingLocalHandle(li != NULL), ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
@@ -72,17 +73,19 @@ public:
 																		 costUpperBound);
 
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
+		//graph->print();
 
 		if (!graphAlgorithms.findMinCostFlow(li)) {
 			return ES_FAILED;
 		}
 
-		vector<pair<unsigned int, unsigned int>> updatedEdges;
+		vector<EdgeUpdate> updatedEdges;
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges) != ES_OK) {
 				return ES_FAILED;
 		}
 
 		(void)new (home) CostGcc(home, vars, graph, updatedEdges, li, ipl);
+		//cout << "Posted!" << endl;
 		return ES_OK;
 	}
 
@@ -114,12 +117,17 @@ public:
     (void) CostGccBase::dispose(home);
     return sizeof(*this);
   }
-
 	virtual ExecStatus propagate(Space& home, const ModEventDelta&) {
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, usingLocalHandle ? &li : NULL)) {
+			if (failCount >= 1127202) {
+				graph->print();
+				graph->printResidual();
+			}
+			cout << "failed! #" << failCount++ << endl;
 			return ES_FAILED;
 		}
+		//graphAlgorithms.updateDeletedEdges(updatedEdges);
 		updatedEdges.clear();
 
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, updatedEdges) != ES_OK) {
@@ -130,7 +138,9 @@ public:
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
+		cout << "In advisor:\n"; 
 		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
+		//graph->print();
 		return graph->getOldFlowIsFeasible() ? ES_FIX : ES_NOFIX;
 	}
 

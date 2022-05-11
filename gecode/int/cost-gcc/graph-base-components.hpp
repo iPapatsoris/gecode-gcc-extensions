@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <unordered_map>
 
 using namespace std;
 
@@ -59,14 +60,14 @@ class ResidualEdge : public Edge
 
 public:
 	ResidualEdge(unsigned int destNode, unsigned int upperBound, int cost)
-			: Edge(destNode, cost), upperBound(upperBound) {}
+			: Edge(destNode, cost), upperBound(upperBound), reducedCost(0) {}
 	ResidualEdge(const NormalEdge &edge)
 			: Edge(edge.getDestNode(), edge.getCost()), upperBound(edge.getUpperBound()) {}
 	ResidualEdge() {}
 	void print() const
 	{
 		cout << destNode << " upper " << upperBound
-				 << " reduced cost " << reducedCost <<  "\n";
+				 << " reduced cost " << reducedCost << " cost " << cost << "\n"; 
 	}
 
 	friend class FlowGraph;
@@ -74,14 +75,35 @@ public:
 };
 
 class Node {
-	vector<NormalEdge> edgeList;
-	vector<ResidualEdge> residualEdgeList;
+	vector<NormalEdge> *edgeList;
+	unordered_map<unsigned int, unsigned int> *edgeToPos;
+	unsigned int edgeListSize;
 
-	Node(unsigned int totalEdges) {
-		edgeList.reserve(totalEdges);
+	vector<ResidualEdge> *residualEdgeList;
+
+	Node(unsigned int totalEdges) : edgeListSize(totalEdges) {
+		edgeList = new vector<NormalEdge>();
+		edgeToPos = new unordered_map<unsigned int, unsigned int>();
+		edgeToPos->reserve(totalEdges);
+		edgeList->reserve(totalEdges);
+		residualEdgeList = new vector<ResidualEdge>();
 	}
 	friend class FlowGraph;
 	friend class FlowGraphAlgorithms;
+
+	void print() const {
+		cout << "edgeListSize: " << edgeListSize << "\n";
+		cout << "edgeToPos:";
+		for (auto& p: *edgeToPos) {
+			cout << p.first << ": " << p.second << " ";
+		}
+		cout << "edgeList:\n";
+		for (auto& e: *edgeList) {
+			cout << e.getDestNode() << " ";
+		}
+		cout << endl;
+
+	}
 };
 
 #endif

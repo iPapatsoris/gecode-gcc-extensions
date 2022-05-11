@@ -3,6 +3,7 @@
 
 #include "graph-base-components.hpp"
 #include "LI.hpp"
+#include "bt-vector.hpp"
 #include <iostream>
 #include <vector>
 #include <unordered_map>
@@ -31,7 +32,18 @@ struct MapToSet {
 // we next update the residual graph. It is important to have NormalEdge object
 // and not NormalEdge*, because when search finds a solution or fails, it will
 // clone the graph and destroy the original, thus invalidating the pointer.
-typedef pair<unsigned int, unsigned int> EdgeNodes;
+struct EdgeUpdate {
+	unsigned int src;
+	unsigned int dest;
+	bool upperBoundViolation;
+	bool lowerBoundViolation;
+	bool deleted;
+
+	EdgeUpdate(unsigned int src, unsigned int dest, bool lowerBoundViolation, 
+					   bool upperBoundViolation, bool deleted) : src(src), dest(dest), 
+						 deleted(deleted), upperBoundViolation(upperBoundViolation), 
+						 lowerBoundViolation(lowerBoundViolation) {}
+};
 
 /**
  * Graph used to solve min cost flow problem, to prove consistency of
@@ -57,6 +69,7 @@ class FlowGraph {
 
 		// The node order in nodeList is variables,values,S,T.
 		vector<Node> nodeList;
+		//vector<int> debug;
 		unsigned int totalVarNodes; 
 		// Fast lookup of what node a value corresponds to
 		unordered_map<int, unsigned int> *valToNode; 			  // TODO: memory leak, use shared object
@@ -67,11 +80,11 @@ class FlowGraph {
 		// We know which variables got changed by using advisors, so domain
 		// comparison is only done among those.
 		// Should be kept up to date with assignments and pruning.
-		vector<unordered_set<int> > varToVals;
+		vector<BtVector> varToVals;
 
 		// Total flow through the graph, starts at 0. Is calculated at once using
 		// appropriate function, not gradually
-		int flowCost;
+		int *flowCost;
 
 		// Cost upper bound as defined by the constraint input
 		int costUpperBound;
@@ -82,7 +95,7 @@ class FlowGraph {
 		// new one. It is much more efficient to check this when we update 
 		// the bounds of specific edges, than to scan the whole graph later to see 
 		// if the old flow still stands
-		bool oldFlowIsFeasible;
+		bool *oldFlowIsFeasible;
 
 		// Position of S node
 		unsigned int sNode() const { return nodeList.size() - 2; }
@@ -95,10 +108,18 @@ class FlowGraph {
 
 		// Search for an edge flow violating lower bounds
 		// Return false if none exists
+		// TODO: can be optimized to look for less?
 		bool getLowerBoundViolatingEdge(pair<unsigned int, unsigned int>& violation) 
 			const {
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
-				for (auto& edge: nodeList[i].edgeList) {
+				/*if (i == totalVarNodes) {
+					i = sNode();				// if at init some values are already pruned,
+															// we might have tightened var->val bounds,
+															// so we need to check through every node
+				}*/
+				auto& node = nodeList[i];
+				for (unsigned int e = 0; e < node.edgeListSize; e++) {
+					auto& edge = (*nodeList[i].edgeList)[e];
 					if (edge.flow < edge.lowerBound) {
 						violation = {i, edge.destNode};
 						return true;
@@ -111,21 +132,62 @@ class FlowGraph {
 		// Search for source->dest edge, return pointer to it or NULL if it 
 		// doesn't exist
 		NormalEdge* getEdge(unsigned int source, unsigned int dest) {
-			for (auto& edge: nodeList[source].edgeList) {
-				if (edge.destNode == dest) {
-					return &edge;
-				}
+			auto& node = nodeList[source];
+			auto res = (*node.edgeToPos).find(dest);
+			if (res == (*node.edgeToPos).end() || res->second >= node.edgeListSize) {
+				return NULL;
 			}
-			return NULL;
+			return &(*node.edgeList)[res->second];
+		}
+
+		void deleteEdge(unsigned int source, unsigned int dest) {
+		//	cout << "Deleting edge " << source << "->" << dest << endl;
+			auto& node = nodeList[source];
+			auto res = (*node.edgeToPos).find(dest);
+			if (res == (*node.edgeToPos).end() || res->second >= node.edgeListSize) {
+				cout << "oops! doesn't exist" << endl;
+				return;
+			}
+
+			auto pos = res->second;
+			auto lastElement = (*node.edgeList)[node.edgeListSize - 1].destNode;
+			swap((*node.edgeList)[pos], (*node.edgeList)[node.edgeListSize - 1]);
+			
+			(*node.edgeToPos)[dest] = node.edgeListSize - 1;
+			(*node.edgeToPos)[lastElement] = pos;
+			node.edgeListSize -= 1;
 		}
 		
+		void deleteResidualEdge(unsigned int source, unsigned int dest) {
+			bool found = false;
+			auto residual = nodeList[source].residualEdgeList;
+			for (auto it = residual->begin(); it != residual->end(); it++) {
+				if (it->destNode == dest) {
+					residual->erase(it);
+					found = true;
+					break;
+				}
+			}
+
+			residual = nodeList[dest].residualEdgeList;
+			for (auto it = residual->begin(); it != residual->end(); it++) {
+				if (it->destNode == source) {
+					residual->erase(it);
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				cout << "RESIDUAL EDGE NOT FOUND" << endl;
+		}
+
 		// Search for source->dest residual edge, return pointer to it or NULL if it
 		// doesn't exists. If index is not NULL, also return its position in that
 		// node's residual edges list 
 		ResidualEdge* getResidualEdge(unsigned int source, unsigned int dest, 
 																  unsigned int *index = NULL) {
-			for (unsigned int i=0; i<nodeList[source].residualEdgeList.size(); i++) {
-				ResidualEdge& edge = nodeList[source].residualEdgeList[i];
+			for (unsigned int i=0; i < nodeList[source].residualEdgeList->size(); i++) {
+				ResidualEdge& edge = (*nodeList[source].residualEdgeList)[i];
 				if (edge.destNode == dest) {
 					if (index != NULL) {
 						*index = i;
@@ -144,7 +206,7 @@ class FlowGraph {
 			if (existingEdge != NULL) {
 				*existingEdge = newEdge;
 			} else {
-				nodeList[source].residualEdgeList.push_back(newEdge);
+				nodeList[source].residualEdgeList->push_back(newEdge);
 			}
 		}
 
@@ -152,16 +214,16 @@ class FlowGraph {
 		int calculateFlowCost(LI &lii);
 
 		bool checkFlowCost() {
-			if (firstTimeValidCost && flowCost <= costUpperBound) {
+			if (firstTimeValidCost && *flowCost <= costUpperBound) {
 				firstTimeValidCost = false;
-				cout << flowCost << endl;
 			}
-			return flowCost <= costUpperBound;
+			//cout << *flowCost << " " << costUpperBound << endl;
+			return *flowCost <= costUpperBound;
 		}
 
 		void calculateReducedCosts(const vector<int>& distances) {
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
-				for (auto& edge : nodeList[i].residualEdgeList) {
+				for (auto& edge : (*nodeList[i].residualEdgeList)) {
 					edge.reducedCost = distances[i] + edge.cost - distances[edge.destNode];
 					//cout << i << "->" << edge.destNode << " " << edge.reducedCost << " = " << distances[i] << " + " << edge.cost << " - " << distances[edge.destNode] << endl;
 				}
@@ -170,8 +232,8 @@ class FlowGraph {
 
 		#ifndef NDEBUG
 		// Assert varToVals is synchronized with Gecode variable X domain
-		void assertVarToValsInSync(Int::IntView x, int xIndex) const {
-			auto vals = varToVals[xIndex];
+		/*void assertVarToValsInSync(Int::IntView x, int xIndex) const {
+			auto vals = (*varToVals)[xIndex];
 			assert(vals.size() == x.size());
 			for (IntVarValues v(x); v(); ++v) {
 				assert(vals.find(v.val()) != vals.end());
@@ -179,7 +241,7 @@ class FlowGraph {
 			for (auto val: vals) {
 				assert(x.in(val));
 			}
-		}
+		}*/
 		#endif
 
 	public:
@@ -201,7 +263,7 @@ class FlowGraph {
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
 		void updatePrunedValues(Int::IntView x, unsigned int xIndex, 
-													  vector<EdgeNodes>& updatedEdges); 
+													  vector<EdgeUpdate>& updatedEdges); 
 
 		void print() const;
 
@@ -209,17 +271,24 @@ class FlowGraph {
 
 
 		bool getOldFlowIsFeasible() const {
-			return oldFlowIsFeasible;
+			return *oldFlowIsFeasible;
 		}
 
 		void addTResidualEdges() {
 			for (unsigned int var = 0; var < totalVarNodes; var++) {
-				nodeList[tNode()].residualEdgeList.push_back(ResidualEdge(var, 1, 0));
+				nodeList[tNode()].residualEdgeList->push_back(ResidualEdge(var, 1, 0));
 			}
 		}
 
 		void removeTResidualEdges() {
-			nodeList[tNode()].residualEdgeList.clear();
+			nodeList[tNode()].residualEdgeList->clear();
+		}
+
+		void debug() const {
+			if (nodeList[0].residualEdgeList == nodeList[15].residualEdgeList) {
+				cout << "SAME!" << endl;
+				exit(1);
+			}
 		}
 };
 
