@@ -2,8 +2,9 @@
 #define H_FLOW_GRAPH
 
 #include "graph-base-components.hpp"
-#include "LI.hpp"
+#include "example/LI.hpp"
 #include "bt-vector.hpp"
+#include "flow.hpp"
 #include <iostream>
 #include <vector>
 #include <unordered_map>
@@ -82,9 +83,11 @@ class FlowGraph {
 		// Should be kept up to date with assignments and pruning.
 		vector<BtVector> varToVals;
 
+		Flow flow;
+
 		// Total flow through the graph, starts at 0. Is calculated at once using
 		// appropriate function, not gradually
-		int *flowCost;
+		int flowCost;
 
 		// Cost upper bound as defined by the constraint input
 		int costUpperBound;
@@ -120,7 +123,7 @@ class FlowGraph {
 				auto& node = nodeList[i];
 				for (unsigned int e = 0; e < node.edgeListSize; e++) {
 					auto& edge = (*nodeList[i].edgeList)[e];
-					if (edge.flow < edge.lowerBound) {
+					if (getEdgeFlow(i, edge.destNode) < edge.lowerBound) {
 						violation = {i, edge.destNode};
 						return true;
 					}
@@ -210,15 +213,27 @@ class FlowGraph {
 			}
 		}
 
+		unsigned int getEdgeFlow(unsigned int src, unsigned int dest) const {
+			if (dest == tNode()) {
+				return flow.getVarTFlow(src);
+			} else if (src == tNode()) {
+				return flow.getTSFlow();
+			} else if (src == sNode()) {
+				return flow.getSValFlow(dest);
+			} else {
+				return flow.getValVarFlow(src, dest);
+			}
+		}
+
 		// Iterate through each edge that has flow, to find its total cost
 		int calculateFlowCost(LI &lii);
 
 		bool checkFlowCost() {
-			if (firstTimeValidCost && *flowCost <= costUpperBound) {
+			if (firstTimeValidCost && flowCost <= costUpperBound) {
 				firstTimeValidCost = false;
 			}
 			//cout << *flowCost << " " << costUpperBound << endl;
-			return *flowCost <= costUpperBound;
+			return flowCost <= costUpperBound;
 		}
 
 		void calculateReducedCosts(const vector<int>& distances) {

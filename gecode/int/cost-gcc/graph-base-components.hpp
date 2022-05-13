@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
+#include "flow.hpp"
 
 using namespace std;
 
@@ -29,21 +30,30 @@ class NormalEdge : public Edge
 {
 	unsigned int lowerBound;
 	unsigned int upperBound;
-	unsigned int flow;
 
 public:
 	NormalEdge(unsigned int destNode, unsigned int lowerBound,
 						 unsigned int upperBound, int cost)
-			: Edge(destNode, cost), lowerBound(lowerBound), upperBound(upperBound),
-				flow(0) {}
+			: Edge(destNode, cost), lowerBound(lowerBound), upperBound(upperBound)
+				{}
 	NormalEdge() {}
 	unsigned int getUpperBound() const { return upperBound; }
 	int getCost() const { return cost; }
 	unsigned int getDestNode() const { return destNode; }
-	void print() const
+	void print(unsigned int src, unsigned int sNode, unsigned int tNode, const Flow& flow) const
 	{
+		int f = 0;
+		if (destNode == tNode) {
+			f = flow.getVarTFlow(src);
+		} else if (src == tNode) {
+			f = flow.getTSFlow();
+		} else if (src == sNode) {
+			f = flow.getSValFlow(destNode);
+		} else {
+			f = flow.getValVarFlow(src, destNode);
+		}
 		cout << destNode << " (" << lowerBound << "," << upperBound << "," << cost
-				 << ") flow: " << flow << "\n";
+				 << ") flow: " << f << "\n";
 	}
 
 	friend class FlowGraph;

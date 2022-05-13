@@ -16,7 +16,7 @@ unsigned long countNi = 0;
 				}
 			}
 
-			flowCost = new int(0);
+			flowCost = 0;
 			oldFlowIsFeasible = new bool(true);
 			totalVarNodes = vars.size();
 			unsigned int totalValNodes = inputVals.size();
@@ -133,7 +133,7 @@ unsigned long countNi = 0;
 						// Value has been pruned from variable X's domain, update graph
 						//edge->upperBound = 0;
 						bool upperBoundViolation = false;
-						if (edge->flow == 1) {
+						if (flow.getValVarFlow(valueNode, xIndex) == 1) {
 							*oldFlowIsFeasible = false;
 							upperBoundViolation = true;
 							//*flowCost -= edge->cost;
@@ -154,7 +154,7 @@ unsigned long countNi = 0;
 						// Variable has been assigned with a value, update graph
 						//edge->lowerBound = 1;
 						bool lowerBoundViolation = false;
-						if (edge->flow == 0) {
+						if (flow.getValVarFlow(valueNode, xIndex) == 0) {
 							*oldFlowIsFeasible = false;
 							lowerBoundViolation = true;
 						}
@@ -169,19 +169,19 @@ unsigned long countNi = 0;
 			//	cout << "Deleting val " << val << " (node )" << (*valToNode)[val] << " from varToVals " << xIndex << endl;
 				values.deleteVal(val);
 			}
-			if (countNi++ >1127200) {
+/*			if (countNi++ >1127200) {
 			cout << "Updated Edges:\n";
 			for (auto& e: updatedEdges) {
 				cout << e.src << "->" << e.dest << " " << e.lowerBoundViolation << " " << e.upperBoundViolation << " " << e.deleted << endl;
 			}
-			}
+			}*/
 			#ifndef NDEBUG
 				//assertVarToValsInSync(x, xIndex);
 			#endif
 		}
 
 // Iterate through each edge that has flow, to find its total cost
-		int FlowGraph::calculateFlowCost(LI& lii) {
+	/*	int FlowGraph::calculateFlowCost(LI& lii) {
 			*flowCost = 0;
 			for (unsigned int i = totalVarNodes; i < sNode(); i++) {
 				for (unsigned int j = 0; j < nodeList[i].edgeListSize; j++) {
@@ -193,7 +193,7 @@ unsigned long countNi = 0;
 				}
 			}
 			return *flowCost;
-		}
+		}*/
 
 		void FlowGraph::print() const {
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
@@ -204,7 +204,7 @@ unsigned long countNi = 0;
 				for (unsigned int j = 0; j < nodeList[i].edgeListSize; j++) {
 					auto& edge = (*(nodeList[i].edgeList))[j];
 					cout << i << " -> ";
-					edge.print();
+					edge.print(i, sNode(), tNode(), flow);
 				}
 			}
 			cout << endl;
