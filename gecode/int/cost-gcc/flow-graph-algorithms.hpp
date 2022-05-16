@@ -94,13 +94,13 @@ class FlowGraphAlgorithms {
 			dist.assign(graph.nodeList.size(), INF_INT);
 			dist[source] = 0;
 			bool debug = false;
-			if (source == 21 && *dest == 5) {
+/*			if (source == 21 && *dest == 5) {
 				cout << "look for " << source << "->" << *dest << endl;
 				graph.print();
 				graph.printResidual();
 				//exit(1);
 				debug = true;
-			}		
+			}		*/
 			vector<unsigned int> updatedNodes1 = {source};
 			vector<unsigned int> updatedNodes2;
 			vector<unsigned int>* updatedNodesOld = &updatedNodes1;
@@ -119,9 +119,70 @@ class FlowGraphAlgorithms {
 							prev[edge.destNode] = node;
 							foundUpdate = true;
 							updatedNodesNew->push_back(edge.destNode);
-							if (debug) {
-								cout << "prev[" << edge.destNode << "] = " << prev[edge.destNode] << " dist[" << edge.destNode <<"] = " << dist[edge.destNode] << endl; 
+						}
+					}
+				}
+				if (!foundUpdate) {
+					// No updates between two iterations; early termination
+					break;
+				}
+				swap(updatedNodesNew, updatedNodesOld);
+				updatedNodesNew->clear();
+			}
+			//cout << "done " << endl;
+		}
+
+		void traceCycle(const vector<unsigned int>& prev, unsigned int node, vector<unsigned int>& cycle) const {
+				unordered_set<unsigned int> stackContent;
+				stack<unsigned int> stack;
+
+				while (stackContent.find(node) == stackContent.end()) {
+					stack.push(node);
+					stackContent.insert(node);
+					node = prev[node];
+				}
+				cycle.push_back(node);
+				while (stack.top() != node) {
+					cycle.push_back(stack.top());
+					stack.pop();
+				}
+				cycle.push_back(node);
+		}
+
+		void bellmanFordShortestPathsCycles(unsigned int source, 
+																	vector<unsigned int>& prev, vector<int>& dist,
+																	vector<unsigned int>& cycle, bool *isCycle,
+																	unsigned int* dest = NULL) const {
+			prev.assign(graph.nodeList.size(), NONE_UINT);
+			dist.assign(graph.nodeList.size(), INF_INT);
+			dist[source] = 0;
+			vector<unsigned int> len;
+			len.assign(graph.nodeList.size(), 0);
+		
+			vector<unsigned int> updatedNodes1 = {source};
+			vector<unsigned int> updatedNodes2;
+			vector<unsigned int>* updatedNodesOld = &updatedNodes1;
+			vector<unsigned int> *updatedNodesNew = &updatedNodes2;
+			while (!updatedNodesOld->empty()) {
+				bool foundUpdate = false;
+				for (auto node: *updatedNodesOld) {
+					for (auto &edge : (*graph.nodeList[node].residualEdgeList)) {
+						if ((dest == NULL || 
+							!(node == source && edge.destNode == *dest)) && 
+							dist[node] != INF_INT && dist[node] + edge.cost < 
+																			 dist[edge.destNode]) {
+							// Ignore direct source->dest edge when looking for shortest path 
+							// to specific requested destination
+							dist[edge.destNode] = dist[node] + edge.cost;
+							prev[edge.destNode] = node;
+							if (++len[edge.destNode] == graph.nodeList.size() - 1) {
+	//							cout << "cycle lol" << endl;
+								*isCycle = true;
+								traceCycle(prev, edge.destNode, cycle);
+								return;
 							}
+							foundUpdate = true;
+							updatedNodesNew->push_back(edge.destNode);
 						}
 					}
 				}
@@ -193,7 +254,7 @@ class FlowGraphAlgorithms {
 			//cout << "done " << endl;
 		}*/
 
-		void sendFlow(pair<unsigned int, unsigned int>& violation, vector<int>& shortestPath, unsigned int minUpperBound, LI* li) {
+		void sendFlow(pair<unsigned int, unsigned int>& violation, const vector<unsigned int>& shortestPath, unsigned int minUpperBound, LI* li) {
 			// Send flow through the path edges and update residual graph
 			unsigned int prev = violation.first;
 			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
@@ -221,20 +282,69 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-		unsigned int findMinUpperBound(pair<unsigned int, unsigned int>& violation, vector<int>& shortestPath, int* flowCost) {
+		void sendFlowCycle(const vector<unsigned int>& cycle, unsigned int minUpperBound, LI* li) {
+			// Send flow through the path edges and update residual graph
+			unsigned int prev = cycle[0];
+			for(unsigned int i = 1; i < cycle.size(); i++) {			
+				NormalEdge *edge = graph.getEdge(prev, cycle[i]);
+				if (edge != NULL) {
+					// Path residual edge is a forward edge in the original graph
+					edge->flow += minUpperBound;
+//					cout << "Flow of " << prev << " " << cycle[i] << " now " << edge->flow << endl;
+					*graph.flowCost += edge->cost;
+					if (edge->destNode < graph.totalVarNodes && li != NULL) {
+						(*li)[edge->destNode] = (*graph.nodeToVal)[prev];
+					}
+					updateResidualGraph(prev, cycle[i], *edge);
+				}	else {
+					// Path residual edge is a backward edge in the original graph
+					edge = graph.getEdge(cycle[i], prev);
+					edge->flow -= minUpperBound;
+//					cout << "Flow of " << cycle[i] << " " << prev << " now " << edge->flow << endl;
+					if (!edge->flow) {
+						*graph.flowCost -= edge->cost;
+					}
+					updateResidualGraph(cycle[i], prev, *edge);
+				}
+				prev = cycle[i];
+			}
+		}
+
+		unsigned int findMinUpperBoundCycle(const vector<unsigned int>& cycle) const {
+			unsigned int prev = cycle[0];
+			unsigned int minUpperBound = INF_UINT;
+//			cout << "SP cycle: ";
+			for(unsigned int i = 1; i < cycle.size(); i++) {
+				// Bellman returns the path in reverse, so traverse it in reverse
+//				cout << prev << "->" << cycle[i]; 
+				ResidualEdge *edge = graph.getResidualEdge(prev, cycle[i]);
+				minUpperBound = min(minUpperBound, edge->upperBound);
+				prev = cycle[i];
+			}
+//			cout << endl;
+			return minUpperBound;
+		}
+		bool debug = false;
+		unsigned int findMinUpperBound(pair<unsigned int, unsigned int>& violation, vector<unsigned int>& shortestPath, int* flowCost) {
 			// Find min upper bound along shortest path
 			unsigned int prev = violation.first;
 			unsigned int minUpperBound = INF_UINT;
-			cout << "SP: ";
+/*			cout << "SP: ";
 			for (auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
-				cout << *it << "->";
-			}
+				cout << *it << "->" << flush;
+			}*/
 			*flowCost = *graph.flowCost;
 			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
 				// Bellman returns the path in reverse, so traverse it in reverse
 				ResidualEdge *edge = graph.getResidualEdge(prev, *it);
+/*				if (debug) {
+					graph.print();
+					graph.printResidual();
+					if (edge == NULL) {
+						cout << "cant find res edge " << prev << "->" << *it << endl;
+					}
+				}*/
 				minUpperBound = min(minUpperBound, edge->upperBound);
-
 				NormalEdge *e = graph.getEdge(prev, *it);
 				if (e != NULL) {
 					*flowCost += e->cost;
@@ -245,20 +355,27 @@ class FlowGraphAlgorithms {
 
 				prev = *it;
 			}
-			cout << endl;
+//			cout << endl;
 			return minUpperBound;
 		}
 
-		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation, LI* li) {		
-			vector<int> shortestPath, dist;
+		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation, bool *isCycle, LI* li) {		
+			vector<unsigned int> shortestPath;
+			vector<int> dist;
 			int pathCost; 
-			cout << "Violation " << violation.first << "->" << violation.second << endl;
+//			cout << "Violation " << violation.first << "->" << violation.second << endl;
 			//graph.print();
 			//graph.printResidual();
 			if (!findShortestPathNegativeCosts(violation.second, violation.first, 
-																				 shortestPath, dist, pathCost)) {
+																				 shortestPath, dist, pathCost, isCycle)) {
 				// Constraint is not consistent
 				return false;
+			}
+
+			if (isCycle != NULL && *isCycle) {
+				unsigned int minUpperBound = findMinUpperBoundCycle(shortestPath);
+				sendFlowCycle(shortestPath, minUpperBound, li);
+				return true;		
 			}
 
 		//	updatePotentials(visitedNodes, dist, pathCost);
@@ -277,13 +394,25 @@ class FlowGraphAlgorithms {
 		// Return the shortest path and cost through parameters,
 		// or false as return value in case of no path
 		bool findShortestPathNegativeCosts(unsigned int source, unsigned int dest, 
-																			 vector<int>& path, vector<int>& dist,
-																			int& cost) 
+																			 vector<unsigned int>& path, vector<int>& dist,
+																			int& cost, bool *isCycle) 
 																			 const {
 			vector<unsigned int> prev;
 			
-			bellmanFordShortestPaths(source, prev, dist, &dest);
-	
+			if (isCycle == NULL) {
+				bellmanFordShortestPaths(source, prev, dist, &dest);
+			} else {
+				bellmanFordShortestPathsCycles(source, prev, dist, path, isCycle, &dest);
+				if (path.size()) {
+					*isCycle = true;
+/*					for (auto node: path) {
+						cout << node << "->";
+					}
+					cout << endl;*/
+					return true;
+				}
+
+			}
 			// No path exists
 			if (dist[dest] == INF_INT) {
 				return false;
@@ -443,8 +572,8 @@ class FlowGraphAlgorithms {
 		bool findMinCostFlow(LI* li) {
 			pair<unsigned int, unsigned int> violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
-			//	cout << "Violation " << violation.first << "->" << violation.second << endl;
-				if (!minCostFlowIteration(violation, li)) {
+//				cout << "Violation " << violation.first << "->" << violation.second << endl;
+				if (!minCostFlowIteration(violation, NULL, li)) {
 				//	cout << "incosistent" << endl;
 					return false;
 				}
@@ -469,7 +598,7 @@ class FlowGraphAlgorithms {
 			for (auto& e: updatedEdges) {
 				// Among the edges that changed, look for one violating bounds
 				// Assume violating lower bound initially
-				cout << e.src << "->" << e.dest << e.lowerBoundViolation << e.upperBoundViolation << e.deleted << endl;
+	//			cout << e.src << "->" << e.dest << e.lowerBoundViolation << e.upperBoundViolation << e.deleted << endl;
 				unsigned int src = e.src;
 				unsigned int dest = e.dest;
 				//if (!e.lowerBoundViolation and !e.upperBoundViolation) {
@@ -483,8 +612,40 @@ class FlowGraphAlgorithms {
 					//src = e.dest;
 					//dest = graph.tNode();
 				}
-				if (!minCostFlowIteration({src, dest}, li)) {
+				bool isCycle = false;
+				if (!minCostFlowIteration({src, dest}, &isCycle, li)) {
 					return false;
+				}
+				if (isCycle) {
+					while (graph.getEdge(e.src, e.dest)->flow) {
+						isCycle = false;
+//						cout << "cycle that didn't fix violation, fixing now" << endl;
+						debug = true;
+						if (!minCostFlowIteration({src, dest}, &isCycle, li)) {
+							return false;
+						}
+					}
+				}
+				while (isCycle) {
+					isCycle = false;
+//					cout << "after cycle check" << endl;
+					vector<unsigned int> prev, path;
+					vector<int> dist;
+					bellmanFordShortestPathsCycles(graph.sNode(), prev, dist, path, &isCycle, NULL);
+					if (path.size()) {
+//						cout << "after cycle FOUND" << endl;
+						isCycle = true;
+/*						for (auto node: path) {
+							cout << node << "->";
+						}
+						cout << endl;*/
+						unsigned int minUpperBound = findMinUpperBoundCycle(path);
+						sendFlowCycle(path, minUpperBound, li);
+						//assert(false);
+						//exit(1);
+					}					
+					
+					// TODO: alg that just send flow to cycle without violation at the same time
 				}
 				graph.deleteEdge(e.src, e.dest);
 				graph.deleteResidualEdge(e.src, e.dest);

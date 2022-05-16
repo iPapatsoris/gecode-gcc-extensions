@@ -169,12 +169,12 @@ unsigned long countNi = 0;
 			//	cout << "Deleting val " << val << " (node )" << (*valToNode)[val] << " from varToVals " << xIndex << endl;
 				values.deleteVal(val);
 			}
-			if (countNi++ >1127200) {
+/*			if (countNi++ >1127200) {
 			cout << "Updated Edges:\n";
 			for (auto& e: updatedEdges) {
 				cout << e.src << "->" << e.dest << " " << e.lowerBoundViolation << " " << e.upperBoundViolation << " " << e.deleted << endl;
 			}
-			}
+			}*/
 			#ifndef NDEBUG
 				//assertVarToValsInSync(x, xIndex);
 			#endif
