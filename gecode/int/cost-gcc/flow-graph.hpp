@@ -98,7 +98,7 @@ class FlowGraph {
 		// new one. It is much more efficient to check this when we update 
 		// the bounds of specific edges, than to scan the whole graph later to see 
 		// if the old flow still stands
-		bool *oldFlowIsFeasible;
+		bool oldFlowIsFeasible;
 
 		// Position of S node
 		unsigned int sNode() const { return nodeList.size() - 2; }
@@ -286,7 +286,7 @@ class FlowGraph {
 
 
 		bool getOldFlowIsFeasible() const {
-			return *oldFlowIsFeasible;
+			return oldFlowIsFeasible;
 		}
 
 		void addTResidualEdges() {

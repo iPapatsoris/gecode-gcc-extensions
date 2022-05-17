@@ -229,9 +229,11 @@ class FlowGraphAlgorithms {
 					// Path residual edge is a forward edge in the original graph
 					if (edge->destNode < graph.totalVarNodes) {
 						graph.flow.addValVarFlow(prev, *it);	
+					} else if (edge->destNode == graph.tNode()) {
+						graph.flow.addVarTFlow(prev);
 					}
 					//edge->flow += minUpperBound;
-					//cout << "Flow of " << prev << " " << *it << " now " << edge->flow << endl;
+//					cout << "Flow of " << prev << " " << *it << " now " << graph.getEdgeFlow(prev, *it) << endl;
 					graph.flowCost += edge->cost;
 					if (edge->destNode < graph.totalVarNodes && li != NULL) {
 						(*li)[edge->destNode] = (*graph.nodeToVal)[prev];
@@ -242,9 +244,11 @@ class FlowGraphAlgorithms {
 					edge = graph.getEdge(*it, prev);
 					if (edge->destNode < graph.totalVarNodes) {
 						graph.flow.removeValVarFlow(*it, prev);
+					} else if (edge->destNode == graph.tNode()) {
+						graph.flow.removeVarTFlow(*it);
 					}
 					//edge->flow -= minUpperBound;
-					//cout << "Flow of " << *it << " " << prev << " now " << edge->flow << endl;
+//					cout << "Flow of " << *it << " " << prev << " now " << graph.getEdgeFlow(*it, prev) << endl;
 					graph.flowCost -= edge->cost;
 					updateResidualGraph(*it, prev, *edge);
 				}
@@ -259,8 +263,8 @@ class FlowGraphAlgorithms {
 /*			cout << "SP: ";
 			for (auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
 				cout << *it << "->";
-			}
-*/			*flowCost = graph.flowCost;
+			}*/
+			*flowCost = graph.flowCost;
 			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
 				// Bellman returns the path in reverse, so traverse it in reverse
 				ResidualEdge *edge = graph.getResidualEdge(prev, *it);
@@ -279,11 +283,17 @@ class FlowGraphAlgorithms {
 //			cout << endl;
 			return minUpperBound;
 		}
-
+		unsigned int debugCount = 0;
 		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation, LI* li) {		
 			vector<int> shortestPath, dist;
-			int pathCost; 
-//			cout << "Violation " << violation.first << "->" << violation.second << endl;
+			int pathCost;
+			cout << debugCount++ << endl; 
+			cout << "Violation " << violation.first << "->" << violation.second << endl;
+/*			if (violation.first == 19 && violation.second == 23) {
+				cout << "neti" << endl;
+				cout << graph.flowCost << endl;
+				graph.print();
+			}*/
 			//graph.print();
 			//graph.printResidual();
 			if (!findShortestPathNegativeCosts(violation.second, violation.first, 
@@ -304,6 +314,7 @@ class FlowGraphAlgorithms {
 				return false;
 			}
 */			sendFlow(violation, shortestPath, minUpperBound, li);
+//				graph.print();
 			return true;
 		}
 
@@ -479,13 +490,13 @@ class FlowGraphAlgorithms {
 		bool findMinCostFlow(LI* li) {
 			pair<unsigned int, unsigned int> violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
-			//	cout << "Violation " << violation.first << "->" << violation.second << endl;
+				cout << "Violation " << violation.first << "->" << violation.second << endl;
 				if (!minCostFlowIteration(violation, li)) {
 				//	cout << "incosistent" << endl;
 					return false;
 				}
 			}
-			*graph.oldFlowIsFeasible = true;
+			graph.oldFlowIsFeasible = true;
 			//graph.calculateFlowCost(li);
 			graph.flow.setFirstFlow(false);
 			return graph.checkFlowCost();
@@ -498,7 +509,7 @@ class FlowGraphAlgorithms {
 		//   incremental algorithm from the publication
 		bool updateMinCostFlow(vector<EdgeUpdate>& updatedEdges, LI* li) {
 			buildResidualGraph();
-			if (*graph.oldFlowIsFeasible) {
+			if (graph.oldFlowIsFeasible) {
 				return true;
 			}
 			for (auto& e: updatedEdges) {
@@ -513,6 +524,10 @@ class FlowGraphAlgorithms {
 					continue;
 				}
 				if (e.upperBoundViolation) {
+					auto res = graph.getEdge(e.src, e.dest);
+					if (res == NULL || !graph.getEdgeFlow(e.src, e.dest)) {
+						continue;
+					}
 				// Violating upper bound, swap direction of initial violating edge
 					std::swap(src, dest);
 					//src = e.dest;
@@ -526,7 +541,7 @@ class FlowGraphAlgorithms {
 				int val = (*graph.nodeToVal)[e.src];
 				graph.varToVals[e.dest].deleteVal(val);
 			}
-			*(graph.oldFlowIsFeasible) = true;
+			graph.oldFlowIsFeasible = true;
 
 			return graph.checkFlowCost();
 		}

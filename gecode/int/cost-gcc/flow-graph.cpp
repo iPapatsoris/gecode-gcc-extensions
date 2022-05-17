@@ -134,7 +134,7 @@ unsigned long countNi = 0;
 						//edge->upperBound = 0;
 						bool upperBoundViolation = false;
 						if (flow.getValVarFlow(valueNode, xIndex) == 1) {
-							*oldFlowIsFeasible = false;
+							oldFlowIsFeasible = false;
 							upperBoundViolation = true;
 							//*flowCost -= edge->cost;
 							//edge->flow -= 1;
@@ -146,6 +146,7 @@ unsigned long countNi = 0;
 							prunedValues.push_back(value);
 							//deleteResidualEdge()
 						}
+//						cout << "ADDING " << valueNode << "->" << xIndex << endl;
 						updatedEdges.push_back(EdgeUpdate(valueNode, xIndex, false, 
 																					    upperBoundViolation, true));
 						//prunedValues.push_back(value);
@@ -155,9 +156,10 @@ unsigned long countNi = 0;
 						//edge->lowerBound = 1;
 						bool lowerBoundViolation = false;
 						if (flow.getValVarFlow(valueNode, xIndex) == 0) {
-							*oldFlowIsFeasible = false;
+							oldFlowIsFeasible = false;
 							lowerBoundViolation = true;
 						}
+//						cout << "ADDING " << valueNode << "->" << xIndex << endl;
 						updatedEdges.push_back(EdgeUpdate(valueNode, xIndex, 
 																						  lowerBoundViolation, false, 
 																							false));
@@ -169,12 +171,11 @@ unsigned long countNi = 0;
 			//	cout << "Deleting val " << val << " (node )" << (*valToNode)[val] << " from varToVals " << xIndex << endl;
 				values.deleteVal(val);
 			}
-/*			if (countNi++ >1127200) {
-			cout << "Updated Edges:\n";
+/*			cout << "Updated Edges:\n";
 			for (auto& e: updatedEdges) {
 				cout << e.src << "->" << e.dest << " " << e.lowerBoundViolation << " " << e.upperBoundViolation << " " << e.deleted << endl;
-			}
 			}*/
+			
 			#ifndef NDEBUG
 				//assertVarToValsInSync(x, xIndex);
 			#endif

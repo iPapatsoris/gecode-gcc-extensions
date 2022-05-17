@@ -118,14 +118,15 @@ public:
     return sizeof(*this);
   }
 	virtual ExecStatus propagate(Space& home, const ModEventDelta&) {
+//		cout << "Propagate" << endl;
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, usingLocalHandle ? &li : NULL)) {
 /*			if (failCount >= 1127202) {
 				graph->print();
 				graph->printResidual();
-			}
+			} */
 			cout << "failed! #" << failCount++ << endl;
-*/			return ES_FAILED;
+			return ES_FAILED;
 		}
 		//graphAlgorithms.updateDeletedEdges(updatedEdges);
 		updatedEdges.clear();
@@ -138,8 +139,14 @@ public:
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
-//		cout << "In advisor:\n"; 
+	//	cout << "In advisor:\n"; 
 		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
+		if (graph->getOldFlowIsFeasible()) {
+		//	cout << "it's feasible" << endl;
+			updatedEdges.clear();
+		} else {
+	//		cout << "it's not feasible" << endl;
+		}
 		//graph->print();
 		return graph->getOldFlowIsFeasible() ? ES_FIX : ES_NOFIX;
 	}

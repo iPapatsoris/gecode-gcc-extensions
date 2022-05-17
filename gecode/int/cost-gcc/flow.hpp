@@ -29,21 +29,25 @@ class Flow {
 			assert(res->second.find(var) == res->second.end());
 			res->second.insert(var);
 		}
-		if (firstFlow) {
-			assert(varTFlow->find(var) == varTFlow->end());
-			varTFlow->insert(var);
-		}
 	}
 
 	void removeValVarFlow(unsigned int val, unsigned int var) {
 		auto res = valVarFlow.find(val);
 		assert(res != valVarFlow.end());
 		int erased = res->second.erase(var);
+		assert(erased);	
+	}
+
+	void addVarTFlow(unsigned var) {
+		assert(firstFlow);
+		assert(varTFlow->find(var) == varTFlow->end());
+		varTFlow->insert(var);
+	}
+
+	void removeVarTFlow(unsigned var) {
+		assert(firstFlow);
+		int erased = varTFlow->erase(var);
 		assert(erased);
-		if (firstFlow) {
-			erased = varTFlow->erase(var);
-			assert(erased);	
-		}	
 	}
 
 	unsigned int getValVarFlow(unsigned int val, unsigned int var) const {
