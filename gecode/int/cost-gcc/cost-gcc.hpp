@@ -75,10 +75,13 @@ public:
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 		//graph->print();
 
+		// graphAlgorithms.debugPath();
+		// exit(1);
+
 		if (!graphAlgorithms.findMinCostFlow(li)) {
 			return ES_FAILED;
 		}
-
+		graph->addTResidualEdges();
 		vector<EdgeUpdate> updatedEdges;
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges) != ES_OK) {
 				return ES_FAILED;
@@ -124,7 +127,7 @@ public:
 				graph->print();
 				graph->printResidual();
 			}*/
-//			cout << "failed! #" << failCount++ << endl;
+			//  cout << "failed! #" << failCount++ << endl;
 			return ES_FAILED;
 		}
 		//graphAlgorithms.updateDeletedEdges(updatedEdges);
@@ -138,10 +141,12 @@ public:
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
-//		cout << "In advisor:\n"; 
-		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
+		// cout << "In advisor" << endl;
+		bool isFeasible = graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
+		// cout << "Out of advisor " << graph->getOldFlowIsFeasible() << endl;
 		//graph->print();
-		return graph->getOldFlowIsFeasible() ? ES_FIX : ES_NOFIX;
+		// cout << "is feasible: " << isFeasible << endl; // graph->getOldFlowIsFeasible() << endl;
+		return isFeasible ? ES_FIX : ES_NOFIX;
 	}
 
 private:

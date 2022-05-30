@@ -35,14 +35,9 @@ struct MapToSet {
 struct EdgeUpdate {
 	unsigned int src;
 	unsigned int dest;
-	bool upperBoundViolation;
-	bool lowerBoundViolation;
-	bool deleted;
 
-	EdgeUpdate(unsigned int src, unsigned int dest, bool lowerBoundViolation, 
-					   bool upperBoundViolation, bool deleted) : src(src), dest(dest), 
-						 deleted(deleted), upperBoundViolation(upperBoundViolation), 
-						 lowerBoundViolation(lowerBoundViolation) {}
+	EdgeUpdate(unsigned int src, unsigned int dest) : src(src), dest(dest)
+						{}
 };
 
 /**
@@ -81,6 +76,8 @@ class FlowGraph {
 		// comparison is only done among those.
 		// Should be kept up to date with assignments and pruning.
 		vector<BtVector> varToVals;
+
+	//	vector<int> *dist;
 
 		// Total flow through the graph, starts at 0. Is calculated at once using
 		// appropriate function, not gradually
@@ -225,7 +222,7 @@ class FlowGraph {
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				for (auto& edge : (*nodeList[i].residualEdgeList)) {
 					edge.reducedCost = distances[i] + edge.cost - distances[edge.destNode];
-					//cout << i << "->" << edge.destNode << " " << edge.reducedCost << " = " << distances[i] << " + " << edge.cost << " - " << distances[edge.destNode] << endl;
+					// cout << i << "->" << edge.destNode << " " << edge.reducedCost << " = " << distances[i] << " + " << edge.cost << " - " << distances[edge.destNode] << endl;
 				}
 			}
 		}
@@ -262,7 +259,7 @@ class FlowGraph {
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		void updatePrunedValues(Int::IntView x, unsigned int xIndex, 
+		bool updatePrunedValues(Int::IntView x, unsigned int xIndex, 
 													  vector<EdgeUpdate>& updatedEdges); 
 
 		void print() const;

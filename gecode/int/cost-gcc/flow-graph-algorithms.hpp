@@ -8,6 +8,7 @@
 #include <queue>
 #include <stack>
 #include <climits>
+#include <chrono>
 #include "flow-graph.hpp"
 
 #define INF_INT INT_MAX
@@ -16,10 +17,461 @@
 #define NONE_UINT INF_UINT - 1
 
 using namespace std;
-
+int debugCounter = 0;
+bool neti = false;
 class FlowGraphAlgorithms {
+
+	public: 
+
+	void debugPath() {
+			unsigned int n;
+
+			n = 0;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 1;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 2;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 3;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 4;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 5;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 6;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 7;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 8;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 9;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 10;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 11;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 12;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 13;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 14;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 15;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 16;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 17;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 18;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 19;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(26, 1, 1, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 20;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(5, 0, 1, 4));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(13, 0, 1, 4));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(1, 0, 1, 3));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(0, 0, 1, 10));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(15, 0, 1, 7));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(17, 0, 1, 5));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(19, 0, 1, 6));
+			graph.nodeList[n].edgeList->back().flow = 0;
+
+graph.nodeList[n].edgeList->push_back(NormalEdge(14, 0, 1, 4));
+			graph.nodeList[n].edgeList->back().flow = 0;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 21;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(18, 0, 1, 8));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(19, 0, 1, 7));
+			graph.nodeList[n].edgeList->back().flow = 0;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(14, 0, 1, 9));
+			graph.nodeList[n].edgeList->back().flow = 0;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 22;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(10, 0, 1, 5));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(16, 0, 1, 7));
+			graph.nodeList[n].edgeList->back().flow = 1;
+			
+			graph.nodeList[n].edgeList->push_back(NormalEdge(9, 0, 1, 7));
+			graph.nodeList[n].edgeList->back().flow = 1;
+			
+			graph.nodeList[n].edgeList->push_back(NormalEdge(12, 0, 1, 8));
+			graph.nodeList[n].edgeList->back().flow = 1;
+			
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 23;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(7, 0, 1, 7));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(19, 0, 1, 4));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(14, 0, 1, 7));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 24;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(8, 0, 1, 9));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(6, 0, 1, 6));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(4, 0, 1, 5));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+graph.nodeList[n].edgeList->push_back(NormalEdge(3, 0, 1, 2));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(2, 0, 1, 2));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(19, 0, 1, 6));
+			graph.nodeList[n].edgeList->back().flow = 0;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(14, 0, 1, 2));
+			graph.nodeList[n].edgeList->back().flow = 0;
+
+						graph.nodeList[n].edgeList->push_back(NormalEdge(11, 0, 1, 8));
+			graph.nodeList[n].edgeList->back().flow = 0;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 25;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(20, 2, 12, 0));
+			graph.nodeList[n].edgeList->back().flow = 6;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(21, 1, 11, 0));
+			graph.nodeList[n].edgeList->back().flow = 1;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(22, 4, 10, 0));
+			graph.nodeList[n].edgeList->back().flow = 4;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(23, 3, 10, 0));
+			graph.nodeList[n].edgeList->back().flow = 4;
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(24, 0, 11, 0));
+			graph.nodeList[n].edgeList->back().flow = 5;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			n = 26;
+			graph.nodeList[n].edgeList->clear();
+			graph.nodeList[n].edgeToPos->clear();
+
+			graph.nodeList[n].edgeList->push_back(NormalEdge(25, 20, 20, 0));
+			graph.nodeList[n].edgeList->back().flow = 20;
+
+			graph.nodeList[n].edgeListSize = graph.nodeList[n].edgeList->size();
+			for (unsigned int i = 0; i < graph.nodeList[n].edgeListSize; i++) {
+				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
+			}
+
+			buildResidualGraph();
+			graph.print();
+			graph.printResidual();
+
+			vector<int> distances;
+			vector<unsigned int> prev, cycle;
+			bool isCycle = false;
+				using std::chrono::high_resolution_clock;
+    using std::chrono::duration_cast;
+    using std::chrono::duration;
+    using std::chrono::milliseconds;
+		//exit(1);
+		//unsigned int src = 11;
+		//unsigned int dest = 21;
+
+    auto t1 = high_resolution_clock::now();
+			//bellmanFordShortestPathsCycles(graph.tNode(), prev, distances, cycle, &isCycle, NULL);
+			 // bellmanFordShortestPathsCycles(src, prev, distances, cycle, &isCycle, &dest);
+			auto t2 = high_resolution_clock::now();
+
+    /* Getting number of milliseconds as an integer. */
+    auto ms_int = duration_cast<milliseconds>(t2 - t1);
+
+    /* Getting number of milliseconds as a double. */
+    duration<double, std::milli> ms_double = t2 - t1;
+
+    std::cout << ms_int.count() << "ms\n";
+
+		if (cycle.size()) {
+//						cout << "after cycle FOUND" << endl;
+						isCycle = true;
+						for (auto node: cycle) {
+							cout << node << "->";
+						}
+						cout << endl;
+		}
+
+		}
+
+
+
 	private:
 		FlowGraph& graph;
+		bool isMinCost;
 
 		// Add / update / delete residual edges related to the original graph edge 
 		// source->dest. Updates / deletions are needed because in each iteration,
@@ -62,13 +514,13 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-		void buildResidualGraph() {
+void buildResidualGraph() {
 			//cout << "Building res" << endl;
-			for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
+			for (unsigned int i = 0; i < graph.tNode(); i++) {
 				graph.nodeList[i].residualEdgeList->clear();
 			}
 
-			for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
+			for (unsigned int i = graph.totalVarNodes; i < graph.tNode(); i++) {
 				auto& node = graph.nodeList[i];
 				for (unsigned int j = 0; j < node.edgeListSize; j++) {
 					auto& edge = (*node.edgeList)[j];
@@ -83,6 +535,8 @@ class FlowGraphAlgorithms {
 		//	graph.printResidual();
 		}
 
+		
+
 		// Bellman-Ford algorithm for shortest paths with negative costs.
 		// If dest is not NULL, ignore any direct source->dest edge.
 		// This is needed when searching for shortest path to a specific 
@@ -94,8 +548,16 @@ class FlowGraphAlgorithms {
 			dist.assign(graph.nodeList.size(), INF_INT);
 			dist[source] = 0;
 			bool debug = false;
+			// if (dest == NULL) {
+			// 	debugCounter++;
+			// 	if (debugCounter == 4569161 || debugCounter == 4569171 || debugCounter == 4569439 || debugCounter == 4569449) {
+			// 		graph.print();
+			// 		graph.printResidual();
+			// 		return;
+			// 	}
+			// } //else 
+				//cout << "look for " << source << "->" << *dest << endl;
 /*			if (source == 21 && *dest == 5) {
-				cout << "look for " << source << "->" << *dest << endl;
 				graph.print();
 				graph.printResidual();
 				//exit(1);
@@ -119,6 +581,7 @@ class FlowGraphAlgorithms {
 							prev[edge.destNode] = node;
 							foundUpdate = true;
 							updatedNodesNew->push_back(edge.destNode);
+					//		cout << "dist[" << edge.destNode << "] = " << dist[node] << "+" << edge.cost << endl;
 						}
 					}
 				}
@@ -129,7 +592,8 @@ class FlowGraphAlgorithms {
 				swap(updatedNodesNew, updatedNodesOld);
 				updatedNodesNew->clear();
 			}
-			//cout << "done " << endl;
+			if (dest == NULL)
+				;// cout << "done " << endl;
 		}
 
 		void traceCycle(const vector<unsigned int>& prev, unsigned int node, vector<unsigned int>& cycle) const {
@@ -153,6 +617,11 @@ class FlowGraphAlgorithms {
 																	vector<unsigned int>& prev, vector<int>& dist,
 																	vector<unsigned int>& cycle, bool *isCycle,
 																	unsigned int* dest = NULL) const {
+			// if (dest != NULL)
+			// cout << "look for " << source << "->" << *dest << endl;
+			// else 
+			// cout << "look for " << source << "->" << "all" << endl;
+				
 			prev.assign(graph.nodeList.size(), NONE_UINT);
 			dist.assign(graph.nodeList.size(), INF_INT);
 			dist[source] = 0;
@@ -262,7 +731,7 @@ class FlowGraphAlgorithms {
 				if (edge != NULL) {
 					// Path residual edge is a forward edge in the original graph
 					edge->flow += minUpperBound;
-					//cout << "Flow of " << prev << " " << *it << " now " << edge->flow << endl;
+// if (neti)					cout << "Flow of " << prev << " " << *it << " now " << edge->flow << endl;
 					*graph.flowCost += edge->cost;
 					if (edge->destNode < graph.totalVarNodes && li != NULL) {
 						(*li)[edge->destNode] = (*graph.nodeToVal)[prev];
@@ -272,7 +741,7 @@ class FlowGraphAlgorithms {
 					// Path residual edge is a backward edge in the original graph
 					edge = graph.getEdge(*it, prev);
 					edge->flow -= minUpperBound;
-					//cout << "Flow of " << *it << " " << prev << " now " << edge->flow << endl;
+	// if (neti)				cout << "Flow of " << *it << " " << prev << " now " << edge->flow << endl;
 					if (!edge->flow) {
 						*graph.flowCost -= edge->cost;
 					}
@@ -290,7 +759,7 @@ class FlowGraphAlgorithms {
 				if (edge != NULL) {
 					// Path residual edge is a forward edge in the original graph
 					edge->flow += minUpperBound;
-//					cout << "Flow of " << prev << " " << cycle[i] << " now " << edge->flow << endl;
+if (neti)					cout << "Flow of " << prev << " " << cycle[i] << " now " << edge->flow << endl;
 					*graph.flowCost += edge->cost;
 					if (edge->destNode < graph.totalVarNodes && li != NULL) {
 						(*li)[edge->destNode] = (*graph.nodeToVal)[prev];
@@ -300,7 +769,7 @@ class FlowGraphAlgorithms {
 					// Path residual edge is a backward edge in the original graph
 					edge = graph.getEdge(cycle[i], prev);
 					edge->flow -= minUpperBound;
-//					cout << "Flow of " << cycle[i] << " " << prev << " now " << edge->flow << endl;
+if (neti)					cout << "Flow of " << cycle[i] << " " << prev << " now " << edge->flow << endl;
 					if (!edge->flow) {
 						*graph.flowCost -= edge->cost;
 					}
@@ -313,15 +782,15 @@ class FlowGraphAlgorithms {
 		unsigned int findMinUpperBoundCycle(const vector<unsigned int>& cycle) const {
 			unsigned int prev = cycle[0];
 			unsigned int minUpperBound = INF_UINT;
-//			cout << "SP cycle: ";
+if (neti)			cout << "SP cycle: ";
 			for(unsigned int i = 1; i < cycle.size(); i++) {
 				// Bellman returns the path in reverse, so traverse it in reverse
-//				cout << prev << "->" << cycle[i]; 
+if (neti)				cout << prev << "->" << cycle[i]; 
 				ResidualEdge *edge = graph.getResidualEdge(prev, cycle[i]);
 				minUpperBound = min(minUpperBound, edge->upperBound);
 				prev = cycle[i];
 			}
-//			cout << endl;
+if (neti)			cout << endl;
 			return minUpperBound;
 		}
 		bool debug = false;
@@ -329,10 +798,14 @@ class FlowGraphAlgorithms {
 			// Find min upper bound along shortest path
 			unsigned int prev = violation.first;
 			unsigned int minUpperBound = INF_UINT;
-/*			cout << "SP: ";
+			// cout << "Violation " << prev << " " << violation.second << endl;
+			if (neti) {
+			cout << "SP: ";
 			for (auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
 				cout << *it << "->" << flush;
-			}*/
+			}
+			cout << endl;
+			}
 			*flowCost = *graph.flowCost;
 			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
 				// Bellman returns the path in reverse, so traverse it in reverse
@@ -344,6 +817,13 @@ class FlowGraphAlgorithms {
 						cout << "cant find res edge " << prev << "->" << *it << endl;
 					}
 				}*/
+				if (edge == NULL) {
+					cout << "can't find " << prev << "->" << *it << endl;
+					graph.print();
+					graph.printResidual();
+					assert(false); 
+					exit(1);
+				}
 				minUpperBound = min(minUpperBound, edge->upperBound);
 				NormalEdge *e = graph.getEdge(prev, *it);
 				if (e != NULL) {
@@ -363,7 +843,7 @@ class FlowGraphAlgorithms {
 			vector<unsigned int> shortestPath;
 			vector<int> dist;
 			int pathCost; 
-//			cout << "Violation " << violation.first << "->" << violation.second << endl;
+			//  cout << "Violation " << violation.first << "->" << violation.second << endl;
 			//graph.print();
 			//graph.printResidual();
 			if (!findShortestPathNegativeCosts(violation.second, violation.first, 
@@ -375,6 +855,10 @@ class FlowGraphAlgorithms {
 			if (isCycle != NULL && *isCycle) {
 				unsigned int minUpperBound = findMinUpperBoundCycle(shortestPath);
 				sendFlowCycle(shortestPath, minUpperBound, li);
+/*					graph.dist->clear();
+			for (auto d: dist) {
+				graph.dist->push_back(d);
+			}*/
 				return true;		
 			}
 
@@ -387,6 +871,13 @@ class FlowGraphAlgorithms {
 				return false;
 			}
 			sendFlow(violation, shortestPath, minUpperBound, li);
+			
+			// TODO: optimize
+/*			graph.dist->clear();
+			for (auto d: dist) {
+				graph.dist->push_back(d);
+			}*/
+
 			return true;
 		}
 
@@ -410,9 +901,22 @@ class FlowGraphAlgorithms {
 					}
 					cout << endl;*/
 					return true;
-				}
-
+				} 
 			}
+
+// if (debugCounter == 4569161 || debugCounter == 4569171 || debugCounter == 4569439 || debugCounter == 4569449) {
+// 					vector<unsigned int> prev2, path2;
+// 					vector<int> dist2;
+// 					bool isCycle2 = false;
+// 					cout << "check for cycle bug" << endl;
+// 					bellmanFordShortestPathsCycles(graph.tNode(), prev2, dist2, path2, &isCycle2, NULL);
+// 					if (path2.size()) {
+// 						cout << "found cycle from T but not from normal path lol" << endl;
+// 						exit(0);
+// 					}
+// 					exit(1);
+// 				}
+
 			// No path exists
 			if (dist[dest] == INF_INT) {
 				return false;
@@ -579,6 +1083,7 @@ class FlowGraphAlgorithms {
 				}
 			}
 			*graph.oldFlowIsFeasible = true;
+			isMinCost = true;
 			//graph.calculateFlowCost(li);
 			return graph.checkFlowCost();
 		}
@@ -589,29 +1094,42 @@ class FlowGraphAlgorithms {
 		// - If the old flow is not still feasible, find a new one, using the 
 		//   incremental algorithm from the publication
 		bool updateMinCostFlow(vector<EdgeUpdate>& updatedEdges, LI* li) {
-		//	cout << "Propagate: update min cost flow" << endl;
+			  //  cout << "Propagate: update min cost flow" << endl;
 		//	graph.print();
 			buildResidualGraph();
-			if (*graph.oldFlowIsFeasible) {
-				return true;
+			// if (*graph.oldFlowIsFeasible) {
+			// 	isMinCost = false;
+			// 	cout << "is already feasible" << endl;
+			// 	return true;
+			// }
+			assert(updatedEdges.size());
+			if (!updatedEdges.size()) {
+				cout << "problem" << endl;
+				graph.print();
+				exit(1);
 			}
+			// graph.print();
 			for (auto& e: updatedEdges) {
 				// Among the edges that changed, look for one violating bounds
 				// Assume violating lower bound initially
-	//			cout << e.src << "->" << e.dest << e.lowerBoundViolation << e.upperBoundViolation << e.deleted << endl;
-				unsigned int src = e.src;
-				unsigned int dest = e.dest;
-				//if (!e.lowerBoundViolation and !e.upperBoundViolation) {
-				if (e.lowerBoundViolation || !e.upperBoundViolation) {
-					// No violation
+				  // cout << e.src << "->" << e.dest << endl;
+				//  if (e.src == 23 && e.dest == 11) {
+				// 	 neti = true;
+				//  } else {
+				// 	 neti = false;
+				//  }
+				auto res = graph.getEdge(e.src, e.dest);
+				if (res == NULL || !res->flow) {
+					//  cout << "double entry" << endl;
 					continue;
 				}
-				if (e.upperBoundViolation) {
+				unsigned int src = e.src;
+				unsigned int dest = e.dest;
 				// Violating upper bound, swap direction of initial violating edge
 					std::swap(src, dest);
 					//src = e.dest;
 					//dest = graph.tNode();
-				}
+				
 				bool isCycle = false;
 				if (!minCostFlowIteration({src, dest}, &isCycle, li)) {
 					return false;
@@ -619,21 +1137,27 @@ class FlowGraphAlgorithms {
 				if (isCycle) {
 					while (graph.getEdge(e.src, e.dest)->flow) {
 						isCycle = false;
-//						cout << "cycle that didn't fix violation, fixing now" << endl;
+						if (neti) cout << "cycle that didn't fix violation, fixing now" << endl;
 						debug = true;
 						if (!minCostFlowIteration({src, dest}, &isCycle, li)) {
 							return false;
 						}
 					}
 				}
+				
+				graph.deleteEdge(e.src, e.dest);
+				graph.deleteResidualEdge(e.src, e.dest);
+				int val = (*graph.nodeToVal)[e.src];
+				graph.varToVals[e.dest].deleteVal(val);
+			
 				while (isCycle) {
 					isCycle = false;
-//					cout << "after cycle check" << endl;
+					if (neti) cout << "still cycle" << endl;
 					vector<unsigned int> prev, path;
 					vector<int> dist;
 					bellmanFordShortestPathsCycles(graph.sNode(), prev, dist, path, &isCycle, NULL);
 					if (path.size()) {
-//						cout << "after cycle FOUND" << endl;
+if (neti)						cout << "after cycle FOUND" << endl;
 						isCycle = true;
 /*						for (auto node: path) {
 							cout << node << "->";
@@ -647,13 +1171,45 @@ class FlowGraphAlgorithms {
 					
 					// TODO: alg that just send flow to cycle without violation at the same time
 				}
-				graph.deleteEdge(e.src, e.dest);
-				graph.deleteResidualEdge(e.src, e.dest);
-				int val = (*graph.nodeToVal)[e.src];
-				graph.varToVals[e.dest].deleteVal(val);
+			
+			}
+			if (!updatedEdges.size()) {
+				cout << "this shouldn't happen" << endl;
+				assert(false);
+				exit(1);	
+				bool isCycle = false;
+				do {
+					isCycle = false;
+					vector<unsigned int> prev, path;
+					vector<int> dist;
+					bellmanFordShortestPathsCycles(graph.sNode(), prev, dist, path, &isCycle, NULL);
+					if (path.size()) {
+						isCycle = true;
+/*						for (auto node: path) {
+							cout << node << "->";
+						}
+						cout << endl;*/
+						unsigned int minUpperBound = findMinUpperBoundCycle(path);
+						sendFlowCycle(path, minUpperBound, li);
+						//assert(false);
+						//exit(1);
+					}
+				}	while (isCycle);				
 			}
 			*(graph.oldFlowIsFeasible) = true;
+			isMinCost = true;
+			// cout << isMinCost << endl;
 
+// 			bool isCycle = false;
+// //					cout << "after cycle check" << endl;
+// 					vector<unsigned int> prev, path;
+// 					vector<int> dist;
+// 					bellmanFordShortestPathsCycles(graph.sNode(), prev, dist, path, &isCycle, NULL);
+// 					if (path.size()) {
+// 						cout << "bug found" << endl;
+// 					}
+// 			graph.printResidual();
+			// cout << "Update end" << endl;
 			return graph.checkFlowCost();
 		}
 	
@@ -667,10 +1223,51 @@ class FlowGraphAlgorithms {
 
 		ExecStatus performArcConsistency(Space& home, ViewArray<Int::IntView>& vars, 
 															       vector<EdgeUpdate>& updatedEdges) {
-			graph.addTResidualEdges();
+		//	graph.addTResidualEdges(); // opt?
 			vector<int> distances;
 			vector<unsigned int> prev;
-			bellmanFordShortestPaths(graph.tNode(), prev, distances, NULL);
+		//	cout << "in arc" << endl;
+			if (isMinCost) {
+		// 		using std::chrono::high_resolution_clock;
+    // using std::chrono::duration_cast;
+    // using std::chrono::duration;
+    // using std::chrono::milliseconds;
+
+    // auto t1 = high_resolution_clock::now();
+				bellmanFordShortestPaths(graph.tNode(), prev, distances, NULL);
+			// auto t2 = high_resolution_clock::now();
+
+    /* Getting number of milliseconds as an integer. */
+    // auto ms_int = duration_cast<milliseconds>(t2 - t1);
+
+    // /* Getting number of milliseconds as a double. */
+    // duration<double, std::milli> ms_double = t2 - t1;
+
+    // std::cout << ms_int.count() << "ms\n";
+			} else {
+				bool isCycle = false;
+				do {
+					isCycle = false;
+					// cout << "after cycle check" << endl;
+					vector<unsigned int> path;
+					bellmanFordShortestPathsCycles(graph.tNode(), prev, distances, path, &isCycle, NULL);
+					// cout << "after cycle done" << endl;
+					if (path.size()) {
+//						cout << "after cycle FOUND" << endl;
+						isCycle = true;
+						for (auto node: path) {
+				//			cout << node << "->";
+						}
+				//		cout << endl;
+						unsigned int minUpperBound = findMinUpperBoundCycle(path);
+						sendFlowCycle(path, minUpperBound, NULL); //li); TODO
+						
+						//assert(false);
+						//exit(1);
+					}
+				} while (isCycle);
+			}
+			
 		  graph.calculateReducedCosts(distances);
 			//graph.printResidual();
  
@@ -773,15 +1370,16 @@ class FlowGraphAlgorithms {
 				assert(actualEdge != NULL);
 				// Push to updatedEdges so we can modify the residual graph accordingly
 				// on the next min cost flow computation
-				updatedEdges.push_back(EdgeUpdate(edge.src, edge.dest, false, false, true));
+	//			updatedEdges.push_back(EdgeUpdate(edge.src, edge.dest, false, false, true));
 				// Prune
 				GECODE_ME_CHECK(vars[edge.dest].nq(home, edge.val));
+	//			cout << "Prunning " << edge.src << " " << edge.dest << endl;
 				// Also remove from varToVals
-				auto& vals = graph.varToVals[edge.dest];
-				vals.deleteVal(edge.val);
+	//			auto& vals = graph.varToVals[edge.dest];
+	//			vals.deleteVal(edge.val);
 				// Update upper bound
-				graph.deleteEdge(edge.src, edge.dest);
-				assert(!actualEdge->flow);
+	//			assert(!actualEdge->flow);
+	//			graph.deleteEdge(edge.src, edge.dest);
 				/*if (vars[edge.dest].assigned()) {
 					// If a variable got assigned by pruning, set corresponding edge
 					// lower bound to 1
@@ -791,8 +1389,9 @@ class FlowGraphAlgorithms {
 					graph.getEdge(valNode, edge.dest)->lowerBound = 1;
 				}*/
 			}
+			// cout << "done prunning" << endl;
 
-    	graph.removeTResidualEdges();
+   // 	graph.removeTResidualEdges();
 			return ES_OK;
 		}
 
