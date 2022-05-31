@@ -1108,6 +1108,28 @@ if (neti)			cout << endl;
 				graph.print();
 				exit(1);
 			}
+
+			bool isCycle;
+			do {
+					isCycle = false;
+					if (neti) cout << "still cycle" << endl;
+					vector<unsigned int> prev, path;
+					vector<int> dist;
+					bellmanFordShortestPathsCycles(graph.tNode(), prev, dist, path, &isCycle, NULL);
+					if (path.size()) {
+if (neti)						cout << "after cycle FOUND" << endl;
+						isCycle = true;
+/*						for (auto node: path) {
+							cout << node << "->";
+						}
+						cout << endl;*/
+						unsigned int minUpperBound = findMinUpperBoundCycle(path);
+						sendFlowCycle(path, minUpperBound, li);
+						//assert(false);
+						//exit(1);
+					}
+				} while (isCycle);
+
 			// graph.print();
 			for (auto& e: updatedEdges) {
 				// Among the edges that changed, look for one violating bounds
@@ -1119,10 +1141,13 @@ if (neti)			cout << endl;
 				// 	 neti = false;
 				//  }
 				auto res = graph.getEdge(e.src, e.dest);
-				if (res == NULL || !res->flow) {
+				if (res == NULL) {
 					//  cout << "double entry" << endl;
 					continue;
 				}
+
+				if (res->flow) {
+
 				unsigned int src = e.src;
 				unsigned int dest = e.dest;
 				// Violating upper bound, swap direction of initial violating edge
@@ -1131,10 +1156,15 @@ if (neti)			cout << endl;
 					//dest = graph.tNode();
 				
 				bool isCycle = false;
-				if (!minCostFlowIteration({src, dest}, &isCycle, li)) {
+				// graph.printResidual();
+				if (!minCostFlowIteration({src, dest}, NULL, li)) {
 					return false;
 				}
+				// graph.printResidual();
 				if (isCycle) {
+					assert(false);
+					cout << "i didn't expect a cycle here" << endl;
+					exit(1);
 					while (graph.getEdge(e.src, e.dest)->flow) {
 						isCycle = false;
 						if (neti) cout << "cycle that didn't fix violation, fixing now" << endl;
@@ -1143,6 +1173,8 @@ if (neti)			cout << endl;
 							return false;
 						}
 					}
+				}
+
 				}
 				
 				graph.deleteEdge(e.src, e.dest);
@@ -1227,6 +1259,7 @@ if (neti)						cout << "after cycle FOUND" << endl;
 			vector<int> distances;
 			vector<unsigned int> prev;
 		//	cout << "in arc" << endl;
+		isMinCost = true;
 			if (isMinCost) {
 		// 		using std::chrono::high_resolution_clock;
     // using std::chrono::duration_cast;
@@ -1253,12 +1286,12 @@ if (neti)						cout << "after cycle FOUND" << endl;
 					bellmanFordShortestPathsCycles(graph.tNode(), prev, distances, path, &isCycle, NULL);
 					// cout << "after cycle done" << endl;
 					if (path.size()) {
-//						cout << "after cycle FOUND" << endl;
+						// cout << "after cycle FOUND ARC" << endl;
 						isCycle = true;
-						for (auto node: path) {
-				//			cout << node << "->";
-						}
-				//		cout << endl;
+						// for (auto node: path) {
+							// cout << node << "->";
+						// }
+						// cout << endl;
 						unsigned int minUpperBound = findMinUpperBoundCycle(path);
 						sendFlowCycle(path, minUpperBound, NULL); //li); TODO
 						
