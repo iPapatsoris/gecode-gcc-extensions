@@ -113,11 +113,12 @@ unsigned long countNi = 0;
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		void FlowGraph::updatePrunedValues(Int::IntView x, unsigned int xIndex, 
+		bool FlowGraph::updatePrunedValues(Int::IntView x, unsigned int xIndex, 
 													  vector<EdgeUpdate>& updatedEdges) {
 			// Hold iterators to the values that we end up prunning, so we can also
 			// remove them from valToVars
 			vector<int> prunedValues; 
+			bool isFeasible = true;
 			// Iterate all values for which there is an edge to X
 			auto& values = varToVals[xIndex];
 			for (unsigned int i = 0; i < values.listSize; i++) {
@@ -132,37 +133,35 @@ unsigned long countNi = 0;
 					if (!x.in(value)) {
 						// Value has been pruned from variable X's domain, update graph
 						//edge->upperBound = 0;
-						bool upperBoundViolation = false;
 						if (flow.getValVarFlow(valueNode, xIndex) == 1) {
 							oldFlowIsFeasible = false;
-							upperBoundViolation = true;
-							//*flowCost -= edge->cost;
+							isFeasible = false;
+							updatedEdges.push_back(EdgeUpdate(valueNode, xIndex));
+//  cout << "upper bound violation " << valueNode << " " << xIndex << endl;							//*flowCost -= edge->cost;
 							//edge->flow -= 1;
 							//getEdge(xIndex, tNode())->flow -= 1;
 							//getEdge(tNode(), sNode())->flow -= 1;
 							//getEdge(sNode(), valueNode)->flow -= 1;
 						} else {
+														//  cout << "deleting " << valueNode << " " << xIndex << endl;
+
 							deleteEdge(valueNode, xIndex);
 							prunedValues.push_back(value);
 							//deleteResidualEdge()
 						}
 //						cout << "ADDING " << valueNode << "->" << xIndex << endl;
-						updatedEdges.push_back(EdgeUpdate(valueNode, xIndex, false, 
-																					    upperBoundViolation, true));
 						//prunedValues.push_back(value);
 					}
 					if (x.assigned() && x.val() == value) {
 						// Variable has been assigned with a value, update graph
 						//edge->lowerBound = 1;
-						bool lowerBoundViolation = false;
 						if (flow.getValVarFlow(valueNode, xIndex) == 0) {
 							oldFlowIsFeasible = false;
-							lowerBoundViolation = true;
+							isFeasible = false;
+														//  cout << "lower bound violation " << valueNode << " " << xIndex << endl;
+
 						}
 //						cout << "ADDING " << valueNode << "->" << xIndex << endl;
-						updatedEdges.push_back(EdgeUpdate(valueNode, xIndex, 
-																						  lowerBoundViolation, false, 
-																							false));
 					}	
 				}
 			}
@@ -179,6 +178,7 @@ unsigned long countNi = 0;
 			#ifndef NDEBUG
 				//assertVarToValsInSync(x, xIndex);
 			#endif
+			return isFeasible;
 		}
 
 // Iterate through each edge that has flow, to find its total cost

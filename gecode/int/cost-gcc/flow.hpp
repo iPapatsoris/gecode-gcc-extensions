@@ -93,6 +93,10 @@ class Flow {
 	void setFirstFlow(bool flag) {
 		firstFlow = flag;
 	}
+
+	bool isFirstFlow() const {
+		return firstFlow;
+	}
 };
 
 #endif

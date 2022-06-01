@@ -36,14 +36,8 @@ struct MapToSet {
 struct EdgeUpdate {
 	unsigned int src;
 	unsigned int dest;
-	bool upperBoundViolation;
-	bool lowerBoundViolation;
-	bool deleted;
 
-	EdgeUpdate(unsigned int src, unsigned int dest, bool lowerBoundViolation, 
-					   bool upperBoundViolation, bool deleted) : src(src), dest(dest), 
-						 deleted(deleted), upperBoundViolation(upperBoundViolation), 
-						 lowerBoundViolation(lowerBoundViolation) {}
+	EdgeUpdate(unsigned int src, unsigned int dest) : src(src), dest(dest) {}
 };
 
 /**
@@ -277,7 +271,7 @@ class FlowGraph {
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		void updatePrunedValues(Int::IntView x, unsigned int xIndex, 
+		bool updatePrunedValues(Int::IntView x, unsigned int xIndex, 
 													  vector<EdgeUpdate>& updatedEdges); 
 
 		void print() const;

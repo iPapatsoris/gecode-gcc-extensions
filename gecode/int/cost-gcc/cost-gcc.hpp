@@ -125,7 +125,7 @@ public:
 				graph->print();
 				graph->printResidual();
 			} */
-			cout << "failed! #" << failCount++ << endl;
+			// cout << "failed! #" << failCount++ << endl;
 			return ES_FAILED;
 		}
 		//graphAlgorithms.updateDeletedEdges(updatedEdges);
@@ -139,16 +139,9 @@ public:
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
-	//	cout << "In advisor:\n"; 
-		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
-		if (graph->getOldFlowIsFeasible()) {
-		//	cout << "it's feasible" << endl;
-			updatedEdges.clear();
-		} else {
-	//		cout << "it's not feasible" << endl;
-		}
-		//graph->print();
-		return graph->getOldFlowIsFeasible() ? ES_FIX : ES_NOFIX;
+		// cout << "In advisor:\n"; 
+		bool isFeasible = graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
+		return isFeasible ? ES_FIX : ES_NOFIX;
 	}
 
 private:
