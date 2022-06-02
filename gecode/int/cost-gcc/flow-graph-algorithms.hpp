@@ -1428,6 +1428,110 @@ if (neti)						cout << "after cycle FOUND" << endl;
 			return ES_OK;
 		}
 
+ExecStatus performArcConsistencyBell(Space& home, ViewArray<Int::IntView>& vars, 
+															       vector<EdgeUpdate>& updatedEdges) {
+		//	graph.addTResidualEdges(); // opt?
+			vector<int> distances;
+			vector<unsigned int> prev;
+   // using std::chrono::milliseconds;
+
+    // auto t1 = high_resolution_clock::now();
+				bellmanFordShortestPaths(graph.tNode(), prev, distances, NULL);
+ 
+			// Edge nodes, along with the actual value the src node
+			// corresponds to 
+			struct EdgeWithVal {
+				unsigned int src;
+				unsigned int dest;
+				int val;
+				EdgeWithVal(const unsigned int src, const unsigned int dest, const int val)
+					: src(src), dest(dest), val(val) {}
+			};
+
+			// Hold the edges we decide to prune during arc consistency
+			// We do the actual pruning at the end of this function's iterations
+			vector<EdgeWithVal> edgesToPrune;
+
+			// Gather the targetNodes we want to find shortests paths to from B,
+			// and check early prune conditions to skip finding some
+			auto& sNode = graph.nodeList[graph.sNode()];
+			for (unsigned int i = 0; i < sNode.edgeListSize; i++) {
+				auto& edge = (*sNode.edgeList)[i];
+				if (edge.flow > 0) {
+					vector<unsigned int> yList;
+					unsigned int b = edge.destNode;
+					unordered_set<unsigned int> targetNodes;
+					vector< pair<unsigned int, unsigned int>> ayList;
+					auto& bNode = graph.nodeList[b];
+					for (unsigned int j = 0; j < bNode.edgeListSize; j++) {
+						auto& edgeBY = (*bNode.edgeList)[j];
+						if (edgeBY.flow == 1) {
+							unsigned int y = edgeBY.destNode;
+						//	minDist[y].bestVal = b;
+							for (IntVarValues v(vars[y]); v(); ++v) {
+								unsigned int a = (*graph.valToNode)[v.val()];
+								if (a != b) {
+									targetNodes.insert(a);
+									ayList.push_back({a, y});
+								}
+							}
+						}
+					}
+
+					if (targetNodes.empty()) {
+						continue;
+					}
+					prev.clear();
+					distances.clear();
+					bellmanFordShortestPaths(b, prev, distances, NULL);;
+					
+					for (const auto& ay: ayList) {
+						const auto a = ay.first;
+						const auto y = ay.second;
+						ResidualEdge *residualEdge = graph.getResidualEdge(a, y);
+						unsigned int costAY = residualEdge->cost;
+						unsigned int costYB = graph.getResidualEdge(y, b)->cost;
+						if ((int)distances[a] > (graph.costUpperBound - *(graph.flowCost) 
+																		  - (int)costAY - (int)costYB)) {
+							edgesToPrune.push_back(EdgeWithVal(a, y,
+																							graph.nodeToVal->find(a)->second));
+						} 
+					}
+				}
+			}
+
+
+			// Do the actual pruning and update data structures
+			for (auto& edge: edgesToPrune) {
+				NormalEdge* actualEdge = graph.getEdge(edge.src, edge.dest);
+				assert(actualEdge != NULL);
+				// Push to updatedEdges so we can modify the residual graph accordingly
+				// on the next min cost flow computation
+	//			updatedEdges.push_back(EdgeUpdate(edge.src, edge.dest, false, false, true));
+				// Prune
+				GECODE_ME_CHECK(vars[edge.dest].nq(home, edge.val));
+	//			cout << "Prunning " << edge.src << " " << edge.dest << endl;
+				// Also remove from varToVals
+	//			auto& vals = graph.varToVals[edge.dest];
+	//			vals.deleteVal(edge.val);
+				// Update upper bound
+	//			assert(!actualEdge->flow);
+	//			graph.deleteEdge(edge.src, edge.dest);
+				/*if (vars[edge.dest].assigned()) {
+					// If a variable got assigned by pruning, set corresponding edge
+					// lower bound to 1
+					int assignedVal = vars[edge.dest].val();
+					assert(*vals.begin() == assignedVal);
+					auto valNode = graph.valToNode->find(assignedVal)->second;
+					graph.getEdge(valNode, edge.dest)->lowerBound = 1;
+				}*/
+			}
+			// cout << "done prunning" << endl;
+
+   // 	graph.removeTResidualEdges();
+			return ES_OK;
+		}
+
 };
 
 #endif
