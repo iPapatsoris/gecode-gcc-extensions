@@ -13,6 +13,8 @@
 #include <gecode/int.hh>
 #include <gecode/minimodel.hh>
 
+#define INF_UINT UINT_MAX
+
 using namespace Gecode;
 using namespace std;
 
@@ -78,7 +80,7 @@ class FlowGraph {
 		vector<BtVector> varToVals;
 
 		Flow flow;
-		vector<unsigned int> potentials;
+		vector<int> potentials;
 
 
 		// Total flow through the graph, starts at 0. Is calculated at once using
@@ -244,6 +246,9 @@ class FlowGraph {
 
 		void updatePotentials(const vector<unsigned int>& dist) {
 			for (unsigned int i = 0; i < potentials.size(); i++) {
+				if (dist[i] == INF_UINT) {
+					continue;
+				}
 				potentials[i] -= dist[i];
 			}
 		}
