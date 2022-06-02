@@ -69,10 +69,10 @@ class ResidualEdge : public Edge
 	unsigned int reducedCost;
 
 public:
-	ResidualEdge(unsigned int destNode, unsigned int upperBound, int cost)
-			: Edge(destNode, cost), upperBound(upperBound), reducedCost(0) {}
+	ResidualEdge(unsigned int destNode, unsigned int upperBound, int cost, unsigned int reducedCost)
+			: Edge(destNode, cost), upperBound(upperBound), reducedCost(reducedCost) {}
 	ResidualEdge(const NormalEdge &edge)
-			: Edge(edge.getDestNode(), edge.getCost()), upperBound(edge.getUpperBound()) {}
+			: Edge(edge.getDestNode(), edge.getCost()), upperBound(edge.getUpperBound()), reducedCost(edge.getCost()) {}
 	ResidualEdge() {}
 	void print() const
 	{
@@ -89,14 +89,13 @@ class Node {
 	unordered_map<unsigned int, unsigned int> *edgeToPos;
 	unsigned int edgeListSize;
 
-	vector<ResidualEdge> *residualEdgeList;
+	vector<ResidualEdge> residualEdgeList;
 
 	Node(unsigned int totalEdges) : edgeListSize(totalEdges) {
 		edgeList = new vector<NormalEdge>();
 		edgeToPos = new unordered_map<unsigned int, unsigned int>();
 		edgeToPos->reserve(totalEdges);
 		edgeList->reserve(totalEdges);
-		residualEdgeList = new vector<ResidualEdge>();
 	}
 	friend class FlowGraph;
 	friend class FlowGraphAlgorithms;

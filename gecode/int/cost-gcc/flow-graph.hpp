@@ -78,6 +78,8 @@ class FlowGraph {
 		vector<BtVector> varToVals;
 
 		Flow flow;
+		vector<unsigned int> potentials;
+
 
 		// Total flow through the graph, starts at 0. Is calculated at once using
 		// appropriate function, not gradually
@@ -155,26 +157,22 @@ class FlowGraph {
 			node.edgeListSize -= 1;
 		}
 		
-		void deleteResidualEdge(unsigned int source, unsigned int dest) {
-			bool found = false;
-			auto residual = nodeList[source].residualEdgeList;
+		void deleteEitherResidualEdge(unsigned int source, unsigned int dest) {
+			auto residual = &nodeList[source].residualEdgeList;
 			for (auto it = residual->begin(); it != residual->end(); it++) {
 				if (it->destNode == dest) {
 					residual->erase(it);
-					found = true;
-					break;
+					return;
 				}
 			}
 
-			residual = nodeList[dest].residualEdgeList;
+			residual = &nodeList[dest].residualEdgeList;
 			for (auto it = residual->begin(); it != residual->end(); it++) {
 				if (it->destNode == source) {
 					residual->erase(it);
-					found = true;
-					break;
+					return;
 				}
 			}
-			if (!found)
 				cout << "RESIDUAL EDGE NOT FOUND" << endl;
 		}
 
@@ -183,8 +181,8 @@ class FlowGraph {
 		// node's residual edges list 
 		ResidualEdge* getResidualEdge(unsigned int source, unsigned int dest, 
 																  unsigned int *index = NULL) {
-			for (unsigned int i=0; i < nodeList[source].residualEdgeList->size(); i++) {
-				ResidualEdge& edge = (*nodeList[source].residualEdgeList)[i];
+			for (unsigned int i=0; i < nodeList[source].residualEdgeList.size(); i++) {
+				ResidualEdge& edge = (nodeList[source].residualEdgeList)[i];
 				if (edge.destNode == dest) {
 					if (index != NULL) {
 						*index = i;
@@ -203,7 +201,7 @@ class FlowGraph {
 			if (existingEdge != NULL) {
 				*existingEdge = newEdge;
 			} else {
-				nodeList[source].residualEdgeList->push_back(newEdge);
+				nodeList[source].residualEdgeList.push_back(newEdge);
 			}
 		}
 
@@ -230,12 +228,23 @@ class FlowGraph {
 			return flowCost <= costUpperBound;
 		}
 
-		void calculateReducedCosts(const vector<int>& distances) {
+		void calculateReducedCosts() {
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
-				for (auto& edge : (*nodeList[i].residualEdgeList)) {
-					edge.reducedCost = distances[i] + edge.cost - distances[edge.destNode];
+				for (auto& edge : (nodeList[i].residualEdgeList)) {
+					edge.reducedCost = edge.cost - potentials[i] + potentials[edge.destNode];
 					//cout << i << "->" << edge.destNode << " " << edge.reducedCost << " = " << distances[i] << " + " << edge.cost << " - " << distances[edge.destNode] << endl;
 				}
+			}
+		}
+
+		unsigned int getReducedCost(unsigned int src, unsigned int dest, int cost) {
+			//cout << "cost of " << src << "->" << dest << " " << (*res).cost << endl; 
+			return cost - potentials[src] + potentials[dest];
+		}
+
+		void updatePotentials(const vector<unsigned int>& dist) {
+			for (unsigned int i = 0; i < potentials.size(); i++) {
+				potentials[i] -= dist[i];
 			}
 		}
 
@@ -285,20 +294,14 @@ class FlowGraph {
 
 		void addTResidualEdges() {
 			for (unsigned int var = 0; var < totalVarNodes; var++) {
-				nodeList[tNode()].residualEdgeList->push_back(ResidualEdge(var, 1, 0));
+				nodeList[tNode()].residualEdgeList.push_back(ResidualEdge(var, 1, 0, 0));
 			}
 		}
 
 		void removeTResidualEdges() {
-			nodeList[tNode()].residualEdgeList->clear();
+			nodeList[tNode()].residualEdgeList.clear();
 		}
 
-		void debug() const {
-			if (nodeList[0].residualEdgeList == nodeList[15].residualEdgeList) {
-				cout << "SAME!" << endl;
-				exit(1);
-			}
-		}
 };
 
 #endif

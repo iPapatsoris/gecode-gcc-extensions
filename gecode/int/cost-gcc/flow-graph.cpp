@@ -97,9 +97,10 @@ unsigned long countNi = 0;
 						 back_inserter(*node.residualEdgeList));
 			}*/
 			for (auto &node : nodeList) {
+				potentials.push_back(0);
 				for (unsigned int e = 0; e < node.edgeListSize; e++) {
 					auto& edge = (*node.edgeList)[e];
-					node.residualEdgeList->push_back(ResidualEdge(edge));
+					node.residualEdgeList.push_back(ResidualEdge(edge));
 				}
 			}
 		}
@@ -147,7 +148,7 @@ unsigned long countNi = 0;
 
 							deleteEdge(valueNode, xIndex);
 							prunedValues.push_back(value);
-							//deleteResidualEdge()
+							deleteEitherResidualEdge(valueNode, xIndex);
 						}
 //						cout << "ADDING " << valueNode << "->" << xIndex << endl;
 						//prunedValues.push_back(value);
@@ -215,7 +216,7 @@ unsigned long countNi = 0;
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				auto& node = nodeList[i];
 				//cout << "address " << node.residualEdgeList << endl;
-				for (auto& edge: *node.residualEdgeList) {
+				for (auto& edge: node.residualEdgeList) {
 					//cout << "capacity " << (*node.residualEdgeList) << " ";
 					cout << i << " -> ";
 					edge.print();
