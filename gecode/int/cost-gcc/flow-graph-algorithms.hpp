@@ -53,7 +53,7 @@ class FlowGraphAlgorithms {
 				graph.setOrCreateResidualEdge(residualBackwardsEdgeSearch, dest, 
 																		  ResidualEdge(source, 
 																									 flow - edge.lowerBound, 
-																									 -edge.cost, graph.getReducedCost(source, dest, -edge.cost)));
+																									 -edge.cost, graph.getReducedCost(dest, source, -edge.cost)));
 				//graph.orderGraph.addEdge(dest, source);
 			} else if (residualBackwardsEdgeSearch != NULL) {
 				// Delete backward residual edge that should no longer exist
