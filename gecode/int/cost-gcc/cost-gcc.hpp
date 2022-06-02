@@ -130,8 +130,7 @@ public:
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
-		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
-		return graph->getOldFlowIsFeasible() ? ES_FIX : ES_NOFIX;
+		return graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges) ? ES_FIX : ES_NOFIX;
 	}
 
 private:

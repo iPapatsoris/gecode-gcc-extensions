@@ -72,6 +72,11 @@
 
 			// Create residual graph
 			for (auto &node : nodeList) {
+				potentials.push_back(0);
+				for (unsigned int e = 0; e < node.edgeList.size(); e++) {
+					auto& edge = node.edgeList[e];
+					// node.residualEdgeList.push_back(ResidualEdge(edge));
+				}
 				copy(node.edgeList.begin(), node.edgeList.end(), 
 						 back_inserter(node.residualEdgeList));
 			}
@@ -86,12 +91,13 @@
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		void FlowGraph::updatePrunedValues(Int::IntView x, unsigned int xIndex, 
+		bool FlowGraph::updatePrunedValues(Int::IntView x, unsigned int xIndex, 
 													  vector<EdgeNodes>& updatedEdges) {
 			// Hold iterators to the values that we end up prunning, so we can also
 			// remove them from valToVars
 			vector< unordered_set<int>::iterator > prunedValues; 
 			// Iterate all values for which there is an edge to X
+			bool isFeasible = true;
 			auto& values = varToVals[xIndex];
 			for (auto valueIt = values.begin(); valueIt != values.end(); valueIt++) {
 				auto value = *valueIt;
@@ -104,6 +110,7 @@
 						edge->upperBound = 0;
 						if (edge->flow == 1) {
 							oldFlowIsFeasible = false;
+							isFeasible = false;
 						}
 						updatedEdges.push_back({valueNode, xIndex});
 						prunedValues.push_back(valueIt);
@@ -113,6 +120,7 @@
 						edge->lowerBound = 1;
 						if (edge->flow == 0) {
 							oldFlowIsFeasible = false;
+							isFeasible = false;
 						}
 						updatedEdges.push_back({valueNode, xIndex});
 					}	
@@ -126,6 +134,7 @@
 			#ifndef NDEBUG
 				assertVarToValsInSync(x, xIndex);
 			#endif
+			return isFeasible;
 		}
 
 // Iterate through each edge that has flow, to find its total cost

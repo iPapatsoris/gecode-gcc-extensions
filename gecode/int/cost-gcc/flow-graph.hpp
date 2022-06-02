@@ -69,6 +69,9 @@ class FlowGraph {
 		// Should be kept up to date with assignments and pruning.
 		vector<unordered_set<int> > varToVals;
 
+		vector<unsigned int> potentials;
+
+
 		// Total flow through the graph, starts at 0. Is calculated at once using
 		// appropriate function, not gradually
 		int flowCost;
@@ -159,10 +162,21 @@ class FlowGraph {
 			return flowCost <= costUpperBound;
 		}
 
-		void calculateReducedCosts(const vector<int>& distances) {
+	unsigned int getReducedCost(unsigned int src, unsigned int dest, int cost) {
+			//cout << "cost of " << src << "->" << dest << " " << (*res).cost << endl; 
+			return cost - potentials[src] + potentials[dest];
+		}
+
+		void updatePotentials(const vector<unsigned int>& dist) {
+			for (unsigned int i = 0; i < potentials.size(); i++) {
+				potentials[i] -= dist[i];
+			}
+		}
+
+		void calculateReducedCosts() {
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				for (auto& edge : nodeList[i].residualEdgeList) {
-					edge.reducedCost = distances[i] + edge.cost - distances[edge.destNode];
+					edge.reducedCost = edge.cost - potentials[i] + potentials[edge.destNode];
 					//cout << i << "->" << edge.destNode << " " << edge.reducedCost << " = " << distances[i] << " + " << edge.cost << " - " << distances[edge.destNode] << endl;
 				}
 			}
@@ -200,7 +214,7 @@ class FlowGraph {
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		void updatePrunedValues(Int::IntView x, unsigned int xIndex, 
+		bool updatePrunedValues(Int::IntView x, unsigned int xIndex, 
 													  vector<EdgeNodes>& updatedEdges); 
 
 		void print() const;
@@ -214,7 +228,7 @@ class FlowGraph {
 
 		void addTResidualEdges() {
 			for (unsigned int var = 0; var < totalVarNodes; var++) {
-				nodeList[tNode()].residualEdgeList.push_back(ResidualEdge(var, 1, 0));
+				nodeList[tNode()].residualEdgeList.push_back(ResidualEdge(var, 1, 0, 0));
 			}
 		}
 

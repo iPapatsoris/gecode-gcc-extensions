@@ -58,10 +58,10 @@ class ResidualEdge : public Edge
 	unsigned int reducedCost;
 
 public:
-	ResidualEdge(unsigned int destNode, unsigned int upperBound, int cost)
-			: Edge(destNode, cost), upperBound(upperBound) {}
+	ResidualEdge(unsigned int destNode, unsigned int upperBound, int cost, unsigned int reducedCost)
+			: Edge(destNode, cost), upperBound(upperBound),  reducedCost(reducedCost) {}
 	ResidualEdge(const NormalEdge &edge)
-			: Edge(edge.getDestNode(), edge.getCost()), upperBound(edge.getUpperBound()) {}
+			: Edge(edge.getDestNode(), edge.getCost()), upperBound(edge.getUpperBound()), reducedCost(edge.getCost()) {}
 	ResidualEdge() {}
 	void print() const
 	{
