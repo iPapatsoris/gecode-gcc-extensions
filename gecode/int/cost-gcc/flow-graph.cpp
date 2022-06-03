@@ -75,6 +75,13 @@
 				copy(node.edgeList.begin(), node.edgeList.end(), 
 						 back_inserter(node.residualEdgeList));
 			}
+			partition = DynamicPartition(totalNodes);
+			sccToNodes.push_back(vector<unsigned int>());
+			for (unsigned int i = 0; i < totalNodes; i++) {
+				nodeToScc.push_back(0);
+				sccToNodes[0].push_back(i);
+			}
+
 		}
 
 		// Update graph state to match variable X domain pruning/assignment.

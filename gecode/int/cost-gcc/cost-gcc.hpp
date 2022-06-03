@@ -76,9 +76,10 @@ public:
 		if (!graphAlgorithms.findMinCostFlow(li)) {
 			return ES_FAILED;
 		}
-
+		unordered_set<unsigned int> sccOfInterest;
+		sccOfInterest.insert(0);
 		vector<pair<unsigned int, unsigned int>> updatedEdges;
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges, sccOfInterest) != ES_OK) {
 				return ES_FAILED;
 		}
 
@@ -120,9 +121,19 @@ public:
 		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, usingLocalHandle ? &li : NULL)) {
 			return ES_FAILED;
 		}
+		unordered_set<unsigned int> sccOfInterest;
+		for (auto& e: updatedEdges) {
+			sccOfInterest.insert(graph->getSCC(e.second));
+		}
 		updatedEdges.clear();
 
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, updatedEdges) != ES_OK) {
+		// graph->printSCC();
+		// cout << "scc of interest:";
+		// for (auto n: sccOfInterest) {
+		// 	cout << n << " ";
+		// }
+
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, updatedEdges, sccOfInterest) != ES_OK) {
 				return ES_FAILED;
 		}
 		return ES_FIX;

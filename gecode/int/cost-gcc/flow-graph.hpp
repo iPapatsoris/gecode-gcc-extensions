@@ -2,7 +2,8 @@
 #define H_FLOW_GRAPH
 
 #include "graph-base-components.hpp"
-#include "LI.hpp"
+#include "example/LI.hpp"
+#include "dynamic-partition.hpp"
 #include <iostream>
 #include <vector>
 #include <unordered_map>
@@ -68,6 +69,10 @@ class FlowGraph {
 		// comparison is only done among those.
 		// Should be kept up to date with assignments and pruning.
 		vector<unordered_set<int> > varToVals;
+
+		DynamicPartition partition;
+		vector<unsigned int> nodeToScc;
+		vector< vector<unsigned int>> sccToNodes;
 
 		// Total flow through the graph, starts at 0. Is calculated at once using
 		// appropriate function, not gradually
@@ -148,6 +153,10 @@ class FlowGraph {
 			}
 		}
 
+		bool inSameSCC(unsigned int node1, unsigned int node2) const {
+			return nodeToScc[node2] == nodeToScc[node2];
+		}
+
 		// Iterate through each edge that has flow, to find its total cost
 		int calculateFlowCost(LI &lii);
 
@@ -220,6 +229,16 @@ class FlowGraph {
 
 		void removeTResidualEdges() {
 			nodeList[tNode()].residualEdgeList.clear();
+		}
+
+		void printSCC() const {
+			for (unsigned int i = 0; i < nodeToScc.size(); i++) {
+				cout << "node " << i << " in scc " << nodeToScc[i] << endl;
+			}
+		}
+
+		unsigned int getSCC(unsigned int node) const {
+			return nodeToScc[node];
 		}
 };
 

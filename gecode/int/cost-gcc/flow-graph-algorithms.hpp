@@ -15,7 +15,7 @@
 #define NONE_UINT INF_UINT - 1
 
 using namespace std;
-
+unsigned int totalPrunes = 0;
 class FlowGraphAlgorithms {
 	private:
 		FlowGraph& graph;
@@ -65,9 +65,16 @@ class FlowGraphAlgorithms {
 		// If dest is not NULL, ignore any direct source->dest edge.
 		// This is needed when searching for shortest path to a specific 
 		// destination, by the min cost flow algorithm.
-     void bellmanFordShortestPaths(unsigned int source, 
+     bool bellmanFordShortestPaths(unsigned int source, 
 																	vector<unsigned int>& prev, vector<int>& dist, 
 																	unsigned int* dest = NULL) const {
+			if (dest != NULL && !graph.inSameSCC(source, *dest)) {
+				if (!graph.inSameSCC(source, *dest)) {
+					cout << "bellman insta skip" << endl;
+				}
+				return false;		
+			}
+					
 			prev.assign(graph.nodeList.size(), NONE_UINT);
 			dist.assign(graph.nodeList.size(), INF_INT);
 			dist[source] = 0;
@@ -80,7 +87,7 @@ class FlowGraphAlgorithms {
 				bool foundUpdate = false;
 				for (auto node: *updatedNodesOld) {
 					for (auto &edge : graph.nodeList[node].residualEdgeList) {
-						if ((dest == NULL || 
+						if (graph.inSameSCC(node, edge.destNode) && (dest == NULL || 
 							!(node == source && edge.destNode == *dest)) && 
 							dist[node] != INF_INT && dist[node] + edge.cost < 
 																			 dist[edge.destNode]) {
@@ -90,6 +97,8 @@ class FlowGraphAlgorithms {
 							prev[edge.destNode] = node;
 							foundUpdate = true;
 							updatedNodesNew->push_back(edge.destNode);
+						} else if (!graph.inSameSCC(node, edge.destNode)) {
+							cout << "bellman step skip" << endl;
 						}
 					}
 				}
@@ -100,6 +109,7 @@ class FlowGraphAlgorithms {
 				swap(updatedNodesNew, updatedNodesOld);
 				updatedNodesNew->clear();
 			}
+			return true;
 		}
 
 		void sendFlow(pair<unsigned int, unsigned int>& violation, vector<int>& shortestPath, unsigned int minUpperBound, LI* li) {
@@ -167,7 +177,10 @@ class FlowGraphAlgorithms {
 																			 const {
 			vector<unsigned int> prev;
 			
-			bellmanFordShortestPaths(source, prev, dist, &dest);
+			if (!bellmanFordShortestPaths(source, prev, dist, &dest)) {
+				// In different SCC
+				return false;
+			}
 	
 			// No path exists
 			if (dist[dest] == INF_INT) {
@@ -249,7 +262,10 @@ class FlowGraphAlgorithms {
 				}
 
 				for (auto& edge: graph.nodeList[node].residualEdgeList) {
-					if (visited[edge.destNode]) {
+					if (visited[edge.destNode] || !graph.inSameSCC(node, edge.destNode)) {
+						if (!graph.inSameSCC(node, edge.destNode)) {
+							cout << "diskjtra step skip" << endl;
+						}
 						continue;
 					}
 					unsigned int newDist = dist[node] + edge.reducedCost;;
@@ -373,6 +389,103 @@ class FlowGraphAlgorithms {
 			return graph.checkFlowCost();
 		}
 	
+
+void findOneSCC(unsigned int src, vector<unsigned int>& ids, 
+										stack<unsigned int>& localVisited, vector<bool>& onLocalVisited, 
+										unsigned int* id, unsigned int* sccCount) const {
+			auto& low = graph.nodeToScc;
+			stack<pair<unsigned int, unsigned int>> frontier;
+			frontier.push({src, 0});
+			localVisited.push(src);
+			onLocalVisited[src] = true;
+			ids[src] = low[src] = *id;
+			(*id)++;
+			while (!frontier.empty()) {
+				unsigned int node = frontier.top().first;
+				unsigned int curEdgeIndex = frontier.top().second;
+				auto& edges = graph.nodeList[node].residualEdgeList;
+				unsigned int destNode; 
+				if (curEdgeIndex < edges.size()) {
+					destNode = edges[curEdgeIndex].destNode;
+					if (ids[destNode] == NONE_UINT) {
+						// start of call here
+						localVisited.push(destNode);
+						onLocalVisited[destNode] = true;
+						ids[destNode] = low[destNode] = *id;
+						(*id)++;
+						frontier.push({destNode, 0});
+					} else {
+						if (onLocalVisited[destNode]) {
+							low[node] = min(low[node], low[destNode]);
+						}
+						frontier.pop();
+						frontier.push({node, ++curEdgeIndex});
+					}
+					continue;
+				}
+
+				// last part here
+				if (ids[node] == low[node]) {
+					while (!localVisited.empty()) {
+						unsigned int tmp = localVisited.top();
+						localVisited.pop();
+						onLocalVisited[tmp] = false;
+						low[tmp] = ids[node];
+						if (tmp == node) {
+							break;
+						}
+					}
+					(*sccCount)++;
+				}
+
+				frontier.pop();
+				if (!frontier.empty()) {
+					node = frontier.top().first;
+					curEdgeIndex = frontier.top().second;
+					destNode = graph.nodeList[node].residualEdgeList[curEdgeIndex].destNode;
+					
+				  // process here as at, to
+					if (onLocalVisited[destNode]) {
+						low[node] = min(low[node], low[destNode]);
+					}
+					
+					frontier.pop();
+					frontier.push({node, ++curEdgeIndex});
+				}
+			}
+		}
+
+
+		void findSCC(const unordered_set<unsigned int>& sccOfInterest) const {
+			vector<unsigned int> ids;
+			vector<bool> onLocalVisited;
+			stack<unsigned int> localVisited;
+			ids.assign(graph.nodeList.size(), NONE_UINT);
+			onLocalVisited.assign(graph.nodeList.size(), false);
+
+			for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
+				if (sccOfInterest.find(graph.nodeToScc[i]) != sccOfInterest.end()) {
+					graph.nodeToScc[i] = NONE_UINT;
+				}
+			}
+
+			unsigned int id = 0;
+			unsigned int sccCount = 0;
+			
+			for (unsigned int src = 0; src < graph.nodeList.size(); src++) {
+				if (sccOfInterest.find(graph.getSCC(src)) != sccOfInterest.end()) {
+					if (ids[src] == NONE_UINT) {
+						findOneSCC(src, ids, localVisited, onLocalVisited, &id, &sccCount);
+					}
+				}
+			}
+			
+			/*for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
+				cout << "Node " << i << " in SCC " << low[i] << "\n";
+			}*/
+		}
+
+
 		// In addition to pruning, hold the affected Val->Var edges in updatedEdges
 		// so we can update the residual graph later accordingly. We do not update
 		// it here, because in case the home space fails due to another
@@ -382,7 +495,7 @@ class FlowGraphAlgorithms {
 		// The reason why 
 
 		ExecStatus performArcConsistency(Space& home, ViewArray<Int::IntView>& vars, 
-															       vector<EdgeNodes>& updatedEdges) {
+															       vector<EdgeNodes>& updatedEdges, const unordered_set<unsigned int>& sccOfInterest) {
 			graph.addTResidualEdges();
 			vector<int> distances;
 			vector<unsigned int> prev;
@@ -420,6 +533,10 @@ class FlowGraphAlgorithms {
 			// and check early prune conditions to skip finding some
 			for (auto& edge: graph.nodeList[graph.sNode()].edgeList) {
 				if (edge.flow > 0) {
+					if (sccOfInterest.find(graph.getSCC(edge.destNode)) == sccOfInterest.end()) {
+						// cout << "arc consistency skip " << endl;
+						continue;
+					}
 					vector<unsigned int> yList;
 					unsigned int b = edge.destNode;
 					unordered_set<unsigned int> targetNodes;
@@ -431,8 +548,11 @@ class FlowGraphAlgorithms {
 							for (IntVarValues v(vars[y]); v(); ++v) {
 								unsigned int a = (*graph.valToNode)[v.val()];
 								if (a != b) {
-									if (earlyPrune(a, b, y, graph.costUpperBound - 
+									if (!graph.inSameSCC(y, a) || earlyPrune(a, b, y, graph.costUpperBound - 
 															   graph.flowCost)) {
+										if (!graph.inSameSCC(y, a)) {
+											cout << "early prune scc" << endl;
+										}
 										edgesToPrune.push_back(EdgeWithVal(a, y, v.val()));
 										continue;
 									}
@@ -488,6 +608,8 @@ class FlowGraphAlgorithms {
 				updatedEdges.push_back(EdgeNodes(edge.src, edge.dest));
 				// Prune
 				GECODE_ME_CHECK(vars[edge.dest].nq(home, edge.val));
+				totalPrunes++;
+				// cout << totalPrunes << endl;
 				// Also remove from varToVals
 				auto& vals = graph.varToVals[edge.dest];
 				vals.erase(edge.val);
@@ -505,6 +627,12 @@ class FlowGraphAlgorithms {
 			}
 
     	graph.removeTResidualEdges();
+
+			findSCC(sccOfInterest);
+			// for (unsigned int i = 0; i < scc.size(); i++) {
+			// 	cout << "Node " << i << " in scc " << scc[i] << endl; 
+			// }
+
 			return ES_OK;
 		}
 
