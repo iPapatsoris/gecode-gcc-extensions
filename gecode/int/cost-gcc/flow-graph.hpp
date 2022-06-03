@@ -2,7 +2,7 @@
 #define H_FLOW_GRAPH
 
 #include "graph-base-components.hpp"
-#include "LI.hpp"
+#include "example/LI.hpp"
 #include <iostream>
 #include <vector>
 #include <unordered_map>
