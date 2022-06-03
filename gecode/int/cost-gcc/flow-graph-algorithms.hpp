@@ -428,7 +428,7 @@ graph.nodeList[n].edgeList->push_back(NormalEdge(3, 0, 1, 2));
 				graph.nodeList[n].edgeToPos->insert({(*graph.nodeList[n].edgeList)[i].destNode, i});
 			}
 
-			buildResidualGraph();
+			buildResidualGraph(NULL);
 			graph.print();
 			graph.printResidual();
 
@@ -514,7 +514,7 @@ graph.nodeList[n].edgeList->push_back(NormalEdge(3, 0, 1, 2));
 			}
 		}
 
-void buildResidualGraph() {
+void buildResidualGraph(LI *li) {
 			//cout << "Building res" << endl;
 			for (unsigned int i = 0; i < graph.tNode(); i++) {
 				graph.nodeList[i].residualEdgeList->clear();
@@ -529,6 +529,9 @@ void buildResidualGraph() {
 					}
 					if (edge.flow > edge.lowerBound) {
 						graph.nodeList[edge.destNode].residualEdgeList->push_back(ResidualEdge(i, edge.flow - edge.lowerBound, -edge.cost));
+					}
+					if (li != NULL && edge.flow && edge.destNode < graph.totalVarNodes) {
+						(*li)[edge.destNode] = (*graph.nodeToVal)[i];
 					}
 				}
 			}
@@ -1096,7 +1099,7 @@ if (neti)			cout << endl;
 		bool updateMinCostFlow(vector<EdgeUpdate>& updatedEdges, LI* li) {
 			  //  cout << "Propagate: update min cost flow" << endl;
 		//	graph.print();
-			buildResidualGraph();
+			buildResidualGraph(li);
 			// if (*graph.oldFlowIsFeasible) {
 			// 	isMinCost = false;
 			// 	cout << "is already feasible" << endl;
@@ -1254,7 +1257,7 @@ if (neti)						cout << "after cycle FOUND" << endl;
 		// The reason why 
 
 		ExecStatus performArcConsistency(Space& home, ViewArray<Int::IntView>& vars, 
-															       vector<EdgeUpdate>& updatedEdges) {
+															       vector<EdgeUpdate>& updatedEdges, LI* li) {
 		//	graph.addTResidualEdges(); // opt?
 			vector<int> distances;
 			vector<unsigned int> prev;
@@ -1293,7 +1296,7 @@ if (neti)						cout << "after cycle FOUND" << endl;
 						// }
 						// cout << endl;
 						unsigned int minUpperBound = findMinUpperBoundCycle(path);
-						sendFlowCycle(path, minUpperBound, NULL); //li); TODO
+						sendFlowCycle(path, minUpperBound, li);
 						
 						//assert(false);
 						//exit(1);
