@@ -1428,6 +1428,17 @@ if (neti)						cout << "after cycle FOUND" << endl;
 			// cout << "done prunning" << endl;
 
    // 	graph.removeTResidualEdges();
+			vector<unsigned int> scc;
+			// for (auto& n: graph.importantEdges) {
+			// 	n.clear();
+			// }
+			findSCC(scc);
+			// for (unsigned int i=0; i < graph.importantEdges.size(); i++) {
+			// 	cout << "importand edges of " << i << ":";
+			// 	for (auto n: graph.importantEdges[i]) {
+			// 		cout << n << " ";
+			// 	}
+			// }
 			return ES_OK;
 		}
 
@@ -1532,7 +1543,116 @@ ExecStatus performArcConsistencyBell(Space& home, ViewArray<Int::IntView>& vars,
 			// cout << "done prunning" << endl;
 
    // 	graph.removeTResidualEdges();
+			vector<unsigned int> scc;
+			// for (auto& n: graph.importantEdges) {
+			// 	n.clear();
+			// }
+			findSCC(scc);
+			// for (unsigned int i=0; i < graph.importantEdges.size(); i++) {
+			// 	cout << "importand edges of " << i << ":";
+			// 	for (auto n: graph.importantEdges[i]) {
+			// 		cout << n << " ";
+			// 	}
+			// 	cout << endl;			}
+
 			return ES_OK;
+		}
+
+void findOneSCC(unsigned int src, vector<unsigned int>& ids, vector<unsigned int>& low, 
+										stack<unsigned int>& localVisited, vector<bool>& onLocalVisited, 
+										unsigned int* id, unsigned int* sccCount) const {
+			stack<pair<unsigned int, unsigned int>> frontier;
+			frontier.push({src, 0});
+			localVisited.push(src);
+			onLocalVisited[src] = true;
+			ids[src] = low[src] = *id;
+			(*id)++;
+			while (!frontier.empty()) {
+				unsigned int node = frontier.top().first;
+				unsigned int curEdgeIndex = frontier.top().second;
+				auto& edges = graph.nodeList[node].residualEdgeList;
+				unsigned int destNode; 
+				if (curEdgeIndex < edges->size()) {
+					destNode = (*edges)[curEdgeIndex].destNode;
+					if (ids[destNode] == NONE_UINT) {
+						// start of call here
+						localVisited.push(destNode);
+						onLocalVisited[destNode] = true;
+						ids[destNode] = low[destNode] = *id;
+						graph.importantEdges[node].insert(destNode);
+						(*id)++;
+						frontier.push({destNode, 0});
+					} else {
+						if (onLocalVisited[destNode]) {
+						if (low[destNode] < low[node]) {
+							graph.importantEdges[node].insert(destNode);
+						}
+
+							low[node] = min(low[node], low[destNode]);
+										
+						}
+						frontier.pop();
+						frontier.push({node, ++curEdgeIndex});
+					}
+					continue;
+				}
+
+				// last part here
+				if (ids[node] == low[node]) {
+					while (!localVisited.empty()) {
+						unsigned int tmp = localVisited.top();
+						localVisited.pop();
+						onLocalVisited[tmp] = false;
+						low[tmp] = ids[node];
+						if (tmp == node) {
+							break;
+						}
+					}
+					(*sccCount)++;
+				}
+
+				frontier.pop();
+				if (!frontier.empty()) {
+					node = frontier.top().first;
+					curEdgeIndex = frontier.top().second;
+					destNode = (*graph.nodeList[node].residualEdgeList)[curEdgeIndex].destNode;
+					
+				  // process here as at, to
+					if (onLocalVisited[destNode]) {
+						if (low[destNode] < low[node]) {
+							graph.importantEdges[node].insert(destNode);
+						}
+						low[node] = min(low[node], low[destNode]);
+						
+					}
+					
+					frontier.pop();
+					frontier.push({node, ++curEdgeIndex});
+				}
+			}
+	}
+
+
+		void findSCC(vector<unsigned int>& scc) {
+			vector<unsigned int> ids;
+			vector<bool> onLocalVisited;
+			stack<unsigned int> localVisited;
+			ids.assign(graph.nodeList.size(), NONE_UINT);
+			scc.assign(graph.nodeList.size(), NONE_UINT);
+			onLocalVisited.assign(graph.nodeList.size(), false);
+
+			unsigned int id = 0;
+			unsigned int sccCount = 0;
+			
+			for (unsigned int src = 0; src < graph.nodeList.size(); src++) {
+				if (ids[src] == NONE_UINT) {
+					findOneSCC(src, ids, scc, localVisited, onLocalVisited, &id, &sccCount);
+				}
+			}
+			
+			/*for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
+				cout << "Node " << i << " in SCC " << low[i] << "\n";
+			}*/
 		}
 
 };

@@ -77,8 +77,7 @@ class FlowGraph {
 		// Should be kept up to date with assignments and pruning.
 		vector<BtVector> varToVals;
 
-	//	vector<int> *dist;
-
+		vector<unordered_set<unsigned int>> importantEdges;
 		// Total flow through the graph, starts at 0. Is calculated at once using
 		// appropriate function, not gradually
 		int *flowCost;
@@ -286,6 +285,20 @@ class FlowGraph {
 				cout << "SAME!" << endl;
 				exit(1);
 			}
+		}
+
+		bool hasAllImportantEdges() {
+			for (unsigned int i = 0; i < importantEdges.size(); i++) {
+				for (auto j: importantEdges[i]) {
+					if (getResidualEdge(i, j) == NULL) {
+						for (unsigned int n = 0; n < importantEdges.size(); n++) {
+							importantEdges[n].clear();
+						}
+						return false;
+					}
+				}
+			}
+			return true;
 		}
 };
 

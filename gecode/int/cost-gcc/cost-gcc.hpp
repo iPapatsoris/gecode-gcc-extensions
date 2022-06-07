@@ -133,6 +133,11 @@ public:
 		//graphAlgorithms.updateDeletedEdges(updatedEdges);
 		updatedEdges.clear();
 
+		if (ipl == IPL_DOM && graph->hasAllImportantEdges()){
+			// cout << "no important edge" << endl;
+			return ES_FIX;
+		}
+
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, updatedEdges, usingLocalHandle ? &li : NULL) != ES_OK) {
 				return ES_FAILED;
 		}

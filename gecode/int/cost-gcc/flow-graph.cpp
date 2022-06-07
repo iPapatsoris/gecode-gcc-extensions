@@ -103,6 +103,7 @@ unsigned long countNi = 0;
 					node.residualEdgeList->push_back(ResidualEdge(edge));
 				}
 			}
+			importantEdges.assign(totalNodes, unordered_set<unsigned int>());
 		}
 
 		// Update graph state to match variable X domain pruning/assignment.
