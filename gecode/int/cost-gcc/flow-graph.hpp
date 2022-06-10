@@ -214,7 +214,7 @@ class FlowGraph {
 			if (firstTimeValidCost && *flowCost <= costUpperBound) {
 				firstTimeValidCost = false;
 			}
-			//cout << *flowCost << " " << costUpperBound << endl;
+			// cout << *flowCost << " " << costUpperBound << endl;
 			return *flowCost <= costUpperBound;
 		}
 

@@ -1088,6 +1088,7 @@ if (neti)			cout << endl;
 			*graph.oldFlowIsFeasible = true;
 			isMinCost = true;
 			//graph.calculateFlowCost(li);
+			// graph.print();
 			return graph.checkFlowCost();
 		}
 
