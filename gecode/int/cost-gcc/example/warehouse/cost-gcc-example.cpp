@@ -29,8 +29,14 @@ int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs v
 				}
 
 				open = BoolVarArray(*this, vals.size(), 0, 1);
-				for (int s=0; s<vars; s++)
-					element(* this, open, x[s], 1, opt.ipl());
+				IntVarArray occurences(*this, vals.size());
+				for (auto& o: occurences) {
+					o = IntVar(*this, 0, vars);
+				}
+				for (int w=0; w < vals.size(); w++) {
+					count(*this, x, w, IRT_EQ, occurences[w], opt.ipl());
+					rel(*this, occurences[w], IRT_GQ, 1, eqv(open[w]), opt.ipl());
+				}
 
 				IntArgs fixedCosts;
 				IntArgs fixedCostsArray;
@@ -44,12 +50,11 @@ int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs v
 				openCost = IntVar(*this, IntSet(fixedCosts));
 				linear(*this, costs, varValue, IRT_EQ, minCostFlowCost, opt.ipl());
 				linear(*this, fixedCostsArray, open, IRT_EQ, openCost, opt.ipl());
-				rel(*this, openCost + minCostFlowCost == total, opt.ipl());
-				// rel(*this, total < previousBest, opt.ipl());
+				 rel(*this, openCost + minCostFlowCost == total);
+				//  rel(*this, openCost + minCostFlowCost < previousBest, opt.ipl());
 				countCosts(*this, x, vals, lowerBounds, upperBounds, costs, cost, 
 									 (opt.branch() ? &li : NULL),
 									 opt.ipl());
-
 				if (opt.branch()) {
 					branchBestVal(*this, x, li);
 				} else {
@@ -73,80 +78,98 @@ int main(int argc, char *argv[]) {
 	opt.solutions(0);
 	opt.parse(argc, argv);
 
-	int vars, cost;
+	int vars, fixed;
 		IntSetArgs domain;
 		IntArgs lowerBounds, upperBounds, vals, costs;
-//	readInput(opt.file(), vars, domain, vals, lowerBounds, upperBounds, costs, 
-			//				cost);
+	readInput(opt.file(), vars, domain, vals, lowerBounds, upperBounds, costs, 
+							fixed);
 
-	const int n_warehouses = 5;
-/// Number of stores
-const int n_stores = 10;
+	// cout << vars;
+	// cout << domain;
+	// cout << vals; 
+	// cout << lowerBounds;
+	// cout << upperBounds;
+	// cout << costs;
 
-/// Fixed cost for one warehouse
-const int c_fixed = 30;
-const int maxFixed = n_warehouses * c_fixed;
+	// int ij = 0;
+	// for (unsigned int i = 0; i < vars; i++) {
+	// 	cout << "{";
+	// 	for (unsigned int j = 0; j < vals.size(); j++) {
+	// 		cout << (costs[ij] == 0 ? 100000000 : costs[ij]) << ", ";
+	// 		ij++;
+	// 	}
+	// 	cout << "}, \n";
+	// }
 
-/// Capacity of a single warehouse
-const int capacity[n_warehouses] = {
-  1, 4, 2, 1, 3
-};
+	//  return 0;
 
-/// Cost for supply a store by a warehouse
-const int c_supply[n_stores][n_warehouses] = {
-  {20, 24, 11, 25, 30},
-  {28, 27, 82, 83, 74},
-  {74, 97, 71, 96, 70},
-  { 2, 55, 73, 69, 61},
-  {46, 96, 59, 83,  4},
-  {42, 22, 29, 67, 59},
-  { 1,  5, 73, 59, 56},
-  {10, 73, 13, 43, 96},
-  {93, 35, 63, 85, 46},
-  {47, 65, 55, 71, 95}
-};
+// 	const int n_warehouses = 5;
+// /// Number of stores
+// const int n_stores = 10;
+
+// /// Fixed cost for one warehouse
+// const int c_fixed = 30;
+// const int maxFixed = n_warehouses * c_fixed;
+
+// /// Capacity of a single warehouse
+// const int capacity[n_warehouses] = {
+//   1, 4, 2, 1, 3
+// };
+
+// /// Cost for supply a store by a warehouse
+// const int c_supply[n_stores][n_warehouses] = {
+//   {20, 24, 11, 25, 30},
+//   {28, 27, 82, 83, 74},
+//   {74, 97, 71, 96, 70},
+//   { 2, 55, 73, 69, 61},
+//   {46, 96, 59, 83,  4},
+//   {42, 22, 29, 67, 59},
+//   { 1,  5, 73, 59, 56},
+//   {10, 73, 13, 43, 96},
+//   {93, 35, 63, 85, 46},
+//   {47, 65, 55, 71, 95}
+// };
 	// return 1;
 
-	vars = n_stores;
-	for (unsigned int i = 0; i < vars; i++) {
-		domain << IntSet(0, n_warehouses-1);
-	}
+	// vars = n_stores;
+	// for (unsigned int i = 0; i < vars; i++) {
+	// 	domain << IntSet(0, n_warehouses-1);
+	// }
 
-	for (unsigned int i = 0; i < n_warehouses; i++) {
-		lowerBounds << 0;
-		upperBounds << capacity[i];
-		vals << i;
-	}
+	// for (unsigned int i = 0; i < n_warehouses; i++) {
+	// 	lowerBounds << 0;
+	// 	upperBounds << capacity[i];
+	// 	vals << i;
+	// }
 
-	for (unsigned int i = 0; i < n_stores; i++) {
-		for (unsigned int j = 0; j < n_warehouses; j++) {
-			costs << c_supply[i][j];
-		}
-	}
+	// for (unsigned int i = 0; i < n_stores; i++) {
+	// 	for (unsigned int j = 0; j < n_warehouses; j++) {
+	// 		costs << c_supply[i][j];
+	// 	}
+	// }
 	const int inf = 10000000;
+  const int maxFixed = vals.size() * fixed;
+  int boundMinCostFlow = inf;
+	int boundBAB = inf;
 
-	cost = inf;
-				
 	//Script::run<CountCostsExample, DFS, FileOptions>(opt);
 	// TODO: all this is not optimized, can be optimized to keep input data
-	CountCostsExample* m = new CountCostsExample(opt, cost, cost, vars, domain, lowerBounds, upperBounds, vals, costs, c_fixed);
+	CountCostsExample* m = new CountCostsExample(opt, boundMinCostFlow, boundBAB, vars, domain, lowerBounds, upperBounds, vals, costs, fixed);
 	DFS<CountCostsExample> e(m);
 	CountCostsExample *s = e.next();
 
-	int boundBAB = inf;
-	int boundMinCostFlow = inf;
 	while (s != NULL) {
 		s->printOpen();
 		boundBAB = s->getTotal();
 		boundMinCostFlow = s->getMinCostFlowCost() + maxFixed;
 		s->print(cout);
-		cout << boundBAB << endl;
-		s = e.next();
+		cout << "BAB: " << boundBAB  << " real minCostFlow: " << s->getMinCostFlowCost() << " bound minCostFlow " << boundMinCostFlow << endl;
+		// s = e.next();
 		//continue;
 		delete s;
 		delete m;
 		// return 1;
-		m = new CountCostsExample(opt, boundMinCostFlow, boundBAB, vars, domain, lowerBounds, upperBounds, vals, costs, c_fixed);
+		m = new CountCostsExample(opt, boundMinCostFlow, boundBAB, vars, domain, lowerBounds, upperBounds, vals, costs, fixed);
 		DFS<CountCostsExample> ee(m);
 		s = ee.next();
 	}

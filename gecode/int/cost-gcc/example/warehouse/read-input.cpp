@@ -6,6 +6,8 @@
 #include <vector>
 #include <gecode/int.hh>
 
+#include <unordered_map>
+#include <unordered_set>
 using namespace std;
 using namespace Gecode;
 
@@ -14,58 +16,7 @@ enum {
 } mode;
 
 void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
-							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs, 
-							 int& cost) {
-// 	string line;
-//   ifstream file(fileName);
-// 	if (!file.is_open()) {
-// 		throw "Could not open file";
-// 	}
-
-// 	getline(file, line);
-// 	stringstream stream(line);
-// 	vector<int> numbers;
-// 	int n;
-// 		while(stream >> n) {
-// 			numbers.push_back(n);
-// 		}
-
-	
-// 	vars = numbers.size();
-// 	for (unsigned int i = 0; i < vars; i++) {
-// 		vector<int> d;
-// 		for (unsigned int j = 0; j < vars; j++) {
-// 			if (i != j) {
-// 				d.push_back(j);
-// 			}
-// 		}
-// 		IntSet tmp;
-// 		IntSetInit<IntArgs>::init(tmp, IntArgs(d));
-// 		domain << tmp;
-// 		vals << i;
-// 		lowerBounds << 1;
-// 		upperBounds << 1;
-// 	}
-
-// 	getline(file, line);
-// 	stream = stringstream(line);
-// 	unsigned int i = 0;
-// 	vector<int> numbers2;
-// 	while(stream >> n) {
-// 		numbers2.push_back(n);
-// 	}
-
-// 	for (auto n1: numbers) {
-// 		for (auto n2: numbers2) {
-// 			costs << n1 * n2;
-// 		}
-// 	}
-
-// 	costs << numbers;
-// 	cost = 4330;
-
-// 	file.close();
-
+							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs, int& fixed) {
 
 	string line;
   ifstream file(fileName);
@@ -74,47 +25,56 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 	}
 
 	getline(file, line);
-	stringstream stream(line);
+	getline(file, line);
+	getline(file, line);
+	getline(file, line);
+
 	vector<int> numbers;
 	int n;
+	vector<unordered_map<unsigned int, int>> varToVals;
+	stringstream stream(line);
+
+	stream >> vars;
+	stream >> fixed;
 	stream >> n;
-	cout << n << endl;
-
-	getline(file, line);
-	stream = stringstream(line);
-	stream >> n;
-	cout << n << endl;
-
-	return;
-
-	vars = n;
-	for (unsigned int i = 0; i < vars; i++) {
-		vector<int> d;
-		for (unsigned int j = 0; j < vars; j++) {
-			if (i != j) {
-				d.push_back(j);
-			}
-		}
-		IntSet tmp;
-		IntSetInit<IntArgs>::init(tmp, IntArgs(d));
-		domain << tmp;
+	for (unsigned int i = 1; i <= vars; i++) {
 		vals << i;
-		lowerBounds << 1;
-		upperBounds << 1;
+		lowerBounds << 0;
+		upperBounds << n; 
+		varToVals.push_back(unordered_map<unsigned int, int>());
 	}
 
 	getline(file, line);
-	stream = stringstream(line);
-	stream >> cost;
+	
 
-	getline(file, line);
-	char c;
-	stream = stringstream(line);
-	while(stream >> n) {
-		costs << n;
-		stream >> c;
+	while (getline(file, line)) {
+		stringstream stream(line);
+		unsigned int warehouse;
+		unsigned int store;
+		int cost;
+		int demand;
+		stream >> warehouse;
+		stream >> store;
+		stream >> cost;
+		stream >> demand;
+		varToVals[store-1].insert(pair<unsigned int, int>(warehouse, cost));
+	}
+
+	for (unsigned int var = 0; var < vars; var++) {
+		vector<int> keys;
+		for (auto k: varToVals[var]) {
+			keys.push_back(k.first);
+		}
+		IntSet tmp;
+		IntSetInit<IntArgs>::init(tmp, IntArgs(keys));
+		domain << tmp;
+		for (unsigned int val = 1; val <= vals.size(); val++) {
+			auto res = varToVals[var].find(val);
+			costs << (res != varToVals[var].end() ? res->second : 0); 
+		}
 	}
 
 	file.close();
+	return;
 
 }
