@@ -2,9 +2,12 @@
 #include <string.h>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include <sstream>
 #include <vector>
 #include <gecode/int.hh>
+#include <gecode/float.hh>
+#include <math.h>
 
 using namespace std;
 using namespace Gecode;
@@ -13,59 +16,14 @@ enum {
 	VARS, COST, DOMAIN, VALS, LOWER_BOUNDS, UPPER_BOUNDS, COSTS
 } mode;
 
+double euclidianDistance2D(pair<double, double> pointA, pair<double, double> pointB) {
+	double xDiff = pointB.first - pointA.first;
+	double yDiff = pointB.second - pointA.second;
+	return sqrt(xDiff*xDiff + yDiff*yDiff);
+}
+
 void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
-							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs, 
-							 int& cost) {
-// 	string line;
-//   ifstream file(fileName);
-// 	if (!file.is_open()) {
-// 		throw "Could not open file";
-// 	}
-
-// 	getline(file, line);
-// 	stringstream stream(line);
-// 	vector<int> numbers;
-// 	int n;
-// 		while(stream >> n) {
-// 			numbers.push_back(n);
-// 		}
-
-	
-// 	vars = numbers.size();
-// 	for (unsigned int i = 0; i < vars; i++) {
-// 		vector<int> d;
-// 		for (unsigned int j = 0; j < vars; j++) {
-// 			if (i != j) {
-// 				d.push_back(j);
-// 			}
-// 		}
-// 		IntSet tmp;
-// 		IntSetInit<IntArgs>::init(tmp, IntArgs(d));
-// 		domain << tmp;
-// 		vals << i;
-// 		lowerBounds << 1;
-// 		upperBounds << 1;
-// 	}
-
-// 	getline(file, line);
-// 	stream = stringstream(line);
-// 	unsigned int i = 0;
-// 	vector<int> numbers2;
-// 	while(stream >> n) {
-// 		numbers2.push_back(n);
-// 	}
-
-// 	for (auto n1: numbers) {
-// 		for (auto n2: numbers2) {
-// 			costs << n1 * n2;
-// 		}
-// 	}
-
-// 	costs << numbers;
-// 	cost = 4330;
-
-// 	file.close();
-
+							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs, vector<int>& costsD) {
 
 	string line;
   ifstream file(fileName);
@@ -74,12 +32,18 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 	}
 
 	getline(file, line);
-	stringstream stream(line);
-	vector<int> numbers;
+	getline(file, line);
+	getline(file, line);
+	getline(file, line);
 	int n;
-	stream >> n;
-
-	vars = n;
+	line.erase(std::remove_if(line.begin(), line.end(),
+                            [](char c) { return !std::isdigit(c); }),
+             line.end());
+	stringstream stream(line);
+	stream >> vars;	
+	for (unsigned int i = 0; i < vars; i++) {
+		vals << i;
+	}
 	for (unsigned int i = 0; i < vars; i++) {
 		vector<int> d;
 		for (unsigned int j = 0; j < vars; j++) {
@@ -89,23 +53,47 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 		}
 		IntSet tmp;
 		IntSetInit<IntArgs>::init(tmp, IntArgs(d));
-		domain << tmp;
-		vals << i;
-		lowerBounds << 1;
+		domain << IntSet(tmp);
 		upperBounds << 1;
+		lowerBounds << 1;
 	}
 
+	/* 2d euclidian */
 	getline(file, line);
-	stream = stringstream(line);
-	stream >> cost;
+	getline(file, line);
 
-	getline(file, line);
-	char c;
-	stream = stringstream(line);
-	while(stream >> n) {
-		costs << n;
-		stream >> c;
+	vector<pair<double, double>> cord;
+	while (getline(file, line)) {
+		stringstream stream(line);
+		stream >> n;
+		pair<double, double> c(0, 0);
+		stream >> c.first;
+		stream >> c.second;
+		cord.push_back(c);
 	}
+
+	for (unsigned int i = 0; i < vars; i++) {
+		for (unsigned int j = 0; j < vars; j++) {
+			costsD.push_back((int) (0.5 + euclidianDistance2D(cord[i], cord[j])));
+			costs << costsD.back();
+		}
+	}
+
+	/* full matrix */
+	// getline(file, line);
+	// getline(file, line);
+	// getline(file, line);
+	// getline(file, line);
+
+	// for (unsigned int row = 0; row < vars; row++){ 
+	// 	getline(file, line);
+	// 	stringstream stream(line);
+	// 	for (unsigned int i = 0; i < vars; i++) {
+	// 		stream >> n;
+	// 		costsD.push_back(n);
+	// 		costs << n;
+	// 	}
+	// }
 
 	file.close();
 

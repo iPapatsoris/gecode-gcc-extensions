@@ -36,8 +36,8 @@ public:
 		MODEL_SINGLE, MODEL_MULTI
 	};
 
-CountCostsExample(const FileOptions& opt, int cost,
-int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs vals, IntArgs costs);
+CountCostsExample(const FileOptions& opt,
+int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs vals, IntArgs costs, vector<int>& costsD);
 	CountCostsExample(CountCostsExample &s) : IntMinimizeScript(s) {
 		x.update(*this, s.x);
 		total.update(*this, s.total);
@@ -45,12 +45,11 @@ int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs v
 	virtual Space *copy(void) {
 		return new CountCostsExample(*this);
 	}
+
+	virtual void constrain(const Space& _best);
+
 	void print(ostream& os) const {
 os << "\tSolution: " << x << "\n";
-	}
-
-	int getTotal() const {
-		return total.val();
 	}
 
 	virtual IntVar cost(void) const {

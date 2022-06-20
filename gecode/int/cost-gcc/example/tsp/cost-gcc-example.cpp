@@ -2,9 +2,20 @@
 #include "../../cost-gcc-post.hpp"
 #include "../LI.hpp"
 #include "../brancher.hpp"
+#include <gecode/float.hh>
 
-CountCostsExample::CountCostsExample(const FileOptions& opt, int cost,
-int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs vals, IntArgs costs) : IntMinimizeScript(opt) {
+ void
+  CountCostsExample::constrain(const Space& _best) {
+    const CountCostsExample* best =
+      dynamic_cast<const CountCostsExample*>(&_best);
+    if (best == nullptr)
+      throw DynamicCastFailed("IntMinimizeSpace::constrain");
+    rel(*this, cost(), IRT_LE, best->cost().val());
+  }
+
+
+CountCostsExample::CountCostsExample(const FileOptions& opt,
+int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs vals, IntArgs costs, vector<int>& costsD) : IntMinimizeScript(opt) {
 		x = IntVarArray(*this, vars);
 		for (int i = 0; i < vars; i++) {
 			x[i] = IntVar(*this, domain[i]);
@@ -14,7 +25,7 @@ int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs v
 		// Local object handle, to branch using heuristic information provided by 
 		// the propagator 
 		LI li(*this, x.size());
-		total = IntVar(*this, 0, 100000);
+		total = IntVar(*this, 0, 100000000);
 		switch(opt.model()) {
 			case MODEL_SINGLE:{
 				BoolVarArgs varValue(*this, costs.size(), 0, 1);
@@ -24,11 +35,12 @@ int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs v
 						rel(*this, x[i], IRT_EQ, vals[j], m(j, i), opt.ipl());
 					}
 				}
+				
 				// Constrain the cost
-				linear(*this, costs, varValue, IRT_EQ, total, opt.ipl());
+				linear(*this, costs, varValue, IRT_EQ, total);
 
 				circuit(*this, x);
-				countCosts(*this, x, vals, lowerBounds, upperBounds, costs, cost, 
+				countCosts(*this, x, vals, lowerBounds, upperBounds, costsD, total, 
 									 (opt.branch() ? &li : NULL),
 									 opt.ipl());
 
@@ -39,28 +51,6 @@ int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs v
 				}
 				break;
 			}
-			case MODEL_MULTI: {
-				// Boolean flags for each variable-value assignment. Needed for cost
-				BoolVarArgs varValue(*this, costs.size(), 0, 1);
-				Matrix<BoolVarArgs> m(varValue, vals.size(), x.size());
-				for (int i = 0; i < m.height(); i++) {
-					for (int j = 0; j < m.width(); j++) {
-						rel(*this, x[i], IRT_EQ, vals[j], m(j, i), opt.ipl());
-					}
-				}
-				// Constrain the cost
-				linear(*this, costs, varValue, IRT_LQ, cost, opt.ipl());
-
-				// Constrain the value bounds
-				IntSetArgs bounds;
-				for (int i = 0; i < vals.size(); i++) {
-					bounds << IntSet(lowerBounds[i], upperBounds[i]);
-				}
-				count(*this, x, bounds, vals, opt.ipl());
-
-				branch(*this, x, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
-				break;
-		}
 	}
 }
 
@@ -75,17 +65,24 @@ int main(int argc, char *argv[]) {
 	opt.solutions(0);
 	opt.parse(argc, argv);
 
-	int vars, cost;
+	int vars;
 		IntSetArgs domain;
 		IntArgs lowerBounds, upperBounds, vals, costs;
-	readInput(opt.file(), vars, domain, vals, lowerBounds, upperBounds, costs, 
-							cost);
-	
+		vector<int> costsD;
+	readInput(opt.file(), vars, domain, vals, lowerBounds, upperBounds, costs, costsD);
+
+	// cout << vars;
+	// cout << lowerBounds;
+	// cout << upperBounds;
+	// cout << vals;
+	//  cout << costs;
+	// cout << domain;
+	//  exit(1);
 						
 				
 	//Script::run<CountCostsExample, DFS, FileOptions>(opt);
 	// TODO: all this is not optimized, can be optimized to keep input data
-	CountCostsExample* m = new CountCostsExample(opt, cost, vars, domain, lowerBounds, upperBounds, vals, costs);
+	CountCostsExample* m = new CountCostsExample(opt, vars, domain, lowerBounds, upperBounds, vals, costs, costsD);
 	BAB<CountCostsExample> e(m);
 	CountCostsExample *s = e.next();
 
@@ -93,22 +90,17 @@ int main(int argc, char *argv[]) {
 	int bound = inf;
 
 	while (s != NULL) {
-		bound = s->getTotal() - 1;
 		s->print(cout);
+		bound = s->cost().val();
 		cout << bound << endl;
+		delete s;
 		s = e.next();
 		continue;
-		delete s;
-		delete m;
-		// return 1;
-		m = new CountCostsExample(opt, bound, vars, domain, lowerBounds, upperBounds, vals, costs);
-		DFS<CountCostsExample> ee(m);
-		s = ee.next();
 	}
 	if (bound == inf) {
 		cout << "no solution" << endl;
 	} else {
-		cout << "optimal solution " << bound+1 << endl;
+		cout << "optimal solution " << bound << endl;
 	}
 	delete m;
 
