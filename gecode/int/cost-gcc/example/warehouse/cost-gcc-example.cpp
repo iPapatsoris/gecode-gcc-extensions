@@ -3,18 +3,32 @@
 #include "../LI.hpp"
 #include "../brancher.hpp"
 
+ void
+  CountCostsExample::constrain(const Space& _best) {
+    const CountCostsExample* best =
+      dynamic_cast<const CountCostsExample*>(&_best);
+    if (best == nullptr)
+      throw DynamicCastFailed("IntMinimizeSpace::constrain");
+    rel(*this, cost(), IRT_LE, best->cost().val());
+		// rel(*this, getMinCostFlowCost() <= best->getMinCostFlowCost() + getOpenCost());
+		// cout << getOpenCost() << endl;
+  }
+
+
 CountCostsExample::CountCostsExample(const FileOptions& opt, int cost, int previousBest,
-int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs vals, IntArgs costs, int fixed) : IntMinimizeScript(opt) {
+int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs vals, IntArgs costs, int fixed, IntArgs demands) : IntMinimizeScript(opt) {
 		x = IntVarArray(*this, vars);
 		for (int i = 0; i < vars; i++) {
 			x[i] = IntVar(*this, domain[i]);
 			// cout << domain[i] << endl;
 		}
 
+		// cout << vars;
 		// cout << costs;
 		// cout << lowerBounds;
 		// cout << upperBounds;
 		// cout << vals;
+		// exit(1);
 		// the propagator 
 		LI li(*this, x.size());
 		total = IntVar(*this, 0, previousBest-1);
@@ -46,13 +60,36 @@ int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs v
 						fixedCostsArray << fixed;
 					}
 				}
-				minCostFlowCost = IntVar(*this, 0, cost);
+				minCostFlowCost = IntVar(*this, 0, cost + fixed * vals.size());
 				openCost = IntVar(*this, IntSet(fixedCosts));
 				linear(*this, costs, varValue, IRT_EQ, minCostFlowCost, opt.ipl());
 				linear(*this, fixedCostsArray, open, IRT_EQ, openCost, opt.ipl());
-				 rel(*this, openCost + minCostFlowCost == total);
+				rel(*this, openCost + minCostFlowCost == total);
+
+				Matrix<IntArgs> dd(demands, vals.size(), x.size());
+				for (unsigned int w = 0; w < vals.size(); w++) {
+					auto c = m.col(w);
+					auto d = dd.col(w);
+					cout << c << endl;
+					cout << d << endl; 
+					cout << upperBounds[w];
+					cout <<"\n\n";
+					linear(*this, d, c, IRT_LQ, upperBounds[w]);
+				}
+
+				cout << fixedCosts;
+				cout << fixed;
+				cout << openCost;
+
 				//  rel(*this, openCost + minCostFlowCost < previousBest, opt.ipl());
-				countCosts(*this, x, vals, lowerBounds, upperBounds, costs, cost, 
+
+				// IntVar totalOpen(*this, 0, vals.size());
+				// IntVar totalClosed(*this, 0, vals.size());
+				// linear(*this, open, IRT_EQ, totalOpen, opt.ipl());
+				// rel(*this, totalClosed == vals.size() - totalOpen);
+				// rel(*this, minCostFlowCost <= cost + totalOpen.max() * fixed);
+
+				countCosts(*this, x, vals, lowerBounds, upperBounds, costs, minCostFlowCost, 
 									 (opt.branch() ? &li : NULL),
 									 opt.ipl());
 				if (opt.branch()) {
@@ -80,9 +117,9 @@ int main(int argc, char *argv[]) {
 
 	int vars, fixed;
 		IntSetArgs domain;
-		IntArgs lowerBounds, upperBounds, vals, costs;
+		IntArgs lowerBounds, upperBounds, vals, costs, demands;
 	readInput(opt.file(), vars, domain, vals, lowerBounds, upperBounds, costs, 
-							fixed);
+							fixed, demands);
 
 	// cout << vars;
 	// cout << domain;
@@ -148,30 +185,22 @@ int main(int argc, char *argv[]) {
 	// 	}
 	// }
 	const int inf = 10000000;
-  const int maxFixed = vals.size() * fixed;
   int boundMinCostFlow = inf;
 	int boundBAB = inf;
 
 	//Script::run<CountCostsExample, DFS, FileOptions>(opt);
 	// TODO: all this is not optimized, can be optimized to keep input data
-	CountCostsExample* m = new CountCostsExample(opt, boundMinCostFlow, boundBAB, vars, domain, lowerBounds, upperBounds, vals, costs, fixed);
-	DFS<CountCostsExample> e(m);
+	CountCostsExample* m = new CountCostsExample(opt, boundMinCostFlow, boundBAB, vars, domain, lowerBounds, upperBounds, vals, costs, fixed, demands);
+	BAB<CountCostsExample> e(m);
 	CountCostsExample *s = e.next();
 
 	while (s != NULL) {
-		s->printOpen();
-		boundBAB = s->getTotal();
-		boundMinCostFlow = s->getMinCostFlowCost() + maxFixed;
+		boundBAB = s->cost().val();
+		boundMinCostFlow = s->getMinCostFlowCost().val();
 		s->print(cout);
-		cout << "BAB: " << boundBAB  << " real minCostFlow: " << s->getMinCostFlowCost() << " bound minCostFlow " << boundMinCostFlow << endl;
-		// s = e.next();
-		//continue;
-		delete s;
-		delete m;
-		// return 1;
-		m = new CountCostsExample(opt, boundMinCostFlow, boundBAB, vars, domain, lowerBounds, upperBounds, vals, costs, fixed);
-		DFS<CountCostsExample> ee(m);
-		s = ee.next();
+		cout << boundBAB  << " real minCostFlow: " << s->getMinCostFlowCost() << endl;
+		s = e.next();
+		continue;
 	}
 	if (boundBAB == inf) {
 		cout << "no solution" << endl;

@@ -40,7 +40,7 @@ public:
 	};
 
 CountCostsExample(const FileOptions& opt, int cost, int previousBest,
-int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs vals, IntArgs costs, int fixed);
+int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs vals, IntArgs costs, int fixed, IntArgs demands);
 	CountCostsExample(CountCostsExample &s) : IntMinimizeScript(s) {
 		x.update(*this, s.x);
 		total.update(*this, s.total);
@@ -55,13 +55,16 @@ int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs v
 os << "\tSolution: " << x << "\n";
 	}
 
-	int getMinCostFlowCost() const {
-		return minCostFlowCost.val();
+	virtual IntVar getMinCostFlowCost() const {
+		return minCostFlowCost;
 	}
 
-	int getTotal() const {
-		return total.val();
+	IntVar getOpenCost() const {
+		return openCost;
 	}
+
+	void
+  constrain(const Space& _best);
 
 	void printOpen() const {
 		cout << openCost << endl;

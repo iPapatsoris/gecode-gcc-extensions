@@ -16,7 +16,7 @@ enum {
 } mode;
 
 void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
-							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs, int& fixed) {
+							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs, int& fixed, IntArgs& demands) {
 
 	string line;
   ifstream file(fileName);
@@ -29,9 +29,17 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 	getline(file, line);
 	getline(file, line);
 
+	struct Assignment {
+		int cost;
+		int demand;
+
+		Assignment(int cost, int demand) : cost(cost), demand(demand) {}
+		Assignment() {}
+	};
+
 	vector<int> numbers;
 	int n;
-	vector<unordered_map<unsigned int, int>> varToVals;
+	vector<unordered_map<unsigned int, Assignment>> varToVals;
 	stringstream stream(line);
 
 	stream >> vars;
@@ -41,7 +49,7 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 		vals << i;
 		lowerBounds << 0;
 		upperBounds << n; 
-		varToVals.push_back(unordered_map<unsigned int, int>());
+		varToVals.push_back(unordered_map<unsigned int, Assignment>());
 	}
 
 	getline(file, line);
@@ -52,13 +60,16 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 		unsigned int warehouse;
 		unsigned int store;
 		int cost;
+		double costD;
 		int demand;
 		stream >> warehouse;
 		stream >> store;
-		stream >> cost;
+		stream >> costD;
+		cost = costD;
 		stream >> demand;
-		varToVals[store-1].insert(pair<unsigned int, int>(warehouse, cost));
+		varToVals[store-1].insert(pair<unsigned int, Assignment>(warehouse, Assignment(cost, demand)));
 	}
+
 
 	for (unsigned int var = 0; var < vars; var++) {
 		vector<int> keys;
@@ -70,9 +81,20 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 		domain << tmp;
 		for (unsigned int val = 1; val <= vals.size(); val++) {
 			auto res = varToVals[var].find(val);
-			costs << (res != varToVals[var].end() ? res->second : 0); 
+			costs << (res != varToVals[var].end() ? res->second.cost : 0); 
+			demands << (res != varToVals[var].end() ? res->second.demand : 0); 
 		}
 	}
+
+	for (unsigned int i = 0; i < vars; i++) {
+		cout << "{";
+		for (unsigned int j = 0; j < vals.size(); j++) {
+			cout << demands[i*vals.size() + j] << (j == vals.size()-1 ? "" :",");
+		}
+		cout << "},\n";
+	}
+	exit(1);
+
 
 	file.close();
 	return;
