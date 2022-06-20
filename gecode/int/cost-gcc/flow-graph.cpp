@@ -6,8 +6,8 @@ unsigned long countNi = 0;
  			const vector<unordered_set<int> >& varToVals,
 			const MapToSet<int, unsigned int>& valToVars,
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
-			const IntArgs& upperBounds, const IntArgs& costs, int costUpperBound) 
-				: costUpperBound(costUpperBound), firstTimeValidCost(true) {
+			const IntArgs& upperBounds, const IntArgs& costs) 
+				: firstTimeValidCost(true) {
 			
 			for (unsigned int var = 0; var < varToVals.size(); var++) {
 				this->varToVals.push_back(BtVector(varToVals[var].size()));
@@ -15,7 +15,6 @@ unsigned long countNi = 0;
 					this->varToVals[var].pushVal(val);
 				}
 			}
-
 			flowCost = new int(0);
 			oldFlowIsFeasible = new bool(true);
 			totalVarNodes = vars.size();

@@ -842,7 +842,7 @@ if (neti)			cout << endl;
 			return minUpperBound;
 		}
 
-		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation, bool *isCycle, LI* li) {		
+		bool minCostFlowIteration(pair<unsigned int, unsigned int> violation, bool *isCycle, LI* li, Int::IntView costUpperBound) {		
 			vector<unsigned int> shortestPath;
 			vector<int> dist;
 			int pathCost; 
@@ -870,7 +870,7 @@ if (neti)			cout << endl;
 
 			int flowCost = 0;
 			unsigned int minUpperBound = findMinUpperBound(violation, shortestPath, &flowCost);		
-			if (flowCost > graph.costUpperBound) {
+			if (flowCost > costUpperBound.max()) {
 				return false;
 			}
 			sendFlow(violation, shortestPath, minUpperBound, li);
@@ -1076,11 +1076,11 @@ if (neti)			cout << endl;
 	public:
 		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
 
-		bool findMinCostFlow(LI* li) {
+		bool findMinCostFlow(LI* li, Int::IntView costUpperBound) {
 			pair<unsigned int, unsigned int> violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
 //				cout << "Violation " << violation.first << "->" << violation.second << endl;
-				if (!minCostFlowIteration(violation, NULL, li)) {
+				if (!minCostFlowIteration(violation, NULL, li, costUpperBound)) {
 				//	cout << "incosistent" << endl;
 					return false;
 				}
@@ -1089,7 +1089,7 @@ if (neti)			cout << endl;
 			isMinCost = true;
 			//graph.calculateFlowCost(li);
 			// graph.print();
-			return graph.checkFlowCost();
+			return graph.checkFlowCost(costUpperBound);
 		}
 
 		// Given updatedEdges contains the edges whose bounds have been tightened
@@ -1097,7 +1097,7 @@ if (neti)			cout << endl;
 		// - Update the residual graph to match the changes
 		// - If the old flow is not still feasible, find a new one, using the 
 		//   incremental algorithm from the publication
-		bool updateMinCostFlow(vector<EdgeUpdate>& updatedEdges, LI* li) {
+		bool updateMinCostFlow(vector<EdgeUpdate>& updatedEdges, LI* li, Int::IntView costUpperBound) {
 			  //  cout << "Propagate: update min cost flow" << endl;
 		//	graph.print();
 			buildResidualGraph(li);
@@ -1161,7 +1161,7 @@ if (neti)						cout << "after cycle FOUND" << endl;
 				
 				bool isCycle = false;
 				// graph.printResidual();
-				if (!minCostFlowIteration({src, dest}, NULL, li)) {
+				if (!minCostFlowIteration({src, dest}, NULL, li, costUpperBound)) {
 					return false;
 				}
 				// graph.printResidual();
@@ -1173,7 +1173,7 @@ if (neti)						cout << "after cycle FOUND" << endl;
 						isCycle = false;
 						if (neti) cout << "cycle that didn't fix violation, fixing now" << endl;
 						debug = true;
-						if (!minCostFlowIteration({src, dest}, &isCycle, li)) {
+						if (!minCostFlowIteration({src, dest}, &isCycle, li, costUpperBound)) {
 							return false;
 						}
 					}
@@ -1246,7 +1246,7 @@ if (neti)						cout << "after cycle FOUND" << endl;
 // 					}
 // 			graph.printResidual();
 			// cout << "Update end" << endl;
-			return graph.checkFlowCost();
+			return graph.checkFlowCost(costUpperBound);
 		}
 	
 		// In addition to pruning, hold the affected Val->Var edges in updatedEdges
@@ -1258,7 +1258,7 @@ if (neti)						cout << "after cycle FOUND" << endl;
 		// The reason why 
 
 		ExecStatus performArcConsistency(Space& home, ViewArray<Int::IntView>& vars, 
-															       vector<EdgeUpdate>& updatedEdges, LI* li) {
+															       vector<EdgeUpdate>& updatedEdges, LI* li, Int::IntView costUpperBound) {
 		//	graph.addTResidualEdges(); // opt?
 			vector<int> distances;
 			vector<unsigned int> prev;
@@ -1353,7 +1353,7 @@ if (neti)						cout << "after cycle FOUND" << endl;
 							for (IntVarValues v(vars[y]); v(); ++v) {
 								unsigned int a = (*graph.valToNode)[v.val()];
 								if (a != b) {
-									if (earlyPrune(a, b, y, graph.costUpperBound - 
+									if (earlyPrune(a, b, y, costUpperBound.max() - 
 															   *(graph.flowCost))) {
 										edgesToPrune.push_back(EdgeWithVal(a, y, v.val()));
 										continue;
@@ -1370,7 +1370,7 @@ if (neti)						cout << "after cycle FOUND" << endl;
 						continue;
 					}
 					findShortestPathsReducedCosts(b, targetNodes, reducedDistances, 
-																				graph.costUpperBound - *(graph.flowCost));
+																				costUpperBound.max() - *(graph.flowCost));
 					
 					for (const auto& ay: ayList) {
 						const auto a = ay.first;
@@ -1391,7 +1391,7 @@ if (neti)						cout << "after cycle FOUND" << endl;
 						ResidualEdge *residualEdge = graph.getResidualEdge(a, y);
 						unsigned int costAY = residualEdge->reducedCost;
 						unsigned int costYB = graph.getResidualEdge(y, b)->reducedCost;
-						if ((int)reducedDistances[a] > (graph.costUpperBound - *(graph.flowCost) 
+						if ((int)reducedDistances[a] > (costUpperBound.max() - *(graph.flowCost) 
 																		  - (int)costAY - (int)costYB)) {
 							edgesToPrune.push_back(EdgeWithVal(a, y,
 																							graph.nodeToVal->find(a)->second));
@@ -1433,7 +1433,7 @@ if (neti)						cout << "after cycle FOUND" << endl;
 		}
 
 ExecStatus performArcConsistencyBell(Space& home, ViewArray<Int::IntView>& vars, 
-															       vector<EdgeUpdate>& updatedEdges) {
+															       vector<EdgeUpdate>& updatedEdges, Int::IntView costUpperBound) {
 		//	graph.addTResidualEdges(); // opt?
 			vector<int> distances;
 			vector<unsigned int> prev;
@@ -1495,7 +1495,7 @@ ExecStatus performArcConsistencyBell(Space& home, ViewArray<Int::IntView>& vars,
 						ResidualEdge *residualEdge = graph.getResidualEdge(a, y);
 						unsigned int costAY = residualEdge->cost;
 						unsigned int costYB = graph.getResidualEdge(y, b)->cost;
-						if ((int)distances[a] > (graph.costUpperBound - *(graph.flowCost) 
+						if ((int)distances[a] > (costUpperBound.max() - *(graph.flowCost) 
 																		  - (int)costAY - (int)costYB)) {
 							edgesToPrune.push_back(EdgeWithVal(a, y,
 																							graph.nodeToVal->find(a)->second));

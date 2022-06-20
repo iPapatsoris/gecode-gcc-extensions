@@ -84,7 +84,7 @@ class FlowGraph {
 		int *flowCost;
 
 		// Cost upper bound as defined by the constraint input
-		int costUpperBound;
+		// int costUpperBound;
 
 		// When values are pruned or variables are assigned, we update the 
 		// bounds of the corresponding edges. At that point, set this variable
@@ -210,12 +210,12 @@ class FlowGraph {
 		// Iterate through each edge that has flow, to find its total cost
 		int calculateFlowCost(LI &lii);
 
-		bool checkFlowCost() {
-			if (firstTimeValidCost && *flowCost <= costUpperBound) {
+		bool checkFlowCost(Int::IntView costUpperBound) {
+			if (firstTimeValidCost && *flowCost <= costUpperBound.max()) {
 				firstTimeValidCost = false;
 			}
-			// cout << *flowCost << " " << costUpperBound << endl;
-			return *flowCost <= costUpperBound;
+			// cout << *flowCost << " " << costUpperBound.max() << endl;
+			return *flowCost <= costUpperBound.max();
 		}
 
 		void calculateReducedCosts(const vector<int>& distances) {
@@ -248,7 +248,7 @@ class FlowGraph {
  			const vector<unordered_set<int> >& varToVals,
 			const MapToSet<int, unsigned int>& valToVars,
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
-			const IntArgs& upperBounds, const IntArgs& costs, int costUpperBound);
+			const IntArgs& upperBounds, const IntArgs& costs);
 
 		// Update graph state to match variable X domain pruning/assignment.
 		// Update is made by tightening the bounds of edge V->X as follows:
