@@ -10,74 +10,40 @@
 using namespace Gecode;
 using namespace std;
 
-class FileOptions : public Options {
-protected:
-	Driver::StringValueOption _file;
-	Driver::BoolOption _branch;
-public:
-	FileOptions(const char* scriptName) : 
-			Options(scriptName),
-			_file("file","input file name", ""),
-			_branch("branch", "branch heuristic flag", true) { 
-		add(_file);
-		add(_branch);
-	}
-  string file(void) const { return _file.value(); }
-	bool branch(void) const { return _branch.value(); }
-};
-
-class CountCostsExample : public IntMinimizeScript {
+class CountCostsExample : public Script {
 protected:
 	IntVarArray x;
 	IntVar total;
 	IntVar minCostFlowCost;
-	IntVar openCost;
-	BoolVarArray open;
 
 public:
 	enum {
-		MODEL_SINGLE, MODEL_MULTI
+		MODEL_SINGLE, MODEL_MULTI, BRANCHING_SIMPLE, BRANCHING_CUSTOM
 	};
 
-CountCostsExample(const FileOptions& opt, int cost, int previousBest,
-int vars, IntSetArgs domain, IntArgs lowerBounds, IntArgs upperBounds, IntArgs vals, IntArgs costs, int fixed, IntArgs demands);
-	CountCostsExample(CountCostsExample &s) : IntMinimizeScript(s) {
+	CountCostsExample(const InstanceOptions& opt);
+	CountCostsExample(CountCostsExample &s) : Script(s) {
 		x.update(*this, s.x);
 		total.update(*this, s.total);
 		minCostFlowCost.update(*this, s.minCostFlowCost);
-		openCost.update(*this, s.openCost);
-		open.update(*this, s.open);
 	}
 	virtual Space *copy(void) {
 		return new CountCostsExample(*this);
-	}
+	}	
+	
 	void print(ostream& os) const {
-os << "\tSolution: " << x << "\n";
+		os << "\tSolution: " << x << "\n" << cost() << endl;
 	}
 
 	virtual IntVar getMinCostFlowCost() const {
 		return minCostFlowCost;
 	}
 
-	IntVar getOpenCost() const {
-		return openCost;
-	}
-
-	void
-  constrain(const Space& _best);
-
-	void printOpen() const {
-		cout << openCost << endl;
-		cout << open << endl;
-		cout << x << endl;
-		cout << total << endl;
-		cout << minCostFlowCost << endl;
-		
-	}
+	void constrain(const Space& _best);
 
 	virtual IntVar cost(void) const {
 		return total;
-}
+	}
 	
 };
 

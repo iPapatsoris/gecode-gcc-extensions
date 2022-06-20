@@ -11,12 +11,9 @@
 using namespace std;
 using namespace Gecode;
 
-enum {
-	VARS, COST, DOMAIN, VALS, LOWER_BOUNDS, UPPER_BOUNDS, COSTS
-} mode;
-
 void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
-							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs, int& fixed, IntArgs& demands) {
+							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs, 
+							 int& fixed, IntArgs& demands) {
 
 	string line;
   ifstream file(fileName);
@@ -54,7 +51,6 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 
 	getline(file, line);
 	
-
 	while (getline(file, line)) {
 		stringstream stream(line);
 		unsigned int warehouse;
@@ -69,7 +65,6 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 		stream >> demand;
 		varToVals[store-1].insert(pair<unsigned int, Assignment>(warehouse, Assignment(cost, demand)));
 	}
-
 
 	for (unsigned int var = 0; var < vars; var++) {
 		vector<int> keys;
@@ -86,15 +81,14 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 		}
 	}
 
-	for (unsigned int i = 0; i < vars; i++) {
-		cout << "{";
-		for (unsigned int j = 0; j < vals.size(); j++) {
-			cout << demands[i*vals.size() + j] << (j == vals.size()-1 ? "" :",");
-		}
-		cout << "},\n";
-	}
-	exit(1);
-
+	// for (unsigned int i = 0; i < vars; i++) {
+	// 	cout << "{";
+	// 	for (unsigned int j = 0; j < vals.size(); j++) {
+	// 		cout << demands[i*vals.size() + j] << (j == vals.size()-1 ? "" :",");
+	// 	}
+	// 	cout << "},\n";
+	// }
+	// exit(1);
 
 	file.close();
 	return;

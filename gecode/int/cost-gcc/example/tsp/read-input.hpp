@@ -7,4 +7,4 @@
 using namespace Gecode;
 
 bool readInput(std::string fileName, int &vars, IntSetArgs &domain, IntArgs &vals,
-							 IntArgs &lowerBounds, IntArgs &upperBounds, IntArgs &costs, std::vector<int>& costsD);
+							 IntArgs &lowerBounds, IntArgs &upperBounds, IntArgs &costs);

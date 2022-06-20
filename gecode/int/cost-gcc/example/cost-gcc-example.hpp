@@ -10,32 +10,16 @@
 using namespace Gecode;
 using namespace std;
 
-class FileOptions : public Options {
-protected:
-	Driver::StringValueOption _file;
-	Driver::BoolOption _branch;
-public:
-	FileOptions(const char* scriptName) : 
-			Options(scriptName),
-			_file("file","input file name", ""),
-			_branch("branch", "branch heuristic flag", true) { 
-		add(_file);
-		add(_branch);
-	}
-  string file(void) const { return _file.value(); }
-	bool branch(void) const { return _branch.value(); }
-};
-
 class CountCostsExample : public Script {
-protected:
-	IntVarArray x;
+	protected:
+		IntVarArray x;
 
-public:
-	enum {
-		MODEL_SINGLE, MODEL_MULTI
-	};
+	public:
+		enum {
+			MODEL_SINGLE, MODEL_MULTI, BRANCHING_SIMPLE, BRANCHING_CUSTOM
+		};
 
-	CountCostsExample(const FileOptions& opt);
+	CountCostsExample(const InstanceOptions& opt);
 	CountCostsExample(CountCostsExample &s) : Script(s) {
 		x.update(*this, s.x);
 	}
@@ -43,7 +27,7 @@ public:
 		return new CountCostsExample(*this);
 	}
 	void print(ostream& os) const {
-// os << "\tSolution: " << x << "\n";
+		// os << "\tSolution: " << x << "\n";
 	}
 };
 

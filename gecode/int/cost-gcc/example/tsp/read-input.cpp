@@ -6,24 +6,20 @@
 #include <sstream>
 #include <vector>
 #include <gecode/int.hh>
-#include <gecode/float.hh>
 #include <math.h>
 
 using namespace std;
 using namespace Gecode;
 
-enum {
-	VARS, COST, DOMAIN, VALS, LOWER_BOUNDS, UPPER_BOUNDS, COSTS
-} mode;
-
-double euclidianDistance2D(pair<double, double> pointA, pair<double, double> pointB) {
+double euclidianDistance2D(pair<double, double> pointA, 
+													 pair<double, double> pointB) {
 	double xDiff = pointB.first - pointA.first;
 	double yDiff = pointB.second - pointA.second;
 	return sqrt(xDiff*xDiff + yDiff*yDiff);
 }
 
 void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
-							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs, vector<int>& costsD) {
+							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs) {
 
 	string line;
   ifstream file(fileName);
@@ -74,12 +70,11 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 
 	for (unsigned int i = 0; i < vars; i++) {
 		for (unsigned int j = 0; j < vars; j++) {
-			costsD.push_back((int) (0.5 + euclidianDistance2D(cord[i], cord[j])));
-			costs << costsD.back();
+			costs << (int) (0.5 + euclidianDistance2D(cord[i], cord[j]));
 		}
 	}
 
-	/* full matrix */
+	/* Full matrix */
 	// getline(file, line);
 	// getline(file, line);
 	// getline(file, line);
@@ -96,5 +91,4 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 	// }
 
 	file.close();
-
 }
