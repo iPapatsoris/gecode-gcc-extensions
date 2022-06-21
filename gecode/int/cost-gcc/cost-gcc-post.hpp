@@ -75,12 +75,38 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 	if (costs.size() != n * vals.size()) {
 		throw ArgumentSizeMismatch("Int::countCosts");
 	}
+
+	if (costUpperBound.max() < 0) {
+		home.fail();
+		return;
+	}
+
+	int minCost = 0;
+	for (auto cost: costs) {
+		if (cost < minCost) {
+			minCost = cost;
+		}
+	}
 	
+	// If there are negative costs, transform them and costUpperBound
+	IntVar positiveCostUpperBound(home, 0, Int::Limits::max);
+	IntArgs positiveCosts;
+	if (minCost < 0) {
+		minCost *= -1;
+		rel(home, positiveCostUpperBound == costUpperBound + vars.size() * minCost);
+		for (auto cost: costs) {
+			positiveCosts << cost + minCost;
+		}
+	} else {
+		positiveCostUpperBound = costUpperBound;
+		positiveCosts = costs;
+	}
+
 	ViewArray<Int::IntView> views(home, vars);
 	GECODE_POST;
 	GECODE_ES_FAIL(CostGcc::post(home, views, varToVals, valToVars, vals, 
-															 lowerBounds, upperBounds, costs, costUpperBound, 
-															 li, ipl
+															 lowerBounds, upperBounds, positiveCosts, 
+															 positiveCostUpperBound, li, ipl
 															));
 }
 
