@@ -1,7 +1,7 @@
 #ifndef H_FLOW_GRAPH
 #define H_FLOW_GRAPH
 
-#include "graph-base-components.hpp"
+#include "node.hpp"
 #include "example/LI.hpp"
 #include "bt-vector.hpp"
 #include <iostream>
@@ -75,7 +75,7 @@ class FlowGraph {
 		// We know which variables got changed by using advisors, so domain
 		// comparison is only done among those.
 		// Should be kept up to date with assignments and pruning.
-		vector<BtVector> varToVals;
+		vector<BtVector<int, int>> varToVals;
 
 	//	vector<int> *dist;
 
@@ -114,9 +114,9 @@ class FlowGraph {
 															// we might have tightened var->val bounds,
 															// so we need to check through every node
 				}*/
-				auto& node = nodeList[i];
-				for (unsigned int e = 0; e < node.edgeListSize; e++) {
-					auto& edge = (*nodeList[i].edgeList)[e];
+				auto& edges = nodeList[i].edgeList;
+				for (unsigned int e = 0; e < edges.listSize; e++) {
+					auto& edge = (*edges.list)[e];
 					if (edge.flow < edge.lowerBound) {
 						violation = {i, edge.destNode};
 						return true;
@@ -129,30 +129,11 @@ class FlowGraph {
 		// Search for source->dest edge, return pointer to it or NULL if it 
 		// doesn't exist
 		NormalEdge* getEdge(unsigned int source, unsigned int dest) {
-			auto& node = nodeList[source];
-			auto res = (*node.edgeToPos).find(dest);
-			if (res == (*node.edgeToPos).end() || res->second >= node.edgeListSize) {
-				return NULL;
-			}
-			return &(*node.edgeList)[res->second];
+			return nodeList[source].edgeList.getVal(dest);
 		}
 
 		void deleteEdge(unsigned int source, unsigned int dest) {
-		//	cout << "Deleting edge " << source << "->" << dest << endl;
-			auto& node = nodeList[source];
-			auto res = (*node.edgeToPos).find(dest);
-			if (res == (*node.edgeToPos).end() || res->second >= node.edgeListSize) {
-				cout << "oops! doesn't exist" << endl;
-				return;
-			}
-
-			auto pos = res->second;
-			auto lastElement = (*node.edgeList)[node.edgeListSize - 1].destNode;
-			swap((*node.edgeList)[pos], (*node.edgeList)[node.edgeListSize - 1]);
-			
-			(*node.edgeToPos)[dest] = node.edgeListSize - 1;
-			(*node.edgeToPos)[lastElement] = pos;
-			node.edgeListSize -= 1;
+			nodeList[source].edgeList.deleteVal(dest);
 		}
 		
 		void deleteResidualEdge(unsigned int source, unsigned int dest) {

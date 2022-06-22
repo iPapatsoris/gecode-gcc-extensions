@@ -10,7 +10,7 @@ unsigned long countNi = 0;
 				: firstTimeValidCost(true) {
 			
 			for (unsigned int var = 0; var < varToVals.size(); var++) {
-				this->varToVals.push_back(BtVector(varToVals[var].size()));
+				this->varToVals.push_back(BtVector<int, int>(varToVals[var].size()));
 				for (auto val: varToVals[var]) {
 					this->varToVals[var].pushVal(val);
 				}
@@ -36,9 +36,7 @@ unsigned long countNi = 0;
 			for (unsigned int x = 0; x < totalVarNodes; x++) {
 				nodeList.push_back(Node(1));
 				//debug.push_back(1);
-				nodeList.back().edgeList->push_back(NormalEdge(tNode, 1, 1, 0));
-				nodeList.back().edgeToPos->insert(pair<unsigned int, unsigned int>
-																			    (tNode, 0));
+				nodeList.back().edgeList.pushVal(NormalEdge(tNode, 1, 1, 0));
 			}
 
 			Matrix<IntArgs> c(costs, inputVals.size(), vars.size());
@@ -62,10 +60,7 @@ unsigned long countNi = 0;
 					// Add edges
 					for (auto &var : it->second) {
 						// int lowerBound = (vars[var].assigned() ? 1 : 0);
-						nodeList.back().edgeList->push_back(NormalEdge(var, 0, 1,
-																													c(i, var)));
-						nodeList.back().edgeToPos->insert(pair<unsigned int, unsigned int>
-																			    (var, nodeList.back().edgeList->size() - 1));
+						nodeList.back().edgeList.pushVal(NormalEdge(var, 0, 1, c(i, var)));
 					}
 				}
 			}
@@ -76,29 +71,24 @@ unsigned long countNi = 0;
 			for (int i = 0; i < inputVals.size(); i++) {
 				int val = inputVals[i];
 				auto valNode = valToNode->find(val);
-				nodeList.back().edgeList->push_back(NormalEdge(valNode->second, 
-																				   lowerBounds[i], upperBounds[i], 0));
-				nodeList.back().edgeToPos->insert(pair<unsigned int, unsigned int>
-																			    (valNode->second, nodeList.back().edgeList->size() - 1));
+				nodeList.back().edgeList.pushVal(NormalEdge(valNode->second, 
+																				 lowerBounds[i], upperBounds[i], 0));
 			}
 
 			// Insert T node and T->S edge
 			nodeList.push_back(Node(1));
 		//	debug.push_back(1);
-			nodeList.back().edgeList->push_back(NormalEdge(sNode, totalVarNodes, 
+			nodeList.back().edgeList.pushVal(NormalEdge(sNode, totalVarNodes, 
 																				 totalVarNodes, 0));
-			nodeList.back().edgeToPos->insert(pair<unsigned int, unsigned int>
-																			    (sNode, nodeList.back().edgeList->size() - 1));
-
-
 			// Create residual graph
 			/*for (auto &node : nodeList) {
 				copy(node.edgeList->begin(), node.edgeList->end(), 
 						 back_inserter(*node.residualEdgeList));
 			}*/
 			for (auto &node : nodeList) {
-				for (unsigned int e = 0; e < node.edgeListSize; e++) {
-					auto& edge = (*node.edgeList)[e];
+				auto& edges = node.edgeList;
+				for (unsigned int e = 0; e < edges.listSize; e++) {
+					auto& edge = (*edges.list)[e];
 					node.residualEdgeList->push_back(ResidualEdge(edge));
 				}
 			}
@@ -183,8 +173,9 @@ unsigned long countNi = 0;
 		int FlowGraph::calculateFlowCost(LI& lii) {
 			*flowCost = 0;
 			for (unsigned int i = totalVarNodes; i < sNode(); i++) {
-				for (unsigned int j = 0; j < nodeList[i].edgeListSize; j++) {
-					auto& edge = (*(nodeList[i].edgeList))[j];
+				auto& edges = nodeList[i].edgeList;
+				for (unsigned int j = 0; j < edges.listSize; j++) {
+					auto& edge = (*edges.list)[j];
 					if (edge.flow > 0) {
 						*flowCost += edge.cost;
 						lii[edge.destNode] = (*nodeToVal)[i];
@@ -197,11 +188,9 @@ unsigned long countNi = 0;
 		void FlowGraph::print() const {
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				auto& node = nodeList[i];
-				//node.print();
-				//if (i < totalVarNodes)
-					//varToVals[i].print();
-				for (unsigned int j = 0; j < nodeList[i].edgeListSize; j++) {
-					auto& edge = (*(nodeList[i].edgeList))[j];
+				auto& edges = node.edgeList;
+				for (unsigned int j = 0; j < edges.listSize; j++) {
+					auto& edge = (*edges.list)[j];
 					cout << i << " -> ";
 					edge.print();
 				}

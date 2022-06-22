@@ -1,9 +1,9 @@
-#ifndef GRAPH_BASE_COMPONENTS
-#define GRAPH_BASE_COMPONENTS
+#ifndef H_EDGE
+#define H_EDGE
 
 #include <iostream>
 #include <vector>
-#include <unordered_map>
+#include "bt-vector.hpp"
 
 using namespace std;
 
@@ -16,8 +16,9 @@ protected:
 	unsigned int destNode;
 	int cost;
 
-	Edge(unsigned int destNode, unsigned int cost) : destNode(destNode), cost(cost) {}
-	Edge() {}
+	Edge(unsigned int destNode, unsigned int cost) : destNode(destNode), 
+																									 cost(cost) {}
+	Edge() {}	
 
 	friend class FlowGraphAlgorithms;
 };
@@ -72,38 +73,6 @@ public:
 
 	friend class FlowGraph;
 	friend class FlowGraphAlgorithms;
-};
-
-class Node {
-	vector<NormalEdge> *edgeList;
-	unordered_map<unsigned int, unsigned int> *edgeToPos;
-	unsigned int edgeListSize;
-
-	vector<ResidualEdge> *residualEdgeList;
-
-	Node(unsigned int totalEdges) : edgeListSize(totalEdges) {
-		edgeList = new vector<NormalEdge>();
-		edgeToPos = new unordered_map<unsigned int, unsigned int>();
-		edgeToPos->reserve(totalEdges);
-		edgeList->reserve(totalEdges);
-		residualEdgeList = new vector<ResidualEdge>();
-	}
-	friend class FlowGraph;
-	friend class FlowGraphAlgorithms;
-
-	void print() const {
-		cout << "edgeListSize: " << edgeListSize << "\n";
-		cout << "edgeToPos:";
-		for (auto& p: *edgeToPos) {
-			cout << p.first << ": " << p.second << " ";
-		}
-		cout << "edgeList:\n";
-		for (auto& e: *edgeList) {
-			cout << e.getDestNode() << " ";
-		}
-		cout << endl;
-
-	}
 };
 
 #endif
