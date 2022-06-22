@@ -212,9 +212,9 @@ void buildResidualGraph(LI *li) {
 			//cout << "done " << endl;
 		}
 
-		void sendFlow(pair<int, int>& violation, const vector<int>& shortestPath, int minUpperBound, LI* li) {
+		void sendFlow(const EdgeInfo& violation, const vector<int>& shortestPath, int minUpperBound, LI* li) {
 			// Send flow through the path edges and update residual graph
-			int prev = violation.first;
+			int prev = violation.src;
 			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
 				NormalEdge *edge = graph.getEdge(prev, *it);
 				if (edge != NULL) {
@@ -278,9 +278,9 @@ void buildResidualGraph(LI *li) {
 			return minUpperBound;
 		}
 		bool debug = false;
-		int findMinUpperBound(pair<int, int>& violation, vector<int>& shortestPath, int* flowCost) {
+		int findMinUpperBound(const EdgeInfo& violation, vector<int>& shortestPath, int* flowCost) {
 			// Find min upper bound along shortest path
-			int prev = violation.first;
+			int prev = violation.src;
 			int minUpperBound = INF_INT;
 			// cout << "Violation " << prev << " " << violation.second << endl;
 			*flowCost = *graph.flowCost;
@@ -316,14 +316,14 @@ void buildResidualGraph(LI *li) {
 			return minUpperBound;
 		}
 
-		bool minCostFlowIteration(pair<int, int> violation, bool *isCycle, LI* li, Int::IntView costUpperBound) {		
+		bool minCostFlowIteration(const EdgeInfo& violation, bool *isCycle, LI* li, Int::IntView costUpperBound) {		
 			vector<int> shortestPath;
 			vector<int> dist;
 			int pathCost; 
 			//  cout << "Violation " << violation.first << "->" << violation.second << endl;
 			//graph.print();
 			//graph.printResidual();
-			if (!findShortestPathNegativeCosts(violation.second, violation.first, 
+			if (!findShortestPathNegativeCosts(violation.dest, violation.src, 
 																				 shortestPath, dist, pathCost, isCycle)) {
 				// Constraint is not consistent
 				return false;
@@ -539,7 +539,7 @@ void buildResidualGraph(LI *li) {
 		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
 
 		bool findMinCostFlow(LI* li, Int::IntView costUpperBound) {
-			pair<int, int> violation;
+			EdgeInfo violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
 //				cout << "Violation " << violation.first << "->" << violation.second << endl;
 				if (!minCostFlowIteration(violation, NULL, li, costUpperBound)) {
@@ -547,7 +547,6 @@ void buildResidualGraph(LI *li) {
 					return false;
 				}
 			}
-			*graph.oldFlowIsFeasible = true;
 			isMinCost = true;
 			//graph.calculateFlowCost(li);
 			// graph.print();
@@ -559,7 +558,7 @@ void buildResidualGraph(LI *li) {
 		// - Update the residual graph to match the changes
 		// - If the old flow is not still feasible, find a new one, using the 
 		//   incremental algorithm from the publication
-		bool updateMinCostFlow(vector<EdgeUpdate>& updatedEdges, LI* li, Int::IntView costUpperBound) {
+		bool updateMinCostFlow(vector<EdgeInfo>& updatedEdges, LI* li, Int::IntView costUpperBound) {
 			  //  cout << "Propagate: update min cost flow" << endl;
 		//	graph.print();
 			buildResidualGraph(li);
@@ -641,6 +640,9 @@ void buildResidualGraph(LI *li) {
 				}
 				
 				graph.deleteEdge(e.src, e.dest);
+				// We have already removed flow from this Val->Var edge and updated 
+				// residual graph, so we know for sure that the only residual edge 
+				// direction will be the same as the original edge.
 				graph.deleteResidualEdge(e.src, e.dest);
 				int val = (*graph.nodeToVal)[e.src];
 				graph.varToVals[e.dest].deleteVal(val);
@@ -689,7 +691,6 @@ void buildResidualGraph(LI *li) {
 					}
 				}	while (isCycle);				
 			}
-			*(graph.oldFlowIsFeasible) = true;
 			isMinCost = true;
 			return graph.checkFlowCost(costUpperBound);
 		}
@@ -838,7 +839,7 @@ void buildResidualGraph(LI *li) {
 			for (auto& edge: edgesToPrune) {
 				// Push to updatedEdges so we can modify the residual graph accordingly
 				// on the next min cost flow computation
-	//			updatedEdges.push_back(EdgeUpdate(edge.src, edge.dest, false, false, true));
+	//			updatedEdges.push_back(EdgeInfo(edge.src, edge.dest, false, false, true));
 				// Prune
 				GECODE_ME_CHECK(vars[edge.dest].nq(home, edge.val));
 	//			cout << "Prunning " << edge.src << " " << edge.dest << endl;
@@ -940,7 +941,7 @@ ExecStatus performArcConsistencyBell(Space& home, ViewArray<Int::IntView>& vars,
 			for (auto& edge: edgesToPrune) {
 				// Push to updatedEdges so we can modify the residual graph accordingly
 				// on the next min cost flow computation
-	//			updatedEdges.push_back(EdgeUpdate(edge.src, edge.dest, false, false, true));
+	//			updatedEdges.push_back(EdgeInfo(edge.src, edge.dest, false, false, true));
 				// Prune
 				GECODE_ME_CHECK(vars[edge.dest].nq(home, edge.val));
 	//			cout << "Prunning " << edge.src << " " << edge.dest << endl;

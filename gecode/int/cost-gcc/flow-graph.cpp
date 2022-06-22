@@ -4,7 +4,7 @@ unsigned long countNi = 0;
 		FlowGraph::FlowGraph(
 			const ViewArray<Int::IntView>& vars, 
  			const vector<unordered_set<int> >& varToVals,
-			const MapToSet<int, int>& valToVars,
+			const MapToSet& valToVars,
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
 			const IntArgs& upperBounds, const IntArgs& costs) 
 				: firstTimeValidCost(true) {
@@ -16,7 +16,6 @@ unsigned long countNi = 0;
 				}
 			}
 			flowCost = new int(0);
-			oldFlowIsFeasible = new bool(true);
 			totalVarNodes = vars.size();
 			int totalValNodes = inputVals.size();
 			// Nodes are variable nodes, values nodes, S and T nodes
@@ -48,12 +47,12 @@ unsigned long countNi = 0;
 			// their lower bound restriction
 			for (int i = 0; i < inputVals.size(); i++) {
 				int val = inputVals[i];
-				auto it = valToVars.map.find(val);
+				auto it = valToVars.find(val);
 				valToNode->insert({val, nodeList.size()});
 				nodeToVal->insert({nodeList.size(), val});
 				//cout << "node " << nodeList.size() << " corresponds to val " << val
 				//		 << "\n";
-				bool valIsPruned = (it == valToVars.map.end());
+				bool valIsPruned = (it == valToVars.end());
 				nodeList.push_back(Node(valIsPruned ? 0 : it->second.size()));
 				//debug.push_back(1);
 				if (!valIsPruned) {
@@ -104,7 +103,7 @@ unsigned long countNi = 0;
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
 		bool FlowGraph::updatePrunedValues(Int::IntView x, int xIndex, 
-													  vector<EdgeUpdate>& updatedEdges) {
+													  vector<EdgeInfo>& updatedEdges) {
 			// Hold iterators to the values that we end up prunning, so we can also
 			// remove them from valToVars
 			vector<int> prunedValues; 
@@ -124,9 +123,8 @@ unsigned long countNi = 0;
 						// Value has been pruned from variable X's domain, update graph
 						//edge->upperBound = 0;:
 						if (edge->flow == 1) {
-							*oldFlowIsFeasible = false;
 							isFeasible = false;
-							updatedEdges.push_back(EdgeUpdate(valueNode, xIndex));
+							updatedEdges.push_back(EdgeInfo(valueNode, xIndex));
 							//  cout << "upper bound violation " << valueNode << " " << xIndex << endl;
 							//*flowCost -= edge->cost;
 							//edge->flow -= 1;
@@ -146,7 +144,6 @@ unsigned long countNi = 0;
 						//edge->lowerBound = 1;
 						if (edge->flow == 0) {
 							//  cout << "lower bound violation " << valueNode << " " << xIndex << endl;
-							*oldFlowIsFeasible = false;
 							isFeasible = false;
 						}
 					}	

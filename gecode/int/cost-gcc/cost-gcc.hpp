@@ -38,7 +38,7 @@ protected:
 		Council<ViewAdvisor> c;
 		Int::IntView costUpperBound;
 		FlowGraph* graph;
-		vector<EdgeUpdate> updatedEdges;
+		vector<EdgeInfo> updatedEdges;
 		LI li;
 		bool usingLocalHandle;
 		// TODO: do not store, instead use different post functions?
@@ -46,7 +46,7 @@ protected:
 
 public:
 	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph* graph, 
-					const vector<EdgeUpdate>& updatedEdges, LI* li, IntPropLevel ipl, Int::IntView costUpperBound)
+					const vector<EdgeInfo>& updatedEdges, LI* li, IntPropLevel ipl, Int::IntView costUpperBound)
 			: NaryPropagator(home, x), c(home), costUpperBound(costUpperBound), graph(graph), 
 				updatedEdges(updatedEdges), usingLocalHandle(li != NULL), ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
@@ -60,7 +60,7 @@ public:
 
 	static ExecStatus post(Space& home, ViewArray<Int::IntView>& vars,
 												vector<unordered_set<int> >& varToVals,
-												MapToSet<int, int>& valToVars,
+												MapToSet& valToVars,
 												const IntArgs& inputVals, 
 												const IntArgs& lowerBounds, const IntArgs& upperBounds,
 												const IntArgs& costs, Int::IntView costUpperBound, LI* li,
@@ -82,7 +82,7 @@ public:
 			return ES_FAILED;
 		}
 		graph->addTResidualEdges();
-		vector<EdgeUpdate> updatedEdges;
+		vector<EdgeInfo> updatedEdges;
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, li, costUpperBound) != ES_OK) {
 				return ES_FAILED;
 		}
@@ -157,7 +157,7 @@ private:
 	// Assert that Gecode variable domains and valToVars/varToVals are in sync
 	void static assertCorrectDomains(const ViewArray<Int::IntView>& vars, 
 															 		 vector<unordered_set<int> >& varToVals,
-																	 const MapToSet<int, int>& valToVars
+																	 const MapToSet& valToVars
 																	) {
 		assert(varToVals.size() == vars.size());
 		for (int x = 0; x < vars.size(); x++) {
@@ -166,8 +166,8 @@ private:
 				assert(varToValsEntry.find(v.val()) 
 							!= varToValsEntry.end());
 							
-				auto it = valToVars.map.find(v.val());
-				assert(it != valToVars.map.end());
+				auto it = valToVars.find(v.val());
+				assert(it != valToVars.end());
 				assert(it->second.find(x) != it->second.end());
 			} 
 		}
@@ -179,7 +179,7 @@ private:
 			}
 		}
 
-		for (auto& v: valToVars.map) {
+		for (auto& v: valToVars) {
 			for (auto x: v.second) {
 				assert((int) x < vars.size());
 				assert(vars[x].in(v.first));

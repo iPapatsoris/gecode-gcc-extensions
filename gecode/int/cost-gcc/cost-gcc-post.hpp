@@ -40,7 +40,7 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 
 	// Map values to their variables
 	// Helps do fast lookups, for early pruning and FlowGraph creation
-	MapToSet<int, int> valToVars;
+	MapToSet valToVars;
 	// Map variables to their values
 	// Is used to compare old domain with current Gecode domain, to find which
 	// values got pruned between executions
@@ -52,9 +52,9 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 				throw ArgumentSizeMismatch("Int::costcGCC domain value doesn't exist in values array");
 			}
 			varToVals.back().insert(i.val());
-			auto it = valToVars.map.find(i.val());
-			if (it == valToVars.map.end()) {
-				valToVars.map.insert({i.val(), 
+			auto it = valToVars.find(i.val());
+			if (it == valToVars.end()) {
+				valToVars.insert({i.val(), 
 														  unordered_set<int>({x})});
 			} else {
 				it->second.insert(x);
