@@ -9,7 +9,7 @@ unsigned long countNi = 0;
 			const IntArgs& upperBounds, const IntArgs& costs) 
 				: firstTimeValidCost(true) {
 			
-			for (int var = 0; var < varToVals.size(); var++) {
+			for (unsigned int var = 0; var < varToVals.size(); var++) {
 				this->varToVals.push_back(BtVector<int>(varToVals[var].size()));
 				for (auto val: varToVals[var]) {
 					this->varToVals[var].pushVal(val);
@@ -186,7 +186,7 @@ unsigned long countNi = 0;
 		}
 
 		void FlowGraph::print() const {
-			for (int i = 0; i < nodeList.size(); i++) {
+			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				auto& node = nodeList[i];
 				auto& edges = node.edgeList;
 				for (int j = 0; j < edges.listSize; j++) {
@@ -199,7 +199,7 @@ unsigned long countNi = 0;
 		}
 
 		void FlowGraph::printResidual() const {
-			for (int i = 0; i < nodeList.size(); i++) {
+			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				auto& node = nodeList[i];
 				//cout << "address " << node.residualEdgeList << endl;
 				for (auto& edge: *node.residualEdgeList) {

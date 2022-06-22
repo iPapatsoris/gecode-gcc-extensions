@@ -108,7 +108,7 @@ class FlowGraph {
 		// TODO: can be optimized to look for less?
 		bool getLowerBoundViolatingEdge(pair<int, int>& violation) 
 			const {
-			for (int i = 0; i < nodeList.size(); i++) {
+			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				/*if (i == totalVarNodes) {
 					i = sNode();				// if at init some values are already pruned,
 															// we might have tightened var->val bounds,
@@ -164,7 +164,7 @@ class FlowGraph {
 		// node's residual edges list 
 		ResidualEdge* getResidualEdge(int source, int dest, 
 																  int *index = NULL) {
-			for (int i=0; i < nodeList[source].residualEdgeList->size(); i++) {
+			for (unsigned int i=0; i < nodeList[source].residualEdgeList->size(); i++) {
 				ResidualEdge& edge = (*nodeList[source].residualEdgeList)[i];
 				if (edge.destNode == dest) {
 					if (index != NULL) {
@@ -200,7 +200,7 @@ class FlowGraph {
 		}
 
 		void calculateReducedCosts(const vector<int>& distances) {
-			for (int i = 0; i < nodeList.size(); i++) {
+			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				for (auto& edge : (*nodeList[i].residualEdgeList)) {
 					edge.reducedCost = distances[i] + edge.cost - distances[edge.destNode];
 					// cout << i << "->" << edge.destNode << " " << edge.reducedCost << " = " << distances[i] << " + " << edge.cost << " - " << distances[edge.destNode] << endl;

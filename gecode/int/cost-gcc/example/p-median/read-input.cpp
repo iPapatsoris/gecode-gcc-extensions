@@ -11,9 +11,6 @@
 using namespace std;
 using namespace Gecode;
 
-enum {
-	VARS, COST, DOMAIN, VALS, LOWER_BOUNDS, UPPER_BOUNDS, COSTS
-} mode;
 
 void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs, int& fixed) {
@@ -28,16 +25,15 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 	getline(file, line);
 	getline(file, line);
 	vector<int> numbers;
-	int n;
-	vector<unordered_map<unsigned int, unsigned int>> varToVals;
+	vector<unordered_map<int, int>> varToVals;
 	stringstream stream(line);
 	stream >> vars;
 	stream >> fixed;
-	for (unsigned int i = 1; i <= vars; i++) {
+	for (int i = 1; i <= vars; i++) {
 		vals << i;
 		lowerBounds << 0;
 		upperBounds << vars; 
-		varToVals.push_back(unordered_map<unsigned int, unsigned int>());
+		varToVals.push_back(unordered_map<int, int>());
 	}
 
 	getline(file, line);
@@ -45,17 +41,16 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 
 	while (getline(file, line)) {
 		stringstream stream(line);
-		unsigned int warehouse;
-		unsigned int store;
+		int warehouse;
+		int store;
 		int cost;
-		double costD;
 		stream >> warehouse;
 		stream >> store;
 		stream >> cost;
-		varToVals[store-1].insert(pair<unsigned int, unsigned int>(warehouse, cost));
+		varToVals[store-1].insert(pair<int, int>(warehouse, cost));
 	}
 
-	for (unsigned int var = 0; var < vars; var++) {
+	for (int var = 0; var < vars; var++) {
 		vector<int> keys;
 		for (auto k: varToVals[var]) {
 			keys.push_back(k.first);
@@ -63,7 +58,7 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 		IntSet tmp;
 		IntSetInit<IntArgs>::init(tmp, IntArgs(keys));
 		domain << tmp;
-		for (unsigned int val = 1; val <= vals.size(); val++) {
+		for (int val = 1; val <= vals.size(); val++) {
 			auto res = varToVals[var].find(val);
 			costs << (res != varToVals[var].end() ? res->second : 0); 
 		}

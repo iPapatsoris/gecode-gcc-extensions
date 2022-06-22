@@ -37,12 +37,12 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
              line.end());
 	stringstream stream(line);
 	stream >> vars;	
-	for (unsigned int i = 0; i < vars; i++) {
+	for (int i = 0; i < vars; i++) {
 		vals << i;
 	}
-	for (unsigned int i = 0; i < vars; i++) {
+	for (int i = 0; i < vars; i++) {
 		vector<int> d;
-		for (unsigned int j = 0; j < vars; j++) {
+		for (int j = 0; j < vars; j++) {
 			if (i != j) {
 				d.push_back(j);
 			}
@@ -68,8 +68,8 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 		cord.push_back(c);
 	}
 
-	for (unsigned int i = 0; i < vars; i++) {
-		for (unsigned int j = 0; j < vars; j++) {
+	for (int i = 0; i < vars; i++) {
+		for (int j = 0; j < vars; j++) {
 			costs << (int) (0.5 + euclidianDistance2D(cord[i], cord[j]));
 		}
 	}

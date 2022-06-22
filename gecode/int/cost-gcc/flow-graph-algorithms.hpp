@@ -97,7 +97,6 @@ void buildResidualGraph(LI *li) {
 			prev.assign(graph.nodeList.size(), NONE_INT);
 			dist.assign(graph.nodeList.size(), INF_INT);
 			dist[source] = 0;
-			bool debug = false;
 			// if (dest == NULL) {
 			// 	debugCounter++;
 			// 	if (debugCounter == 4569161 || debugCounter == 4569171 || debugCounter == 4569439 || debugCounter == 4569449) {
@@ -142,8 +141,6 @@ void buildResidualGraph(LI *li) {
 				swap(updatedNodesNew, updatedNodesOld);
 				updatedNodesNew->clear();
 			}
-			if (dest == NULL)
-				;// cout << "done " << endl;
 		}
 
 		void traceCycle(const vector<int>& prev, int node, vector<int>& cycle) const {
@@ -194,7 +191,7 @@ void buildResidualGraph(LI *li) {
 							// to specific requested destination
 							dist[edge.destNode] = dist[node] + edge.cost;
 							prev[edge.destNode] = node;
-							if (++len[edge.destNode] == graph.nodeList.size() - 1) {
+							if (++len[edge.destNode] == (int) graph.nodeList.size() - 1) {
 	//							cout << "cycle lol" << endl;
 								*isCycle = true;
 								traceCycle(prev, edge.destNode, cycle);
@@ -246,7 +243,7 @@ void buildResidualGraph(LI *li) {
 		void sendFlowCycle(const vector<int>& cycle, int minUpperBound, LI* li) {
 			// Send flow through the path edges and update residual graph
 			int prev = cycle[0];
-			for(int i = 1; i < cycle.size(); i++) {			
+			for(unsigned int i = 1; i < cycle.size(); i++) {			
 				NormalEdge *edge = graph.getEdge(prev, cycle[i]);
 				if (edge != NULL) {
 					// Path residual edge is a forward edge in the original graph
@@ -272,7 +269,7 @@ void buildResidualGraph(LI *li) {
 		int findMinUpperBoundCycle(const vector<int>& cycle) const {
 			int prev = cycle[0];
 			int minUpperBound = INF_INT;
-			for(int i = 1; i < cycle.size(); i++) {
+			for(unsigned int i = 1; i < cycle.size(); i++) {
 				// Bellman returns the path in reverse, so traverse it in reverse
 				ResidualEdge *edge = graph.getResidualEdge(prev, cycle[i]);
 				minUpperBound = min(minUpperBound, edge->upperBound);
@@ -706,7 +703,7 @@ void buildResidualGraph(LI *li) {
 		// The reason why 
 
 		ExecStatus performArcConsistency(Space& home, ViewArray<Int::IntView>& vars, 
-															       vector<EdgeUpdate>& updatedEdges, LI* li, Int::IntView costUpperBound) {
+															       LI* li, Int::IntView costUpperBound) {
 		//	graph.addTResidualEdges(); // opt?
 			vector<int> distances;
 			vector<int> prev;
@@ -839,8 +836,6 @@ void buildResidualGraph(LI *li) {
 
 			// Do the actual pruning and update data structures
 			for (auto& edge: edgesToPrune) {
-				NormalEdge* actualEdge = graph.getEdge(edge.src, edge.dest);
-				assert(actualEdge != NULL);
 				// Push to updatedEdges so we can modify the residual graph accordingly
 				// on the next min cost flow computation
 	//			updatedEdges.push_back(EdgeUpdate(edge.src, edge.dest, false, false, true));
@@ -869,7 +864,7 @@ void buildResidualGraph(LI *li) {
 		}
 
 ExecStatus performArcConsistencyBell(Space& home, ViewArray<Int::IntView>& vars, 
-															       vector<EdgeUpdate>& updatedEdges, Int::IntView costUpperBound) {
+															       Int::IntView costUpperBound) {
 		//	graph.addTResidualEdges(); // opt?
 			vector<int> distances;
 			vector<int> prev;
@@ -943,8 +938,6 @@ ExecStatus performArcConsistencyBell(Space& home, ViewArray<Int::IntView>& vars,
 
 			// Do the actual pruning and update data structures
 			for (auto& edge: edgesToPrune) {
-				NormalEdge* actualEdge = graph.getEdge(edge.src, edge.dest);
-				assert(actualEdge != NULL);
 				// Push to updatedEdges so we can modify the residual graph accordingly
 				// on the next min cost flow computation
 	//			updatedEdges.push_back(EdgeUpdate(edge.src, edge.dest, false, false, true));

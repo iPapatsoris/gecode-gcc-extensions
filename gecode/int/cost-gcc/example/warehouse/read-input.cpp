@@ -36,25 +36,25 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 
 	vector<int> numbers;
 	int n;
-	vector<unordered_map<unsigned int, Assignment>> varToVals;
+	vector<unordered_map<int, Assignment>> varToVals;
 	stringstream stream(line);
 
 	stream >> vars;
 	stream >> fixed;
 	stream >> n;
-	for (unsigned int i = 1; i <= vars; i++) {
+	for (int i = 1; i <= vars; i++) {
 		vals << i;
 		lowerBounds << 0;
 		upperBounds << n; 
-		varToVals.push_back(unordered_map<unsigned int, Assignment>());
+		varToVals.push_back(unordered_map<int, Assignment>());
 	}
 
 	getline(file, line);
 	
 	while (getline(file, line)) {
 		stringstream stream(line);
-		unsigned int warehouse;
-		unsigned int store;
+		int warehouse;
+		int store;
 		int cost;
 		double costD;
 		int demand;
@@ -63,10 +63,10 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 		stream >> costD;
 		cost = costD;
 		stream >> demand;
-		varToVals[store-1].insert(pair<unsigned int, Assignment>(warehouse, Assignment(cost, demand)));
+		varToVals[store-1].insert(pair<int, Assignment>(warehouse, Assignment(cost, demand)));
 	}
 
-	for (unsigned int var = 0; var < vars; var++) {
+	for (int var = 0; var < vars; var++) {
 		vector<int> keys;
 		for (auto k: varToVals[var]) {
 			keys.push_back(k.first);
@@ -74,16 +74,16 @@ void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 		IntSet tmp;
 		IntSetInit<IntArgs>::init(tmp, IntArgs(keys));
 		domain << tmp;
-		for (unsigned int val = 1; val <= vals.size(); val++) {
+		for (int val = 1; val <= vals.size(); val++) {
 			auto res = varToVals[var].find(val);
 			costs << (res != varToVals[var].end() ? res->second.cost : 0); 
 			demands << (res != varToVals[var].end() ? res->second.demand : 0); 
 		}
 	}
 
-	// for (unsigned int i = 0; i < vars; i++) {
+	// for (int i = 0; i < vars; i++) {
 	// 	cout << "{";
-	// 	for (unsigned int j = 0; j < vals.size(); j++) {
+	// 	for (int j = 0; j < vals.size(); j++) {
 	// 		cout << demands[i*vals.size() + j] << (j == vals.size()-1 ? "" :",");
 	// 	}
 	// 	cout << "},\n";

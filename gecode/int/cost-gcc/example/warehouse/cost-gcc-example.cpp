@@ -51,7 +51,7 @@ CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
 
 	IntArgs fixedCosts;
 	IntArgs fixedCostsArray;
-	for (unsigned int f = 0; f <= fixed * vals.size(); f += fixed) {
+	for (int f = 0; f <= fixed * vals.size(); f += fixed) {
 		fixedCosts << f;
 		if (f < fixed * vals.size()) {
 			fixedCostsArray << fixed;
@@ -64,7 +64,7 @@ CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
 	rel(*this, openCost + minCostFlowCost == total);
 
 	Matrix<IntArgs> dd(demands, vals.size(), x.size());
-	for (unsigned int w = 0; w < vals.size(); w++) {
+	for (int w = 0; w < vals.size(); w++) {
 		auto c = m.col(w);
 		auto d = dd.col(w);
 		linear(*this, d, c, IRT_LQ, upperBounds[w]);

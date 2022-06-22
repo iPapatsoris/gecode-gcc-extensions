@@ -26,9 +26,9 @@ class CountCostsExample : public Script {
 	virtual Space *copy(void) {
 		return new CountCostsExample(*this);
 	}
-	void print(ostream& os) const {
-		// os << "\tSolution: " << x << "\n";
-	}
+	// void print(ostream& os) const {
+	// 	 os << "\tSolution: " << x << "\n";
+	// }
 };
 
 #endif

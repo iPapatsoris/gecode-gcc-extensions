@@ -47,8 +47,8 @@ protected:
 public:
 	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph* graph, 
 					const vector<EdgeUpdate>& updatedEdges, LI* li, IntPropLevel ipl, Int::IntView costUpperBound)
-			: NaryPropagator(home, x), c(home), graph(graph), 
-				updatedEdges(updatedEdges), usingLocalHandle(li != NULL), ipl(ipl), costUpperBound(costUpperBound) {
+			: NaryPropagator(home, x), c(home), costUpperBound(costUpperBound), graph(graph), 
+				updatedEdges(updatedEdges), usingLocalHandle(li != NULL), ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
 			(void)new (home) ViewAdvisor(home, *this, c, x[i], i);
 		}
@@ -83,7 +83,7 @@ public:
 		}
 		graph->addTResidualEdges();
 		vector<EdgeUpdate> updatedEdges;
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges, li, costUpperBound) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, li, costUpperBound) != ES_OK) {
 				return ES_FAILED;
 		}
 
@@ -135,7 +135,7 @@ public:
 		//graphAlgorithms.updateDeletedEdges(updatedEdges);
 		updatedEdges.clear();
 
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, updatedEdges, usingLocalHandle ? &li : NULL, costUpperBound) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, usingLocalHandle ? &li : NULL, costUpperBound) != ES_OK) {
 				return ES_FAILED;
 		}
 		return ES_FIX;
