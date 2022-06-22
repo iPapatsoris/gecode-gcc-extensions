@@ -4,13 +4,13 @@ unsigned long countNi = 0;
 		FlowGraph::FlowGraph(
 			const ViewArray<Int::IntView>& vars, 
  			const vector<unordered_set<int> >& varToVals,
-			const MapToSet<int, unsigned int>& valToVars,
+			const MapToSet<int, int>& valToVars,
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
 			const IntArgs& upperBounds, const IntArgs& costs) 
 				: firstTimeValidCost(true) {
 			
-			for (unsigned int var = 0; var < varToVals.size(); var++) {
-				this->varToVals.push_back(BtVector<int, int>(varToVals[var].size()));
+			for (int var = 0; var < varToVals.size(); var++) {
+				this->varToVals.push_back(BtVector<int>(varToVals[var].size()));
 				for (auto val: varToVals[var]) {
 					this->varToVals[var].pushVal(val);
 				}
@@ -18,7 +18,7 @@ unsigned long countNi = 0;
 			flowCost = new int(0);
 			oldFlowIsFeasible = new bool(true);
 			totalVarNodes = vars.size();
-			unsigned int totalValNodes = inputVals.size();
+			int totalValNodes = inputVals.size();
 			// Nodes are variable nodes, values nodes, S and T nodes
 			int totalNodes = totalVarNodes + totalValNodes + 2;
 			// S node position
@@ -26,14 +26,14 @@ unsigned long countNi = 0;
 			// T node position
 			int tNode = totalNodes - 1;
 			//nodeList = new vector<Node>();
-			nodeToVal = new unordered_map<unsigned int, int>();
-			valToNode = new unordered_map<int, unsigned int>();
+			nodeToVal = new unordered_map<int, int>();
+			valToNode = new unordered_map<int, int>();
 			nodeList.reserve(totalNodes);
 //			dist = new vector<int>();
 //			dist->reserve(totalNodes);
 
 			// Insert variable nodes and var->T edges
-			for (unsigned int x = 0; x < totalVarNodes; x++) {
+			for (int x = 0; x < totalVarNodes; x++) {
 				nodeList.push_back(Node(1));
 				//debug.push_back(1);
 				nodeList.back().edgeList.pushVal(NormalEdge(tNode, 1, 1, 0));
@@ -87,7 +87,7 @@ unsigned long countNi = 0;
 			}*/
 			for (auto &node : nodeList) {
 				auto& edges = node.edgeList;
-				for (unsigned int e = 0; e < edges.listSize; e++) {
+				for (int e = 0; e < edges.listSize; e++) {
 					auto& edge = (*edges.list)[e];
 					node.residualEdgeList->push_back(ResidualEdge(edge));
 				}
@@ -103,7 +103,7 @@ unsigned long countNi = 0;
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		bool FlowGraph::updatePrunedValues(Int::IntView x, unsigned int xIndex, 
+		bool FlowGraph::updatePrunedValues(Int::IntView x, int xIndex, 
 													  vector<EdgeUpdate>& updatedEdges) {
 			// Hold iterators to the values that we end up prunning, so we can also
 			// remove them from valToVars
@@ -111,7 +111,7 @@ unsigned long countNi = 0;
 			// Iterate all values for which there is an edge to X
 			auto& values = varToVals[xIndex];
 			bool isFeasible = true;
-			for (unsigned int i = 0; i < values.listSize; i++) {
+			for (int i = 0; i < values.listSize; i++) {
 				auto value = (*values.list)[i];
 				auto valueNode = valToNode->find(value)->second;
 				NormalEdge* edge = getEdge(valueNode, xIndex);
@@ -172,9 +172,9 @@ unsigned long countNi = 0;
 // Iterate through each edge that has flow, to find its total cost
 		int FlowGraph::calculateFlowCost(LI& lii) {
 			*flowCost = 0;
-			for (unsigned int i = totalVarNodes; i < sNode(); i++) {
+			for (int i = totalVarNodes; i < sNode(); i++) {
 				auto& edges = nodeList[i].edgeList;
-				for (unsigned int j = 0; j < edges.listSize; j++) {
+				for (int j = 0; j < edges.listSize; j++) {
 					auto& edge = (*edges.list)[j];
 					if (edge.flow > 0) {
 						*flowCost += edge.cost;
@@ -186,10 +186,10 @@ unsigned long countNi = 0;
 		}
 
 		void FlowGraph::print() const {
-			for (unsigned int i = 0; i < nodeList.size(); i++) {
+			for (int i = 0; i < nodeList.size(); i++) {
 				auto& node = nodeList[i];
 				auto& edges = node.edgeList;
-				for (unsigned int j = 0; j < edges.listSize; j++) {
+				for (int j = 0; j < edges.listSize; j++) {
 					auto& edge = (*edges.list)[j];
 					cout << i << " -> ";
 					edge.print();
@@ -199,7 +199,7 @@ unsigned long countNi = 0;
 		}
 
 		void FlowGraph::printResidual() const {
-			for (unsigned int i = 0; i < nodeList.size(); i++) {
+			for (int i = 0; i < nodeList.size(); i++) {
 				auto& node = nodeList[i];
 				//cout << "address " << node.residualEdgeList << endl;
 				for (auto& edge: *node.residualEdgeList) {

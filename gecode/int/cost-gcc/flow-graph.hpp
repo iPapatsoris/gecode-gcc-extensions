@@ -33,10 +33,10 @@ struct MapToSet {
 // and not NormalEdge*, because when search finds a solution or fails, it will
 // clone the graph and destroy the original, thus invalidating the pointer.
 struct EdgeUpdate {
-	unsigned int src;
-	unsigned int dest;
+	int src;
+	int dest;
 
-	EdgeUpdate(unsigned int src, unsigned int dest) : src(src), dest(dest)
+	EdgeUpdate(int src, int dest) : src(src), dest(dest)
 						{}
 };
 
@@ -65,17 +65,17 @@ class FlowGraph {
 		// The node order in nodeList is variables,values,S,T.
 		vector<Node> nodeList;
 		//vector<int> debug;
-		unsigned int totalVarNodes; 
+		int totalVarNodes; 
 		// Fast lookup of what node a value corresponds to
-		unordered_map<int, unsigned int> *valToNode; 			  // TODO: memory leak, use shared object
+		unordered_map<int, int> *valToNode; 			  // TODO: memory leak, use shared object
 		// Fast lookup of what value a node corresponds to
-		unordered_map<unsigned int, int> *nodeToVal;				 // TODO: same
+		unordered_map<int, int> *nodeToVal;				 // TODO: same
 		// Holds each variable's domain. Is needed to find out which values got
 		// pruned during an iteration, by comparing with Gecode's variable domains.
 		// We know which variables got changed by using advisors, so domain
 		// comparison is only done among those.
 		// Should be kept up to date with assignments and pruning.
-		vector<BtVector<int, int>> varToVals;
+		vector<BtVector<int>> varToVals;
 
 	//	vector<int> *dist;
 
@@ -95,9 +95,9 @@ class FlowGraph {
 		bool *oldFlowIsFeasible;
 
 		// Position of S node
-		unsigned int sNode() const { return nodeList.size() - 2; }
+		int sNode() const { return nodeList.size() - 2; }
 		// Position of T node
-		unsigned int tNode() const { return nodeList.size() - 1; }
+		int tNode() const { return nodeList.size() - 1; }
 
 		// Mark the first time we find a solution. The first solution is of minimal
 		// cost, use this variable to print it for debugging or testing
@@ -106,16 +106,16 @@ class FlowGraph {
 		// Search for an edge flow violating lower bounds
 		// Return false if none exists
 		// TODO: can be optimized to look for less?
-		bool getLowerBoundViolatingEdge(pair<unsigned int, unsigned int>& violation) 
+		bool getLowerBoundViolatingEdge(pair<int, int>& violation) 
 			const {
-			for (unsigned int i = 0; i < nodeList.size(); i++) {
+			for (int i = 0; i < nodeList.size(); i++) {
 				/*if (i == totalVarNodes) {
 					i = sNode();				// if at init some values are already pruned,
 															// we might have tightened var->val bounds,
 															// so we need to check through every node
 				}*/
 				auto& edges = nodeList[i].edgeList;
-				for (unsigned int e = 0; e < edges.listSize; e++) {
+				for (int e = 0; e < edges.listSize; e++) {
 					auto& edge = (*edges.list)[e];
 					if (edge.flow < edge.lowerBound) {
 						violation = {i, edge.destNode};
@@ -128,15 +128,15 @@ class FlowGraph {
 
 		// Search for source->dest edge, return pointer to it or NULL if it 
 		// doesn't exist
-		NormalEdge* getEdge(unsigned int source, unsigned int dest) {
+		NormalEdge* getEdge(int source, int dest) {
 			return nodeList[source].edgeList.getVal(dest);
 		}
 
-		void deleteEdge(unsigned int source, unsigned int dest) {
+		void deleteEdge(int source, int dest) {
 			nodeList[source].edgeList.deleteVal(dest);
 		}
 		
-		void deleteResidualEdge(unsigned int source, unsigned int dest) {
+		void deleteResidualEdge(int source, int dest) {
 			bool found = false;
 			auto residual = nodeList[source].residualEdgeList;
 			for (auto it = residual->begin(); it != residual->end(); it++) {
@@ -162,9 +162,9 @@ class FlowGraph {
 		// Search for source->dest residual edge, return pointer to it or NULL if it
 		// doesn't exists. If index is not NULL, also return its position in that
 		// node's residual edges list 
-		ResidualEdge* getResidualEdge(unsigned int source, unsigned int dest, 
-																  unsigned int *index = NULL) {
-			for (unsigned int i=0; i < nodeList[source].residualEdgeList->size(); i++) {
+		ResidualEdge* getResidualEdge(int source, int dest, 
+																  int *index = NULL) {
+			for (int i=0; i < nodeList[source].residualEdgeList->size(); i++) {
 				ResidualEdge& edge = (*nodeList[source].residualEdgeList)[i];
 				if (edge.destNode == dest) {
 					if (index != NULL) {
@@ -179,7 +179,7 @@ class FlowGraph {
 		// If existingEdge is NULL, create edge from source to newEdge.dest
 		// If existingEdge is not NULL, change it to newEdge
 		void setOrCreateResidualEdge(ResidualEdge* existingEdge, 
-															   unsigned int source, 
+															   int source, 
 																 const ResidualEdge& newEdge) {
 			if (existingEdge != NULL) {
 				*existingEdge = newEdge;
@@ -200,7 +200,7 @@ class FlowGraph {
 		}
 
 		void calculateReducedCosts(const vector<int>& distances) {
-			for (unsigned int i = 0; i < nodeList.size(); i++) {
+			for (int i = 0; i < nodeList.size(); i++) {
 				for (auto& edge : (*nodeList[i].residualEdgeList)) {
 					edge.reducedCost = distances[i] + edge.cost - distances[edge.destNode];
 					// cout << i << "->" << edge.destNode << " " << edge.reducedCost << " = " << distances[i] << " + " << edge.cost << " - " << distances[edge.destNode] << endl;
@@ -227,7 +227,7 @@ class FlowGraph {
 		FlowGraph(
 			const ViewArray<Int::IntView>& vars, 
  			const vector<unordered_set<int> >& varToVals,
-			const MapToSet<int, unsigned int>& valToVars,
+			const MapToSet<int, int>& valToVars,
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
 			const IntArgs& upperBounds, const IntArgs& costs);
 
@@ -240,7 +240,7 @@ class FlowGraph {
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		bool updatePrunedValues(Int::IntView x, unsigned int xIndex, 
+		bool updatePrunedValues(Int::IntView x, int xIndex, 
 													  vector<EdgeUpdate>& updatedEdges); 
 
 		void print() const;
@@ -253,7 +253,7 @@ class FlowGraph {
 		}
 
 		void addTResidualEdges() {
-			for (unsigned int var = 0; var < totalVarNodes; var++) {
+			for (int var = 0; var < totalVarNodes; var++) {
 				nodeList[tNode()].residualEdgeList->push_back(ResidualEdge(var, 1, 0));
 			}
 		}

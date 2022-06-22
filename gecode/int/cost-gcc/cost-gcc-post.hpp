@@ -31,7 +31,7 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 
 	// Don't allow duplicates in vals
 	// Map each value to its respective position in vals array
-	unordered_map<int, unsigned int> valToIndex;
+	unordered_map<int, int> valToIndex;
 	for (int i = 0; i < vals.size(); i++) {
 		if (valToIndex.insert({vals[i], i}).second == false) {
 			throw ArgumentSizeMismatch("Int::countCosts");
@@ -40,7 +40,7 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 
 	// Map values to their variables
 	// Helps do fast lookups, for early pruning and FlowGraph creation
-	MapToSet<int, unsigned int> valToVars;
+	MapToSet<int, int> valToVars;
 	// Map variables to their values
 	// Is used to compare old domain with current Gecode domain, to find which
 	// values got pruned between executions
@@ -55,7 +55,7 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 			auto it = valToVars.map.find(i.val());
 			if (it == valToVars.map.end()) {
 				valToVars.map.insert({i.val(), 
-														  unordered_set<unsigned int>({(unsigned int) x})});
+														  unordered_set<int>({x})});
 			} else {
 				it->second.insert(x);
 			}

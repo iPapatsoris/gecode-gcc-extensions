@@ -9,10 +9,10 @@
 using namespace std;
 
 class Node {
-	BtVector<NormalEdge, unsigned int> edgeList;
+	BtVector<NormalEdge> edgeList;
 	vector<ResidualEdge> *residualEdgeList;
 
-	Node(unsigned int totalEdges) : edgeList(totalEdges) {
+	Node(int totalEdges) : edgeList(totalEdges) {
 		residualEdgeList = new vector<ResidualEdge>();
 	}
 	friend class FlowGraph;

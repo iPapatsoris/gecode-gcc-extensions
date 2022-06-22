@@ -19,9 +19,9 @@ protected:
 		class ViewAdvisor : public Advisor {
 			public:
 				Int::IntView x;
-				unsigned int xIndex;
+				int xIndex;
 				ViewAdvisor(Space& home, Propagator& p, Council<ViewAdvisor>& c, 
-										Int::IntView x, unsigned int xIndex) 
+										Int::IntView x, int xIndex) 
 					: Advisor(home, p, c), x(x), xIndex(xIndex) {
 					x.subscribe(home, *this);
 				}
@@ -60,7 +60,7 @@ public:
 
 	static ExecStatus post(Space& home, ViewArray<Int::IntView>& vars,
 												vector<unordered_set<int> >& varToVals,
-												MapToSet<int, unsigned int>& valToVars,
+												MapToSet<int, int>& valToVars,
 												const IntArgs& inputVals, 
 												const IntArgs& lowerBounds, const IntArgs& upperBounds,
 												const IntArgs& costs, Int::IntView costUpperBound, LI* li,
@@ -157,7 +157,7 @@ private:
 	// Assert that Gecode variable domains and valToVars/varToVals are in sync
 	void static assertCorrectDomains(const ViewArray<Int::IntView>& vars, 
 															 		 vector<unordered_set<int> >& varToVals,
-																	 const MapToSet<int, unsigned int>& valToVars
+																	 const MapToSet<int, int>& valToVars
 																	) {
 		assert(varToVals.size() == vars.size());
 		for (int x = 0; x < vars.size(); x++) {

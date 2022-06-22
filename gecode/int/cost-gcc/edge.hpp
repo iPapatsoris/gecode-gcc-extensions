@@ -13,10 +13,10 @@ using namespace std;
 class Edge
 {
 protected:
-	unsigned int destNode;
+	int destNode;
 	int cost;
 
-	Edge(unsigned int destNode, unsigned int cost) : destNode(destNode), 
+	Edge(int destNode, int cost) : destNode(destNode), 
 																									 cost(cost) {}
 	Edge() {}	
 
@@ -28,19 +28,19 @@ protected:
  */
 class NormalEdge : public Edge
 {
-	unsigned int lowerBound;
-	unsigned int upperBound;
-	unsigned int flow;
+	int lowerBound;
+	int upperBound;
+	int flow;
 
 public:
-	NormalEdge(unsigned int destNode, unsigned int lowerBound,
-						 unsigned int upperBound, int cost)
+	NormalEdge(int destNode, int lowerBound,
+						 int upperBound, int cost)
 			: Edge(destNode, cost), lowerBound(lowerBound), upperBound(upperBound),
 				flow(0) {}
 	NormalEdge() {}
-	unsigned int getUpperBound() const { return upperBound; }
+	int getUpperBound() const { return upperBound; }
 	int getCost() const { return cost; }
-	unsigned int getDestNode() const { return destNode; }
+	int getDestNode() const { return destNode; }
 	void print() const
 	{
 		cout << destNode << " (" << lowerBound << "," << upperBound << "," << cost
@@ -56,11 +56,11 @@ public:
  */
 class ResidualEdge : public Edge
 {
-	unsigned int upperBound;
-	unsigned int reducedCost;
+	int upperBound;
+	int reducedCost;
 
 public:
-	ResidualEdge(unsigned int destNode, unsigned int upperBound, int cost)
+	ResidualEdge(int destNode, int upperBound, int cost)
 			: Edge(destNode, cost), upperBound(upperBound), reducedCost(0) {}
 	ResidualEdge(const NormalEdge &edge)
 			: Edge(edge.getDestNode(), edge.getCost()), upperBound(edge.getUpperBound()) {}
