@@ -11,7 +11,6 @@ using namespace Gecode;
 using namespace std;
 
 typedef NaryPropagator<Int::IntView, Int::PC_INT_NONE> CostGccBase;
-int failCount = 0;
 
 class CostGcc : public CostGccBase {
 
@@ -41,14 +40,15 @@ protected:
 		vector<EdgeInfo> updatedEdges;
 		LI li;
 		bool usingLocalHandle;
-		// TODO: do not store, instead use different post functions?
 		IntPropLevel ipl;
 
 public:
 	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph* graph, 
-					const vector<EdgeInfo>& updatedEdges, LI* li, IntPropLevel ipl, Int::IntView costUpperBound)
-			: NaryPropagator(home, x), c(home), costUpperBound(costUpperBound), graph(graph), 
-				updatedEdges(updatedEdges), usingLocalHandle(li != NULL), ipl(ipl) {
+					const vector<EdgeInfo>& updatedEdges, LI* li, IntPropLevel ipl, 
+					Int::IntView costUpperBound)
+			: NaryPropagator(home, x), c(home), costUpperBound(costUpperBound), 
+				graph(graph), updatedEdges(updatedEdges), 
+				usingLocalHandle(li != NULL), ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
 			(void)new (home) ViewAdvisor(home, *this, c, x[i], i);
 		}
@@ -63,8 +63,8 @@ public:
 												MapToSet& valToVars,
 												const IntArgs& inputVals, 
 												const IntArgs& lowerBounds, const IntArgs& upperBounds,
-												const IntArgs& costs, Int::IntView costUpperBound, LI* li,
-												IntPropLevel ipl) {
+												const IntArgs& costs, Int::IntView costUpperBound,
+												LI* li, IntPropLevel ipl) {
 
 		#ifndef NDEBUG
 			assertCorrectDomains(vars, varToVals, valToVars);
@@ -73,22 +73,18 @@ public:
 																		 lowerBounds, upperBounds, costs);
 
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
-		//graph->print();
-
-		// graphAlgorithms.debugPath();
-		// exit(1);
-
 		if (!graphAlgorithms.findMinCostFlow(li, costUpperBound)) {
 			return ES_FAILED;
 		}
 		graph->addTResidualEdges();
 		vector<EdgeInfo> updatedEdges;
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, costUpperBound) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, 
+																										 costUpperBound) != ES_OK) {
 				return ES_FAILED;
 		}
 
-		(void)new (home) CostGcc(home, vars, graph, updatedEdges, li, ipl, costUpperBound);
-		//cout << "Posted!" << endl;
+		(void)new (home) CostGcc(home, vars, graph, updatedEdges, li, ipl, 
+														 costUpperBound);
 		return ES_OK;
 	}
 
@@ -124,18 +120,15 @@ public:
   }
 	virtual ExecStatus propagate(Space& home, const ModEventDelta&) {
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
-		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, usingLocalHandle ? &li : NULL, costUpperBound)) {
-/*			if (failCount >= 1127202) {
-				graph->print();
-				graph->printResidual();
-			}*/
-			//  cout << "failed! #" << failCount++ << endl;
+		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, 
+															 						 usingLocalHandle ? &li : NULL, 
+																					 costUpperBound)) {
 			return ES_FAILED;
 		}
-		//graphAlgorithms.updateDeletedEdges(updatedEdges);
 		updatedEdges.clear();
 
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, costUpperBound) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, 
+																										 costUpperBound) != ES_OK) {
 				return ES_FAILED;
 		}
 		return ES_FIX;
@@ -143,12 +136,8 @@ public:
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
-		// cout << "In advisor" << endl;
-		// cout << costUpperBound << endl;
-		bool isFeasible = graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges);
-		// cout << "Out of advisor " << graph->getOldFlowIsFeasible() << endl;
-		//graph->print();
-		// cout << "is feasible: " << isFeasible << endl; // graph->getOldFlowIsFeasible() << endl;
+		bool isFeasible = graph->updatePrunedValues(x[xIndex], xIndex, 
+																							  updatedEdges);
 		return isFeasible ? ES_FIX : ES_NOFIX;
 	}
 

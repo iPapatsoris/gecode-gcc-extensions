@@ -476,7 +476,8 @@ class FlowGraphAlgorithms {
 					// This check is needed because it is possible that this upper bound 
 					// violation has already been fixed by the cycle repair algorithm 
 					// above.
-					if (!minCostFlowIteration({e.dest, e.src}, NULL, li, costUpperBound)) {
+					if (!minCostFlowIteration({e.dest, e.src}, NULL, li, 
+																		 costUpperBound)) {
 						return false;
 					}
 				}
@@ -570,8 +571,9 @@ class FlowGraphAlgorithms {
 						ResidualEdge *residualEdge = graph.getResidualEdge(a, y);
 						int costAY = residualEdge->reducedCost;
 						int costYB = graph.getResidualEdge(y, b)->reducedCost;
-						if ((int)reducedDistances[a] > (costUpperBound.max() - *(graph.flowCost) 
-																		  - (int)costAY - (int)costYB)) {
+						if ((int)reducedDistances[a] > (costUpperBound.max() - 
+																					  *(graph.flowCost) 
+																		        - (int)costAY - (int)costYB)) {
 							edgesToPrune.push_back(EdgeWithVal(a, y,
 																						 graph.nodeToVal->find(a)->second));
 						} 

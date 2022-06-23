@@ -49,7 +49,8 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 		varToVals.push_back(unordered_set<int>());
 		for (IntVarValues i(vars[x]); i(); ++i) {
 			if (valToIndex.find(i.val()) == valToIndex.end()) {
-				throw ArgumentSizeMismatch("Int::costcGCC domain value doesn't exist in values array");
+				throw ArgumentSizeMismatch("Int::costcGCC domain value doesn't "
+																	 "exist in values array");
 			}
 			varToVals.back().insert(i.val());
 			auto it = valToVars.find(i.val());
