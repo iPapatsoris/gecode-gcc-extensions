@@ -83,7 +83,7 @@ public:
 		}
 		graph->addTResidualEdges();
 		vector<EdgeInfo> updatedEdges;
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, li, costUpperBound) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, costUpperBound) != ES_OK) {
 				return ES_FAILED;
 		}
 
@@ -135,7 +135,7 @@ public:
 		//graphAlgorithms.updateDeletedEdges(updatedEdges);
 		updatedEdges.clear();
 
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, usingLocalHandle ? &li : NULL, costUpperBound) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, costUpperBound) != ES_OK) {
 				return ES_FAILED;
 		}
 		return ES_FIX;
