@@ -129,8 +129,7 @@ class FlowGraph {
 
 		// If existingEdge is NULL, create edge from src to newEdge.dest
 		// If existingEdge is not NULL, change it to newEdge
-		void setOrCreateResidualEdge(ResidualEdge* existingEdge, 
-															   int src, 
+		void setOrCreateResidualEdge(ResidualEdge* existingEdge, int src, 
 																 const ResidualEdge& newEdge) {
 			if (existingEdge != NULL) {
 				*existingEdge = newEdge;
@@ -139,39 +138,23 @@ class FlowGraph {
 			}
 		}
 
-		// Iterate through each edge that has flow, to find its total cost
-		int calculateFlowCost(LI &lii);
-
+		// Check flow cost validity against upper bound
 		bool checkFlowCost(Int::IntView costUpperBound) {
 			if (firstTimeValidCost && *flowCost <= costUpperBound.max()) {
 				firstTimeValidCost = false;
+				cout << *flowCost << "\n";
 			}
-			// cout << *flowCost << " " << costUpperBound.max() << endl;
 			return *flowCost <= costUpperBound.max();
 		}
 
 		void calculateReducedCosts(const vector<int>& distances) {
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				for (auto& edge : (*nodeList[i].residualEdgeList)) {
-					edge.reducedCost = distances[i] + edge.cost - distances[edge.destNode];
-					// cout << i << "->" << edge.destNode << " " << edge.reducedCost << " = " << distances[i] << " + " << edge.cost << " - " << distances[edge.destNode] << endl;
+					edge.reducedCost = distances[i] + edge.cost - 
+														 distances[edge.destNode];
 				}
 			}
 		}
-
-		#ifndef NDEBUG
-		// Assert varToVals is synchronized with Gecode variable X domain
-		/*void assertVarToValsInSync(Int::IntView x, int xIndex) const {
-			auto vals = (*varToVals)[xIndex];
-			assert(vals.size() == x.size());
-			for (IntVarValues v(x); v(); ++v) {
-				assert(vals.find(v.val()) != vals.end());
-			}
-			for (auto val: vals) {
-				assert(x.in(val));
-			}
-		}*/
-		#endif
 
 	public:
 
@@ -182,15 +165,12 @@ class FlowGraph {
 			const IntArgs& inputVals, const IntArgs& lowerBounds, 
 			const IntArgs& upperBounds, const IntArgs& costs);
 
-		// Update graph state to match variable X domain pruning/assignment.
-		// Update is made by tightening the bounds of edge V->X as follows:
-		// - If X got assigned to value V, set the lower bound to 1.
-		// - For every value V that has been pruned off X, set the upper bound 
-		//   to 0. 
-	  // If we prune a value that is used by current flow, or assign a value 
-		// that is not used by it, set oldFlowIsFeasible to false.
-		// Populate updatedEdges, so we know where we should update the old residual
-		// graph later on
+		// Update graph state to match variable X domain prunings.
+		// If a variable-value pair is pruned that has no flow, delete it on the 
+		// spot. If it has flow, insert it on updatedEdges, for the flow repair
+		// algorithm to fix it on the next propagation, and mark flow as infeasible.
+		// If a variable is assigned but has no flow, mark flow as infeasible. 
+		// Returns whether the current flow is still feasible or not.
 		bool updatePrunedValues(Int::IntView x, int xIndex, 
 													  vector<EdgeInfo>& updatedEdges); 
 
@@ -198,20 +178,15 @@ class FlowGraph {
 
 		void printResidual() const; 
 
+		// Add T->Var residual edges. After the initial min cost flow is
+		// established, normally the T->Var residual edges are removed
+		// (because Var->T edge has flow which is equal to both its lower and upper 
+		// bounds). We add them back to be able to calculate the distances 
+		// from T to all other nodes during arc consistency, for calculating 
+		// the reduced costs.
 		void addTResidualEdges() {
 			for (int var = 0; var < totalVarNodes; var++) {
 				nodeList[tNode()].residualEdgeList->push_back(ResidualEdge(var, 1, 0));
-			}
-		}
-
-		void removeTResidualEdges() {
-			nodeList[tNode()].residualEdgeList->clear();
-		}
-
-		void debug() const {
-			if (nodeList[0].residualEdgeList == nodeList[15].residualEdgeList) {
-				cout << "SAME!" << endl;
-				exit(1);
 			}
 		}
 };

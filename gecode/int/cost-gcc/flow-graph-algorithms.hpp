@@ -18,20 +18,18 @@ using namespace std;
 class FlowGraphAlgorithms {
 	private:
 		FlowGraph& graph;
-		bool isMinCost;
 
 		// Add / update / delete residual edges related to the original graph edge 
-		// source->dest. Updates / deletions are needed because in each iteration,
-		// instead of building the residual graph from scratch, we modify the 
-		// previous one only in the edges that change
-		void updateResidualGraph(int source, int dest, 
-														 NormalEdge edge) {
+		// source->dest.
+		void updateResidualGraph(int source, int dest, NormalEdge edge) {
 			int residualEdgeIndex;
 			int residualBackwardsEdgeIndex;
 			ResidualEdge* residualEdgeSearch = graph.getResidualEdge(source, dest, 
 																														&residualEdgeIndex);
-			ResidualEdge* residualBackwardsEdgeSearch = graph.getResidualEdge(dest, source,
-																								 &residualBackwardsEdgeIndex);
+			ResidualEdge* residualBackwardsEdgeSearch = graph.getResidualEdge(
+																									 dest, 
+																									 source,
+																								   &residualBackwardsEdgeIndex);
 			if (edge.flow < edge.upperBound) {
 				// Add / update forward residual edge
 				graph.setOrCreateResidualEdge(residualEdgeSearch, source, 
@@ -43,7 +41,6 @@ class FlowGraphAlgorithms {
 				auto it = graph.nodeList[source].residualEdgeList->begin() + 
 																				 residualEdgeIndex;
 				graph.nodeList[source].residualEdgeList->erase(it);
-			//	graph.orderGraph.removeEdge(source, dest);
 			}
 
 			if (edge.flow > edge.lowerBound) {
@@ -52,7 +49,6 @@ class FlowGraphAlgorithms {
 																		  ResidualEdge(source, 
 																									 edge.flow - edge.lowerBound, 
 																									 -edge.cost));
-				//graph.orderGraph.addEdge(dest, source);
 			} else if (residualBackwardsEdgeSearch != NULL) {
 				// Delete backward residual edge that should no longer exist
 				auto it = graph.nodeList[dest].residualEdgeList->begin() + 
@@ -61,8 +57,10 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-void buildResidualGraph(LI *li) {
-			//cout << "Building res" << endl;
+		// Clear residual graph and build it again. Do not clear T->Var edges.
+		// Since we iterate through the graph, this step is a good opportunity
+		// to also update LI with the latest flow assignment.
+		void buildResidualGraph(LI *li) {
 			for (int i = 0; i < graph.tNode(); i++) {
 				graph.nodeList[i].residualEdgeList->clear();
 			}
@@ -72,48 +70,44 @@ void buildResidualGraph(LI *li) {
 				for (int j = 0; j < node.edgeList.listSize; j++) {
 					auto& edge = (*node.edgeList.list)[j];
 					if (edge.flow < edge.upperBound) {
-						node.residualEdgeList->push_back(ResidualEdge(edge.destNode, edge.upperBound - edge.flow, edge.cost));
+						node.residualEdgeList->push_back(ResidualEdge(
+																						  edge.destNode, 
+																						  edge.upperBound - edge.flow, 
+																							edge.cost));
 					}
 					if (edge.flow > edge.lowerBound) {
-						graph.nodeList[edge.destNode].residualEdgeList->push_back(ResidualEdge(i, edge.flow - edge.lowerBound, -edge.cost));
+						graph.nodeList[edge.destNode].residualEdgeList->push_back(
+																						 ResidualEdge(
+																							 i, 
+																							 edge.flow - edge.lowerBound, 
+																							 -edge.cost));
 					}
 					if (li != NULL && edge.flow && edge.destNode < graph.totalVarNodes) {
+						// If edge is of type Val->Var and has flow, update LI
 						(*li)[edge.destNode] = (*graph.nodeToVal)[i];
 					}
 				}
 			}
-		//	graph.printResidual();
 		}
 
-		
-
 		// Bellman-Ford algorithm for shortest paths with negative costs.
+		// Based on the Shortest Path Faster Algorithm optimization.
+		// When called, the residual graph should NOT contain cycles, because 
+		// in that case it will run infinitely. If cycles can exist,
+		// use bellmanFordShortestPathsCycles instead.
 		// If dest is not NULL, ignore any direct source->dest edge.
 		// This is needed when searching for shortest path to a specific 
-		// destination, by the min cost flow algorithm.
+		// destination, by the min cost flow algorithm. When searching without 
+		// a specific destination, pass as NULL.
      void bellmanFordShortestPaths(int source, 
 																	vector<int>& prev, vector<int>& dist, 
 																	int* dest = NULL) const {
 			prev.assign(graph.nodeList.size(), NONE_INT);
 			dist.assign(graph.nodeList.size(), INF_INT);
 			dist[source] = 0;
-			// if (dest == NULL) {
-			// 	debugCounter++;
-			// 	if (debugCounter == 4569161 || debugCounter == 4569171 || debugCounter == 4569439 || debugCounter == 4569449) {
-			// 		graph.print();
-			// 		graph.printResidual();
-			// 		return;
-			// 	}
-			// } //else 
-				//cout << "look for " << source << "->" << *dest << endl;
-/*			if (source == 21 && *dest == 5) {
-				graph.print();
-				graph.printResidual();
-				//exit(1);
-				debug = true;
-			}		*/
 			vector<int> updatedNodes1 = {source};
 			vector<int> updatedNodes2;
+			// Pointers for fast vector swapping between iterations
 			vector<int>* updatedNodesOld = &updatedNodes1;
 			vector<int> *updatedNodesNew = &updatedNodes2;
 			while (!updatedNodesOld->empty()) {
@@ -125,12 +119,12 @@ void buildResidualGraph(LI *li) {
 							dist[node] != INF_INT && dist[node] + edge.cost < 
 																			 dist[edge.destNode]) {
 							// Ignore direct source->dest edge when looking for shortest path 
-							// to specific requested destination
+							// to specific requested destination. Check for INF_INT before
+							// doing math, to avoid overflow
 							dist[edge.destNode] = dist[node] + edge.cost;
 							prev[edge.destNode] = node;
 							foundUpdate = true;
 							updatedNodesNew->push_back(edge.destNode);
-					//		cout << "dist[" << edge.destNode << "] = " << dist[node] << "+" << edge.cost << endl;
 						}
 					}
 				}
@@ -143,32 +137,17 @@ void buildResidualGraph(LI *li) {
 			}
 		}
 
-		void traceCycle(const vector<int>& prev, int node, vector<int>& cycle) const {
-				unordered_set<int> stackContent;
-				stack<int> stack;
-
-				while (stackContent.find(node) == stackContent.end()) {
-					stack.push(node);
-					stackContent.insert(node);
-					node = prev[node];
-				}
-				cycle.push_back(node);
-				while (stack.top() != node) {
-					cycle.push_back(stack.top());
-					stack.pop();
-				}
-				cycle.push_back(node);
-		}
-
+		// Just like bellmanFordShortestPaths, but also detect a cycle.
+		// Under a cycle, normally the distance of the nodes within and reachable
+		// by it would become infinite. We keep track of the length of the 
+		// shortest path to each node. Under no cycles, the maximum possible
+		// would be equal to all the graph nodes. So if we exceed that limit for a
+		// node, it means that there is a cycle. Place it in the appropriate 
+		// parameter and also set isCycle to true.
 		void bellmanFordShortestPathsCycles(int source, 
 																	vector<int>& prev, vector<int>& dist,
 																	vector<int>& cycle, bool *isCycle,
 																	int* dest = NULL) const {
-			// if (dest != NULL)
-			// cout << "look for " << source << "->" << *dest << endl;
-			// else 
-			// cout << "look for " << source << "->" << "all" << endl;
-				
 			prev.assign(graph.nodeList.size(), NONE_INT);
 			dist.assign(graph.nodeList.size(), INF_INT);
 			dist[source] = 0;
@@ -191,8 +170,7 @@ void buildResidualGraph(LI *li) {
 							// to specific requested destination
 							dist[edge.destNode] = dist[node] + edge.cost;
 							prev[edge.destNode] = node;
-							if (++len[edge.destNode] == (int) graph.nodeList.size() - 1) {
-	//							cout << "cycle lol" << endl;
+							if (++len[edge.destNode] == (int) graph.nodeList.size()) {
 								*isCycle = true;
 								traceCycle(prev, edge.destNode, cycle);
 								return;
@@ -209,67 +187,70 @@ void buildResidualGraph(LI *li) {
 				swap(updatedNodesNew, updatedNodesOld);
 				updatedNodesNew->clear();
 			}
-			//cout << "done " << endl;
 		}
 
-		void sendFlow(const EdgeInfo& violation, const vector<int>& shortestPath, int minUpperBound, LI* li) {
-			// Send flow through the path edges and update residual graph
-			int prev = violation.src;
-			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
-				NormalEdge *edge = graph.getEdge(prev, *it);
-				if (edge != NULL) {
-					// Path residual edge is a forward edge in the original graph
-					edge->flow += minUpperBound;
-// if (neti)					cout << "Flow of " << prev << " " << *it << " now " << edge->flow << endl;
-					*graph.flowCost += edge->cost;
-					if (edge->destNode < graph.totalVarNodes && li != NULL) {
-						(*li)[edge->destNode] = (*graph.nodeToVal)[prev];
-					}
-					updateResidualGraph(prev, *it, *edge);
-				}	else {
-					// Path residual edge is a backward edge in the original graph
-					edge = graph.getEdge(*it, prev);
-					edge->flow -= minUpperBound;
-	// if (neti)				cout << "Flow of " << *it << " " << prev << " now " << edge->flow << endl;
-					if (!edge->flow) {
-						*graph.flowCost -= edge->cost;
-					}
-					updateResidualGraph(*it, prev, *edge);
+		// Given that a cycle containing node has been detected, find cycle nodes 
+		void traceCycle(const vector<int>& prev, int node, vector<int>& cycle) const {
+				unordered_set<int> stackContent;
+				stack<int> stack;
+
+				while (stackContent.find(node) == stackContent.end()) {
+					stack.push(node);
+					stackContent.insert(node);
+					node = prev[node];
 				}
-				prev = *it;
+				while (stack.top() != node) {
+					cycle.push_back(stack.top());
+					stack.pop();
+				}
+				cycle.push_back(node);
+		}
+
+		// Send flow through the edge and update residual graph.
+		// Also update LI with latest flow changes
+		void sendEdgeFlow(int *prev, int cur, int minUpperBound, LI *li) {
+			NormalEdge *edge = graph.getEdge(*prev, cur);
+			if (edge != NULL) {
+				// Path residual edge is a forward edge in the original graph
+				edge->flow += minUpperBound;
+				*graph.flowCost += edge->cost;
+				if (edge->destNode < graph.totalVarNodes && li != NULL) {
+					(*li)[edge->destNode] = (*graph.nodeToVal)[*prev];
+				}
+				updateResidualGraph(*prev, cur, *edge);
+			}	else {
+				// Path residual edge is a backward edge in the original graph
+				edge = graph.getEdge(cur, *prev);
+				edge->flow -= minUpperBound;
+				if (!edge->flow) {
+					*graph.flowCost -= edge->cost;
+				}
+				updateResidualGraph(cur, *prev, *edge);
 			}
+			*prev = cur;
 		}
 
-		void sendFlowCycle(const vector<int>& cycle, int minUpperBound, LI* li) {
-			// Send flow through the path edges and update residual graph
-			int prev = cycle[0];
-			for(unsigned int i = 1; i < cycle.size(); i++) {			
-				NormalEdge *edge = graph.getEdge(prev, cycle[i]);
-				if (edge != NULL) {
-					// Path residual edge is a forward edge in the original graph
-					edge->flow += minUpperBound;
-					*graph.flowCost += edge->cost;
-					if (edge->destNode < graph.totalVarNodes && li != NULL) {
-						(*li)[edge->destNode] = (*graph.nodeToVal)[prev];
-					}
-					updateResidualGraph(prev, cycle[i], *edge);
-				}	else {
-					// Path residual edge is a backward edge in the original graph
-					edge = graph.getEdge(cycle[i], prev);
-					edge->flow -= minUpperBound;
-					if (!edge->flow) {
-						*graph.flowCost -= edge->cost;
-					}
-					updateResidualGraph(cycle[i], prev, *edge);
+		// Send flow along the path. In the case of a normal path, we traverse
+		// in reverse because we got it reversed from the shortest path algorithm.
+		// In case of cycle, traverse normally.
+		void sendFlow(int src, const vector<int>& path, 
+									int minUpperBound, LI* li, bool isCycle) {
+			int prev = src;
+			if (!isCycle) {;
+				for(auto it = path.rbegin(); it != path.rend(); it++) {
+					sendEdgeFlow(&prev, *it, minUpperBound, li);
 				}
-				prev = cycle[i];
+			} else {
+				for (int i = 0; i < path.size(); i++) {
+					sendEdgeFlow(&prev, path[i], minUpperBound, li);
+				}
 			}
 		}
 
 		int findMinUpperBoundCycle(const vector<int>& cycle) const {
-			int prev = cycle[0];
+			int prev = cycle[cycle.size()-1];
 			int minUpperBound = INF_INT;
-			for(unsigned int i = 1; i < cycle.size(); i++) {
+			for(unsigned int i = 0; i < cycle.size(); i++) {
 				// Bellman returns the path in reverse, so traverse it in reverse
 				ResidualEdge *edge = graph.getResidualEdge(prev, cycle[i]);
 				minUpperBound = min(minUpperBound, edge->upperBound);
@@ -277,42 +258,25 @@ void buildResidualGraph(LI *li) {
 			}
 			return minUpperBound;
 		}
-		bool debug = false;
-		int findMinUpperBound(const EdgeInfo& violation, vector<int>& shortestPath, int* flowCost) {
+
+		int findMinUpperBound(int src, vector<int>& shortestPath, int* flowCost) {
 			// Find min upper bound along shortest path
-			int prev = violation.src;
+			int prev = src;
 			int minUpperBound = INF_INT;
-			// cout << "Violation " << prev << " " << violation.second << endl;
 			*flowCost = *graph.flowCost;
 			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
 				// Bellman returns the path in reverse, so traverse it in reverse
 				ResidualEdge *edge = graph.getResidualEdge(prev, *it);
-/*				if (debug) {
-					graph.print();
-					graph.printResidual();
-					if (edge == NULL) {
-						cout << "cant find res edge " << prev << "->" << *it << endl;
-					}
-				}*/
-				if (edge == NULL) {
-					cout << "can't find " << prev << "->" << *it << endl;
-					graph.print();
-					graph.printResidual();
-					assert(false); 
-					exit(1);
-				}
 				minUpperBound = min(minUpperBound, edge->upperBound);
 				NormalEdge *e = graph.getEdge(prev, *it);
 				if (e != NULL) {
 					*flowCost += e->cost;
 				} else {
 					e = graph.getEdge(*it, prev);
-					*flowCost -= e->cost; // here in costsym check if flow becomes zero by all substraction
+					*flowCost -= e->cost;
 				}
-
 				prev = *it;
 			}
-//			cout << endl;
 			return minUpperBound;
 		}
 
@@ -331,7 +295,7 @@ void buildResidualGraph(LI *li) {
 
 			if (isCycle != NULL && *isCycle) {
 				int minUpperBound = findMinUpperBoundCycle(shortestPath);
-				sendFlowCycle(shortestPath, minUpperBound, li);
+				sendFlow(shortestPath[shortestPath.size() - 1], shortestPath, minUpperBound, li, true);
 /*					graph.dist->clear();
 			for (auto d: dist) {
 				graph.dist->push_back(d);
@@ -343,11 +307,11 @@ void buildResidualGraph(LI *li) {
 		//	updateCosts();
 
 			int flowCost = 0;
-			int minUpperBound = findMinUpperBound(violation, shortestPath, &flowCost);		
+			int minUpperBound = findMinUpperBound(violation.src, shortestPath, &flowCost);		
 			if (flowCost > costUpperBound.max()) {
 				return false;
 			}
-			sendFlow(violation, shortestPath, minUpperBound, li);
+			sendFlow(violation.src, shortestPath, minUpperBound, li, false);
 			
 			// TODO: optimize
 /*			graph.dist->clear();
@@ -547,7 +511,6 @@ void buildResidualGraph(LI *li) {
 					return false;
 				}
 			}
-			isMinCost = true;
 			//graph.calculateFlowCost(li);
 			// graph.print();
 			return graph.checkFlowCost(costUpperBound);
@@ -587,7 +550,7 @@ void buildResidualGraph(LI *li) {
 						}
 						cout << endl;*/
 						int minUpperBound = findMinUpperBoundCycle(path);
-						sendFlowCycle(path, minUpperBound, li);
+						sendFlow(path[path.size() - 1], path, minUpperBound, li, true);
 						//assert(false);
 						//exit(1);
 					}
@@ -630,7 +593,6 @@ void buildResidualGraph(LI *li) {
 					exit(1);
 					while (graph.getEdge(e.src, e.dest)->flow) {
 						isCycle = false;
-						debug = true;
 						if (!minCostFlowIteration({src, dest}, &isCycle, li, costUpperBound)) {
 							return false;
 						}
@@ -659,7 +621,7 @@ void buildResidualGraph(LI *li) {
 						}
 						cout << endl;*/
 						int minUpperBound = findMinUpperBoundCycle(path);
-						sendFlowCycle(path, minUpperBound, li);
+						sendFlow(path[path.size() - 1], path, minUpperBound, li, true);
 						//assert(false);
 						//exit(1);
 					}					
@@ -668,30 +630,6 @@ void buildResidualGraph(LI *li) {
 				}
 			
 			}
-			if (!updatedEdges.size()) {
-				cout << "this shouldn't happen" << endl;
-				assert(false);
-				exit(1);	
-				bool isCycle = false;
-				do {
-					isCycle = false;
-					vector<int> prev, path;
-					vector<int> dist;
-					bellmanFordShortestPathsCycles(graph.sNode(), prev, dist, path, &isCycle, NULL);
-					if (path.size()) {
-						isCycle = true;
-/*						for (auto node: path) {
-							cout << node << "->";
-						}
-						cout << endl;*/
-						int minUpperBound = findMinUpperBoundCycle(path);
-						sendFlowCycle(path, minUpperBound, li);
-						//assert(false);
-						//exit(1);
-					}
-				}	while (isCycle);				
-			}
-			isMinCost = true;
 			return graph.checkFlowCost(costUpperBound);
 		}
 	
@@ -709,8 +647,6 @@ void buildResidualGraph(LI *li) {
 			vector<int> distances;
 			vector<int> prev;
 		//	cout << "in arc" << endl;
-		isMinCost = true;
-			if (isMinCost) {
 		// 		using std::chrono::high_resolution_clock;
     // using std::chrono::duration_cast;
     // using std::chrono::duration;
@@ -727,29 +663,6 @@ void buildResidualGraph(LI *li) {
     // duration<double, std::milli> ms_double = t2 - t1;
 
     // std::cout << ms_int.count() << "ms\n";
-			} else {
-				bool isCycle = false;
-				do {
-					isCycle = false;
-					// cout << "after cycle check" << endl;
-					vector<int> path;
-					bellmanFordShortestPathsCycles(graph.tNode(), prev, distances, path, &isCycle, NULL);
-					// cout << "after cycle done" << endl;
-					if (path.size()) {
-						// cout << "after cycle FOUND ARC" << endl;
-						isCycle = true;
-						// for (auto node: path) {
-							// cout << node << "->";
-						// }
-						// cout << endl;
-						int minUpperBound = findMinUpperBoundCycle(path);
-						sendFlowCycle(path, minUpperBound, li);
-						
-						//assert(false);
-						//exit(1);
-					}
-				} while (isCycle);
-			}
 			
 		  graph.calculateReducedCosts(distances);
 			//graph.printResidual();
