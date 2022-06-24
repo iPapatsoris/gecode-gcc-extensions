@@ -41,10 +41,10 @@ class FlowGraph {
 		int totalVarNodes; 
 		
 		// Fast lookup of what node a value corresponds to
-		unordered_map<int, int> *valToNode;
+		shared_ptr<unordered_map<int, int>> valToNode;
 		
 		// Fast lookup of what value a node corresponds to
-		unordered_map<int, int> *nodeToVal;
+		shared_ptr<unordered_map<int, int>> nodeToVal;
 		
 		// Holds each variable's domain. Is needed to find out which values got
 		// pruned between iterations, by comparing with Gecode's variable domains.
@@ -55,7 +55,7 @@ class FlowGraph {
 
 		// Total flow through the graph, starts at 0. Since the flow is not 
 		// backtracked, its cost should also not be, thus the use of pointer.
-		int *flowCost;
+		shared_ptr<int> flowCost;
 
 		// Position of S node
 		int sNode() const { return nodeList.size() - 2; }

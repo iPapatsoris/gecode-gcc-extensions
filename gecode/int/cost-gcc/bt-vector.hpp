@@ -30,8 +30,8 @@ using namespace std;
  */
 template <typename T>
 class BtVector {
-	vector<T>* list;
-	unordered_map<int, int> *valToPos;
+	shared_ptr<vector<T>> list;
+	shared_ptr<unordered_map<int, int>> valToPos;
 	int listSize; 
 
 	friend class FlowGraph;
@@ -39,8 +39,8 @@ class BtVector {
 
 	public:
 		BtVector(int totalEdges) : listSize(totalEdges) {
-			list = new vector<T>();
-			valToPos = new unordered_map<int, int>();
+			list = make_shared<vector<T>>();
+			valToPos = make_shared<unordered_map<int, int>>();
 			valToPos->reserve(totalEdges);
 			list->reserve(totalEdges);
 		}

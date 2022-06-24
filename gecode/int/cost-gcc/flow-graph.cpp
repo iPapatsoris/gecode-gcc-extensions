@@ -14,7 +14,7 @@ FlowGraph::FlowGraph(
 			this->varToVals[var].pushVal(val);
 		}
 	}
-	flowCost = new int(0);
+	flowCost = make_shared<int>(0);
 	totalVarNodes = vars.size();
 	int totalValNodes = inputVals.size();
 	// Nodes are variable nodes, values nodes, S and T nodes
@@ -23,8 +23,8 @@ FlowGraph::FlowGraph(
 	int sNode = totalNodes - 2;
 	// T node position
 	int tNode = totalNodes - 1;
-	nodeToVal = new unordered_map<int, int>();
-	valToNode = new unordered_map<int, int>();
+	nodeToVal = make_shared<unordered_map<int, int>>();
+	valToNode = make_shared<unordered_map<int, int>>();
 	nodeList.reserve(totalNodes);
 
 	// Insert variable nodes and var->T edges
