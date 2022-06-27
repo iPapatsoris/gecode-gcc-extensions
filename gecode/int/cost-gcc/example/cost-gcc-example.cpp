@@ -1,6 +1,6 @@
 #include "cost-gcc-example.hpp"
 #include "../cost-gcc-post.hpp"
-#include "LI.hpp"
+#include "BestBranch.hpp"
 #include "brancher.hpp"
 
 CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
@@ -17,7 +17,7 @@ CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
 
 	// Local object handle, to branch using heuristic information provided by 
 	// the propagator 
-	LI li(*this, x.size());
+	BestBranch bestBranch(*this, x.size());
 
 	auto simpleBranchVar = INT_VAR_SIZE_MIN();
 	auto simpleBranchVal = INT_VAL_MIN();
@@ -25,11 +25,11 @@ CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
 	switch(opt.model()) {
 		case MODEL_SINGLE:
 			countCosts(*this, x, vals, lowerBounds, upperBounds, costs, costVar, 
-									(opt.branching() == BRANCHING_CUSTOM ? &li : NULL),
+									(opt.branching() == BRANCHING_CUSTOM ? &bestBranch : NULL),
 									opt.ipl());
 
 			if (opt.branching() == BRANCHING_CUSTOM) {
-				branchBestVal(*this, x, li);
+				branchBestVal(*this, x, bestBranch);
 			} else {
 				branch(*this, x, simpleBranchVar, simpleBranchVal);
 			}

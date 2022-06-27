@@ -8,7 +8,7 @@
 #include <gecode/int.hh>
 #include <gecode/minimodel.hh>
 #include "node.hpp"
-#include "example/LI.hpp"
+#include "example/BestBranch.hpp"
 #include "bt-vector.hpp"
 #include "util.hpp"
 

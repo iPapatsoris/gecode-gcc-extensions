@@ -33,7 +33,7 @@ class BestVal : public Brancher {
 protected:
   ViewArray<Int::IntView> x;
   mutable int start;
-	LI li;
+	BestBranch bestBranch;
   class PosVal : public Choice {
   public:
     int pos; int val;
@@ -45,10 +45,10 @@ protected:
     }
   };
 public:
-  BestVal(Home home, ViewArray<Int::IntView>& x0, LI& li)
-    : Brancher(home), x(x0), start(0), li(li) {}
-  static void post(Home home, ViewArray<Int::IntView>& x, LI& li) {
-    (void) new (home) BestVal(home, x, li);
+  BestVal(Home home, ViewArray<Int::IntView>& x0, BestBranch& bestBranch)
+    : Brancher(home), x(x0), start(0), bestBranch(bestBranch) {}
+  static void post(Home home, ViewArray<Int::IntView>& x, BestBranch& bestBranch) {
+    (void) new (home) BestVal(home, x, bestBranch);
   }
   virtual size_t dispose(Space& home) {
     (void) Brancher::dispose(home);
@@ -57,7 +57,7 @@ public:
   BestVal(Space& home, BestVal& b)
     : Brancher(home,b), start(b.start)  {
     x.update(home,b.x);
-		li.update(home, b.li);
+		bestBranch.update(home, b.bestBranch);
   }
   virtual Brancher* copy(Space& home) {
     return new (home) BestVal(home,*this);
@@ -77,7 +77,7 @@ public:
       if (!x[i].assigned() && (x[i].size() < s)) {
         p = i; s = x[p].size();
       }
-    return new PosVal(*this,p, li[p]);
+    return new PosVal(*this,p, bestBranch[p]);
   }
   virtual Choice* choice(const Space&, Archive& e) {
     int pos, val;
@@ -106,8 +106,8 @@ public:
   }
 };
 
-void branchBestVal(Home home, const IntVarArgs& x, LI& li) {
+void branchBestVal(Home home, const IntVarArgs& x, BestBranch& bestBranch) {
   if (home.failed()) return;
   ViewArray<Int::IntView> y(home,x);
-  BestVal::post(home, y, li);
+  BestVal::post(home, y, bestBranch);
 }

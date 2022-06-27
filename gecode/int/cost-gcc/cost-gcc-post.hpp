@@ -11,7 +11,7 @@ using namespace std;
 
 void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 								const IntArgs& lowerBounds, const IntArgs& upperBounds,
-								const IntArgs& costs, IntVar costUpperBound, LI* li,
+								const IntArgs& costs, IntVar costUpperBound, BestBranch* bestBranch,
 								IntPropLevel ipl) {
 								
 	using namespace Int;
@@ -107,7 +107,7 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 	GECODE_POST;
 	GECODE_ES_FAIL(CostGcc::post(home, views, varToVals, valToVars, vals, 
 															 lowerBounds, upperBounds, positiveCosts, 
-															 positiveCostUpperBound, li, ipl
+															 positiveCostUpperBound, bestBranch, ipl
 															));
 }
 

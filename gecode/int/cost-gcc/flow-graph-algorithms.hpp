@@ -59,8 +59,8 @@ class FlowGraphAlgorithms {
 
 		// Clear residual graph and build it again. Do not clear T->Var edges.
 		// Since we iterate through the graph, this step is a good opportunity
-		// to also update LI with the latest flow assignment.
-		void buildResidualGraph(LI *li) {
+		// to also update BestBranch with the latest flow assignment.
+		void buildResidualGraph(BestBranch *bestBranch) {
 			for (int i = 0; i < graph.tNode(); i++) {
 				graph.nodeList[i].residualEdgeList->clear();
 			}
@@ -82,9 +82,9 @@ class FlowGraphAlgorithms {
 																							 edge.flow - edge.lowerBound, 
 																							 -edge.cost));
 					}
-					if (li != NULL && edge.flow && edge.destNode < graph.totalVarNodes) {
-						// If edge is of type Val->Var and has flow, update LI
-						(*li)[edge.destNode] = (*graph.nodeToVal)[i];
+					if (bestBranch != NULL && edge.flow && edge.destNode < graph.totalVarNodes) {
+						// If edge is of type Val->Var and has flow, update BestBranch
+						(*bestBranch)[edge.destNode] = (*graph.nodeToVal)[i];
 					}
 				}
 			}
@@ -176,15 +176,15 @@ class FlowGraphAlgorithms {
 		}
 
 		// Send flow through the edge and update residual graph.
-		// Also update LI with latest flow changes
-		void sendEdgeFlow(int *prev, int cur, LI *li) {
+		// Also update BestBranch with latest flow changes
+		void sendEdgeFlow(int *prev, int cur, BestBranch *bestBranch) {
 			NormalEdge *edge = graph.getEdge(*prev, cur);
 			if (edge != NULL) {
 				// Path residual edge is a forward edge in the original graph
 				edge->flow++;
 				*graph.flowCost += edge->cost;
-				if (edge->destNode < graph.totalVarNodes && li != NULL) {
-					(*li)[edge->destNode] = (*graph.nodeToVal)[*prev];
+				if (edge->destNode < graph.totalVarNodes && bestBranch != NULL) {
+					(*bestBranch)[edge->destNode] = (*graph.nodeToVal)[*prev];
 				}
 				updateResidualGraph(*prev, cur, *edge);
 			}	else {
@@ -202,15 +202,15 @@ class FlowGraphAlgorithms {
 		// Send flow along the path. In the case of a normal path, we traverse
 		// in reverse because we got it reversed from the shortest path algorithm.
 		// In case of cycle, traverse normally.
-		void sendFlow(int src, const vector<int>& path, LI* li, bool isCycle) {
+		void sendFlow(int src, const vector<int>& path, BestBranch* bestBranch, bool isCycle) {
 			int prev = src;
 			if (!isCycle) {;
 				for(auto it = path.rbegin(); it != path.rend(); it++) {
-					sendEdgeFlow(&prev, *it, li);
+					sendEdgeFlow(&prev, *it, bestBranch);
 				}
 			} else {
 				for (unsigned int i = 0; i < path.size(); i++) {
-					sendEdgeFlow(&prev, path[i], li);
+					sendEdgeFlow(&prev, path[i], bestBranch);
 				}
 			}
 		}
@@ -241,7 +241,7 @@ class FlowGraphAlgorithms {
 		// If called with non-NULL isCycle, cycles will be taken into account in
 		// the search. If a cycle is found, repair the cycle instead of
 		// the violation, and isCycle will be set to true.
-		bool minCostFlowIteration(const EdgeInfo& violation, bool *isCycle, LI* li, 
+		bool minCostFlowIteration(const EdgeInfo& violation, bool *isCycle, BestBranch* bestBranch, 
 														  Int::IntView costUpperBound) {		
 			vector<int> shortestPath;
 			vector<int> dist;
@@ -253,7 +253,7 @@ class FlowGraphAlgorithms {
 
 			if (isCycle != NULL && *isCycle) {
 				// Repair cycle
-				sendFlow(shortestPath[shortestPath.size() - 1], shortestPath, li, true);
+				sendFlow(shortestPath[shortestPath.size() - 1], shortestPath, bestBranch, true);
 				return true;		
 			}
 
@@ -262,7 +262,7 @@ class FlowGraphAlgorithms {
 			if (flowCost > costUpperBound.max()) {
 				return false;
 			}
-			sendFlow(violation.src, shortestPath, li, false);
+			sendFlow(violation.src, shortestPath, bestBranch, false);
 			return true;
 		}
 
@@ -428,10 +428,10 @@ class FlowGraphAlgorithms {
 
 		// Send flow along all lower bound violating edges, to find a feasible
 		// flow.
-		bool findMinCostFlow(LI* li, Int::IntView costUpperBound) {
+		bool findMinCostFlow(BestBranch* bestBranch, Int::IntView costUpperBound) {
 			EdgeInfo violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
-				if (!minCostFlowIteration(violation, NULL, li, costUpperBound)) {
+				if (!minCostFlowIteration(violation, NULL, bestBranch, costUpperBound)) {
 					return false;
 				}
 			}
@@ -451,9 +451,9 @@ class FlowGraphAlgorithms {
 		// necessary to search for such cycles first and send flow along them, 
 		// to establish a min cost flow.
 		// Then, repair violation and delete the edge in question.
-		bool updateMinCostFlow(vector<EdgeInfo>& updatedEdges, LI* li, 
+		bool updateMinCostFlow(vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch, 
 												   Int::IntView costUpperBound) {
-			buildResidualGraph(li);
+			buildResidualGraph(bestBranch);
 			assert(updatedEdges.size());
 			bool isCycle;
 			do {
@@ -465,7 +465,7 @@ class FlowGraphAlgorithms {
 				bellmanFordShortestPaths(graph.tNode(), prev, dist, NULL, &path, 
 																 &isCycle);
 				if (isCycle) {
-					sendFlow(path[path.size() - 1], path, li, true);
+					sendFlow(path[path.size() - 1], path, bestBranch, true);
 				}
 			} while (isCycle);
 
@@ -476,7 +476,7 @@ class FlowGraphAlgorithms {
 					// This check is needed because it is possible that this upper bound 
 					// violation has already been fixed by the cycle repair algorithm 
 					// above.
-					if (!minCostFlowIteration({e.dest, e.src}, NULL, li, 
+					if (!minCostFlowIteration({e.dest, e.src}, NULL, bestBranch, 
 																		 costUpperBound)) {
 						return false;
 					}

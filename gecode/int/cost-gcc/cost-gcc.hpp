@@ -38,22 +38,22 @@ protected:
 		Int::IntView costUpperBound;
 		FlowGraph* graph;
 		vector<EdgeInfo> updatedEdges;
-		LI li;
-		bool usingLocalHandle;
+		BestBranch bestBranch;
+		bool usingBestBranch;
 		IntPropLevel ipl;
 
 public:
 	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph* graph, 
-					const vector<EdgeInfo>& updatedEdges, LI* li, IntPropLevel ipl, 
+					const vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch, IntPropLevel ipl, 
 					Int::IntView costUpperBound)
 			: NaryPropagator(home, x), c(home), costUpperBound(costUpperBound), 
 				graph(graph), updatedEdges(updatedEdges), 
-				usingLocalHandle(li != NULL), ipl(ipl) {
+				usingBestBranch(bestBranch != NULL), ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
 			(void)new (home) ViewAdvisor(home, *this, c, x[i], i);
 		}
-		if (usingLocalHandle) {
-			this->li = *li;
+		if (usingBestBranch) {
+			this->bestBranch = *bestBranch;
 		}
 		home.notice(*this, AP_DISPOSE);
 	}
@@ -64,7 +64,7 @@ public:
 												const IntArgs& inputVals, 
 												const IntArgs& lowerBounds, const IntArgs& upperBounds,
 												const IntArgs& costs, Int::IntView costUpperBound,
-												LI* li, IntPropLevel ipl) {
+												BestBranch* bestBranch, IntPropLevel ipl) {
 
 		#ifndef NDEBUG
 			assertCorrectDomains(vars, varToVals, valToVars);
@@ -73,7 +73,7 @@ public:
 																		 lowerBounds, upperBounds, costs);
 
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
-		if (!graphAlgorithms.findMinCostFlow(li, costUpperBound)) {
+		if (!graphAlgorithms.findMinCostFlow(bestBranch, costUpperBound)) {
 			return ES_FAILED;
 		}
 		graph->addTResidualEdges();
@@ -83,7 +83,7 @@ public:
 				return ES_FAILED;
 		}
 
-		(void)new (home) CostGcc(home, vars, graph, updatedEdges, li, ipl, 
+		(void)new (home) CostGcc(home, vars, graph, updatedEdges, bestBranch, ipl, 
 														 costUpperBound);
 		return ES_OK;
 	}
@@ -92,9 +92,9 @@ public:
 		c.update(home, p.c);
     x.update(home, p.x);
 		costUpperBound.update(home, p.costUpperBound);
-		usingLocalHandle = p.usingLocalHandle;
-		if (usingLocalHandle) {
-			li.update(home, p.li);
+		usingBestBranch = p.usingBestBranch;
+		if (usingBestBranch) {
+			bestBranch.update(home, p.bestBranch);
 		}
 		graph = new FlowGraph(*(p.graph));
 		updatedEdges = p.updatedEdges;
@@ -121,7 +121,7 @@ public:
 	virtual ExecStatus propagate(Space& home, const ModEventDelta&) {
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, 
-															 						 usingLocalHandle ? &li : NULL, 
+															 						 usingBestBranch ? &bestBranch : NULL, 
 																					 costUpperBound)) {
 			return ES_FAILED;
 		}
