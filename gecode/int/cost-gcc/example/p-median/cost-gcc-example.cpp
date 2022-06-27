@@ -1,6 +1,6 @@
 #include "cost-gcc-example.hpp"
 #include "../../cost-gcc-post.hpp"
-#include "../LI.hpp"
+#include "../BestBranch.hpp"
 #include "../brancher.hpp"
 
 void CountCostsExample::constrain(const Space& _best) {
@@ -40,14 +40,14 @@ CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
 	auto simpleBranchVar = INT_VAR_SIZE_MIN();
 	auto simpleBranchVal = INT_VAL_MIN();
 
-	LI li(*this, x.size());
+	BestBranch bestBranch(*this, x.size());
 	switch(opt.model()) {
 		case MODEL_SINGLE:{
 			countCosts(*this, x, vals, lowerBounds, upperBounds, costs, minCostFlowCost, 
-									(opt.branching() == BRANCHING_CUSTOM ? &li : NULL),
+									(opt.branching() == BRANCHING_CUSTOM ? &bestBranch : NULL),
 									opt.ipl());
 			if (opt.branching() == BRANCHING_CUSTOM) {
-				branchBestVal(*this, x, li);
+				branchBestVal(*this, x, bestBranch);
 			} else {
 				branch(*this, x, simpleBranchVar, simpleBranchVal);
 			}
