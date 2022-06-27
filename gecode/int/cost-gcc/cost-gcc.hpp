@@ -36,14 +36,14 @@ protected:
 		};
 		Council<ViewAdvisor> c;
 		Int::IntView costUpperBound;
-		FlowGraph* graph;
+		FlowGraph graph;
 		vector<EdgeInfo> updatedEdges;
 		BestBranch bestBranch;
 		bool usingBestBranch;
 		IntPropLevel ipl;
 
 public:
-	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph* graph, 
+	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph graph, 
 					const vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch, IntPropLevel ipl, 
 					Int::IntView costUpperBound)
 			: NaryPropagator(home, x), c(home), costUpperBound(costUpperBound), 
@@ -69,14 +69,14 @@ public:
 		#ifndef NDEBUG
 			assertCorrectDomains(vars, varToVals, valToVars);
 		#endif
-		FlowGraph* graph = new FlowGraph(vars, varToVals, valToVars, inputVals, 
-																		 lowerBounds, upperBounds, costs);
+		FlowGraph graph = FlowGraph(vars, varToVals, valToVars, inputVals, 
+											lowerBounds, upperBounds, costs);
 
-		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
+		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(graph);
 		if (!graphAlgorithms.findMinCostFlow(bestBranch, costUpperBound)) {
 			return ES_FAILED;
 		}
-		graph->addTResidualEdges();
+		graph.addTResidualEdges();
 		vector<EdgeInfo> updatedEdges;
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, 
 																										 costUpperBound) != ES_OK) {
@@ -88,7 +88,7 @@ public:
 		return ES_OK;
 	}
 
-	CostGcc(Space& home, CostGcc& p) : CostGccBase(home, p) {
+	CostGcc(Space& home, CostGcc& p) : CostGccBase(home, p), graph(p.graph), updatedEdges(p.updatedEdges) {
 		c.update(home, p.c);
     x.update(home, p.x);
 		costUpperBound.update(home, p.costUpperBound);
@@ -96,8 +96,6 @@ public:
 		if (usingBestBranch) {
 			bestBranch.update(home, p.bestBranch);
 		}
-		graph = new FlowGraph(*(p.graph));
-		updatedEdges = p.updatedEdges;
 		ipl = p.ipl;
   }
 
@@ -111,7 +109,7 @@ public:
 
 	virtual size_t dispose(Space& home) {
 		home.ignore(*this, AP_DISPOSE);
-		delete graph;
+		graph.~FlowGraph();
 		updatedEdges.~vector();
     c.dispose(home);
 		// todo: delete cost?
@@ -119,7 +117,7 @@ public:
     return sizeof(*this);
   }
 	virtual ExecStatus propagate(Space& home, const ModEventDelta&) {
-		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
+		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(graph);
 		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, 
 															 						 usingBestBranch ? &bestBranch : NULL, 
 																					 costUpperBound)) {
@@ -136,7 +134,7 @@ public:
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
-		bool isFeasible = graph->updatePrunedValues(x[xIndex], xIndex, 
+		bool isFeasible = graph.updatePrunedValues(x[xIndex], xIndex, 
 																							  updatedEdges);
 		return isFeasible ? ES_FIX : ES_NOFIX;
 	}
