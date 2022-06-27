@@ -472,6 +472,22 @@ class FlowGraphAlgorithms {
 			// Repair upper bound violations
 			for (auto& e: updatedEdges) {
 				auto res = graph.getEdge(e.src, e.dest);
+				if (res == NULL) {
+					// Check if edge has already been removed because it existed twice 
+					// inside updatedEdges.
+					// It is possible to have duplicates inside updatedEdges, because
+					// when the propagator is scheduled, it is not necessary that it 
+					// will execute right away. It is possible that another propagator
+					// may take precedence, removing some values, and then costgcc
+					// will check again for domain changes. If the change is on a variable
+					// that has already been inserted in updatedEdges but has not been 
+					// processed yet, then the old variable-value pair will be inserted
+					// again, along with the new one. This could be fixed by using a set
+					// instead of vector and check for existence before inserting, but 
+					// it would be more expensive. So we just allow duplicates sometimes
+					// and skip them.
+					continue;
+				}
 				if (res->flow) {
 					// This check is needed because it is possible that this upper bound 
 					// violation has already been fixed by the cycle repair algorithm 
