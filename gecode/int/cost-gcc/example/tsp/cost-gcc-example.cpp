@@ -1,6 +1,6 @@
 #include "cost-gcc-example.hpp"
 #include "../../cost-gcc-post.hpp"
-#include "../LI.hpp"
+#include "../BestBranch.hpp"
 #include "../brancher.hpp"
 
  void CountCostsExample::constrain(const Space& _best) {
@@ -26,7 +26,7 @@ CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
 
 	// Local object handle, to branch using heuristic information provided by 
 	// the propagator 
-	LI li(*this, x.size());
+	BestBranch bestBranch(*this, x.size());
 	
 	// Boolean matrix of a row for each variable and a column for each value
 	// Hold which variable is assigned to which value
@@ -49,11 +49,11 @@ CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
 		case MODEL_SINGLE:{
 			circuit(*this, x);
 			countCosts(*this, x, vals, lowerBounds, upperBounds, costs, total, 
-									(opt.branching() == BRANCHING_CUSTOM ? &li : NULL),
+									(opt.branching() == BRANCHING_CUSTOM ? &bestBranch : NULL),
 									opt.ipl());
 
 			if (opt.branching() == BRANCHING_CUSTOM) {
-				branchBestVal(*this, x, li);
+				branchBestVal(*this, x, bestBranch);
 			} else if (opt.branching() == BRANCHING_SIMPLE) {
 				branch(*this, x, simpleBranchVar, simpleBranchVal);
 			}
