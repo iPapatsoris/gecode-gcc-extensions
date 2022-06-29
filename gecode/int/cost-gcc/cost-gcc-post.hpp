@@ -68,7 +68,7 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 	for (auto i = 0; i < vals.size(); i++) {
 		Int::Limits::nonnegative(lowerBounds[i], "Int::countCosts");
 		Int::Limits::nonnegative(upperBounds[i], "Int::countCosts");
-		if (upperBounds[i] < lowerBounds[i] || upperBounds[i] < 1) {
+		if (upperBounds[i] < lowerBounds[i]) {
 			throw OutOfLimits("Int::countCosts");
 		}
 	}
