@@ -64,7 +64,6 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 	}
 
 	// Bounds must be nonnegative and lowerBound smaller or equal to upperBound
-	// upperBound must also be at least 1
 	for (auto i = 0; i < vals.size(); i++) {
 		Int::Limits::nonnegative(lowerBounds[i], "Int::countCosts");
 		Int::Limits::nonnegative(upperBounds[i], "Int::countCosts");
@@ -75,11 +74,6 @@ void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 
 	if (costs.size() != n * vals.size()) {
 		throw ArgumentSizeMismatch("Int::countCosts");
-	}
-
-	if (costUpperBound.max() < 0) {
-		home.fail();
-		return;
 	}
 
 	int minCost = 0;
