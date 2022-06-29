@@ -12,6 +12,20 @@ using namespace std;
 
 typedef NaryPropagator<Int::IntView, Int::PC_INT_NONE> CostGccBase;
 
+/**
+ * The base algorithm is according to "J-C. Régin, Cost-Based Arc Consistency 
+ * for Global Cardinality Constraints, Constraints 7, 2002, pp. 387-405"
+ * The following changes and optimizations have been applied not mentioned in 
+ * the paper:
+ * - Shortest Path Faster Algorithm instead of Dijkstra.
+ * - Efficient structure to backtrack the graph by copying
+ *   only an integer instead of the whole graph on each branch,
+ *   taken from "P. Nightingale The extended global cardinality constraint: An 
+ *   empirical survey, Artificial Intelligence 175(2), pp. 586-614, 2011"
+ * - Custom branching heuristic utilizing the current min cost flow
+ *   to guide the search straight to the next solution, minimizing 
+ *   failures.
+ */
 class CostGcc : public CostGccBase {
 
 protected:
