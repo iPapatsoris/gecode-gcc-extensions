@@ -11,8 +11,8 @@ using namespace std;
 
 void countCosts(Space& home, const IntVarArgs& vars, const IntArgs& vals,
 								const IntArgs& lowerBounds, const IntArgs& upperBounds,
-								const IntArgs& costs, IntVar costUpperBound, BestBranch* bestBranch,
-								IntPropLevel ipl) {
+								const IntArgs& costs, IntVar costUpperBound, BestBranch* bestBranch = NULL,
+								IntPropLevel ipl = IPL_DOM) {
 								
 	using namespace Int;
 
