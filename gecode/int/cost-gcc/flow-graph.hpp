@@ -53,6 +53,8 @@ class FlowGraph {
 		// because the graph we hold has Val->Var edges and not the other direction.
 		vector<BtVector<int>> varToVals;
 
+		shared_ptr<ResidualGraph> residualGraph;
+
 		// Total flow through the graph, starts at 0. Since the flow is not 
 		// backtracked, its cost should also not be, thus the use of pointer.
 		shared_ptr<int> flowCost;
@@ -108,6 +110,7 @@ class FlowGraph {
 				cout << "Internal error: did not find residual edge" << endl;
 				exit(1);
 			}
+			residualGraph->deleteResidualEdge(src, dest);
 		}
 
 		// Search for src->dest residual edge, return pointer to it or NULL if it
@@ -115,6 +118,7 @@ class FlowGraph {
 		// node's residual edges list 
 		ResidualEdge* getResidualEdge(int src, int dest, 
 																  int *index = NULL) {
+			residualGraph->getResidualEdge(src, dest);
 			for (unsigned int i=0; i < nodeList[src].residualEdgeList->size(); i++) {
 				ResidualEdge& edge = (*nodeList[src].residualEdgeList)[i];
 				if (edge.destNode == dest) {
@@ -131,6 +135,7 @@ class FlowGraph {
 		// If existingEdge is not NULL, change it to newEdge
 		void setOrCreateResidualEdge(ResidualEdge* existingEdge, int src, 
 																 const ResidualEdge& newEdge) {
+			residualGraph->addOrUpdate(src, newEdge.destNode, newEdge.cost, newEdge.reducedCost, newEdge.upperBound);
 			if (existingEdge != NULL) {
 				*existingEdge = newEdge;
 			} else {
@@ -148,10 +153,11 @@ class FlowGraph {
 		}
 
 		void calculateReducedCosts(const vector<int>& distances) {
+			residualGraph->calculateReducedCosts(distances);
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				for (auto& edge : (*nodeList[i].residualEdgeList)) {
-					edge.reducedCost = distances[i] + edge.cost - 
-														 distances[edge.destNode];
+				edge.reducedCost = distances[i] + edge.cost - 
+														distances[edge.destNode];
 				}
 			}
 		}
@@ -187,7 +193,9 @@ class FlowGraph {
 		void addTResidualEdges() {
 			for (int var = 0; var < totalVarNodes; var++) {
 				nodeList[tNode()].residualEdgeList->push_back(ResidualEdge(var, 1, 0));
+				residualGraph->addResidualEdge(tNode(), var, 0, 0, 1);
 			}
+			residualGraph->markEdgesAlwaysActive(tNode());
 		}
 };
 

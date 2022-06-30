@@ -70,11 +70,14 @@ FlowGraph::FlowGraph(
 	nodeList.back().edgeList.pushVal(NormalEdge(sNode, totalVarNodes, 
 																			totalVarNodes, 0));
 	// Create residual graph
-	for (auto &node : nodeList) {
+	residualGraph = make_shared<ResidualGraph>(totalNodes);
+	for (int i = 0; i < nodeList.size(); i++) {
+		auto& node = nodeList[i]; 
 		auto& edges = node.edgeList;
 		for (int e = 0; e < edges.listSize; e++) {
 			auto& edge = (*edges.list)[e];
 			node.residualEdgeList->push_back(ResidualEdge(edge));
+			residualGraph->addResidualEdge(i, edge.destNode, edge.cost, 0, edge.upperBound);
 		}
 	}
 }

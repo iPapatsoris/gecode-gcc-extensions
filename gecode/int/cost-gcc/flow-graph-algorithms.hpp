@@ -36,11 +36,13 @@ class FlowGraphAlgorithms {
 																		  ResidualEdge(dest, 
 																								   edge.upperBound - edge.flow, 
 																									 edge.cost));
+
 			} else if (residualEdgeSearch != NULL) {
 				// Delete forward residual edge that should no longer exist
 				auto it = graph.nodeList[source].residualEdgeList->begin() + 
 																				 residualEdgeIndex;
 				graph.nodeList[source].residualEdgeList->erase(it);
+				graph.residualGraph->deleteResidualEdge(source, dest);
 			}
 
 			if (edge.flow > edge.lowerBound) {
@@ -54,6 +56,7 @@ class FlowGraphAlgorithms {
 				auto it = graph.nodeList[dest].residualEdgeList->begin() + 
 																			 residualBackwardsEdgeIndex;
 				graph.nodeList[dest].residualEdgeList->erase(it);
+				graph.residualGraph->deleteResidualEdge(dest, source);
 			}
 		}
 
@@ -61,9 +64,11 @@ class FlowGraphAlgorithms {
 		// Since we iterate through the graph, this step is a good opportunity
 		// to also update BestBranch with the latest flow assignment.
 		void buildResidualGraph(BestBranch *bestBranch) {
+			// cout << "rebuild" << endl;
 			for (int i = 0; i < graph.tNode(); i++) {
 				graph.nodeList[i].residualEdgeList->clear();
 			}
+			graph.residualGraph->clear();
 
 			for (int i = graph.totalVarNodes; i < graph.tNode(); i++) {
 				auto& node = graph.nodeList[i];
@@ -74,6 +79,7 @@ class FlowGraphAlgorithms {
 																						  edge.destNode, 
 																						  edge.upperBound - edge.flow, 
 																							edge.cost));
+						graph.residualGraph->addResidualEdge(i, edge.destNode, edge.cost, 0, edge.upperBound - edge.flow);
 					}
 					if (edge.flow > edge.lowerBound) {
 						graph.nodeList[edge.destNode].residualEdgeList->push_back(
@@ -81,6 +87,7 @@ class FlowGraphAlgorithms {
 																							 i, 
 																							 edge.flow - edge.lowerBound, 
 																							 -edge.cost));
+						graph.residualGraph->addResidualEdge(edge.destNode, i, -edge.cost, 0, edge.flow - edge.upperBound);
 					}
 					if (bestBranch != NULL && edge.flow && edge.destNode < graph.totalVarNodes) {
 						// If edge is of type Val->Var and has flow, update BestBranch
@@ -88,6 +95,7 @@ class FlowGraphAlgorithms {
 					}
 				}
 			}
+			// cout << "end" << endl;
 		}
 
 		// Bellman-Ford algorithm for shortest paths with negative costs.
@@ -431,6 +439,9 @@ class FlowGraphAlgorithms {
 		bool findMinCostFlow(BestBranch* bestBranch, Int::IntView costUpperBound) {
 			EdgeInfo violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
+								// graph.printResidual();
+								// graph.residualGraph->print();
+
 				if (!minCostFlowIteration(violation, NULL, bestBranch, costUpperBound)) {
 					return false;
 				}

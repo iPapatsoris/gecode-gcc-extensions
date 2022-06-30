@@ -4,6 +4,7 @@
 #include <vector>
 #include "bt-vector.hpp"
 #include "edge.hpp"
+#include "residual-graph.hpp"
 
 using namespace std;
 
