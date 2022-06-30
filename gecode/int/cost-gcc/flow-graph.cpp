@@ -76,7 +76,6 @@ FlowGraph::FlowGraph(
 		auto& edges = node.edgeList;
 		for (int e = 0; e < edges.listSize; e++) {
 			auto& edge = (*edges.list)[e];
-			node.residualEdgeList->push_back(ResidualEdge(edge));
 			residualGraph->addResidualEdge(i, edge.destNode, edge.cost, 0, edge.upperBound);
 		}
 	}
@@ -133,17 +132,6 @@ void FlowGraph::print() const {
 		auto& edges = node.edgeList;
 		for (int j = 0; j < edges.listSize; j++) {
 			auto& edge = (*edges.list)[j];
-			cout << i << " -> ";
-			edge.print();
-		}
-	}
-	cout << endl;
-}
-
-void FlowGraph::printResidual() const {
-	for (unsigned int i = 0; i < nodeList.size(); i++) {
-		auto& node = nodeList[i];
-		for (auto& edge: *node.residualEdgeList) {
 			cout << i << " -> ";
 			edge.print();
 		}

@@ -46,27 +46,4 @@ public:
 	friend class FlowGraphAlgorithms;
 };
 
-/**
- * Edge for residual graph
- */
-class ResidualEdge : public Edge
-{
-	int upperBound;
-	int reducedCost;
-
-public:
-	ResidualEdge(int destNode, int upperBound, int cost)
-			: Edge(destNode, cost), upperBound(upperBound), reducedCost(0) {}
-	ResidualEdge(const NormalEdge &edge)
-			: Edge(edge.getDestNode(), edge.getCost()), upperBound(edge.getUpperBound()) {}
-	ResidualEdge() {}
-	void print() const {
-		cout << destNode << " upper " << upperBound
-				 << " reduced cost " << reducedCost << " cost " << cost << "\n"; 
-	}
-
-	friend class FlowGraph;
-	friend class FlowGraphAlgorithms;
-};
-
 #endif

@@ -8,7 +8,7 @@
 
 using namespace std;
 
-class ResidualEdge2 {
+class ResidualEdge {
 	int active;
 	int next;
 	int prev;
@@ -18,9 +18,10 @@ class ResidualEdge2 {
 	int upperBound;
 
 	friend class ResidualGraph;
+	friend class FlowGraphAlgorithms;
 
 	public:
-	ResidualEdge2() : active(INT_MIN), next(-1), prev(-1), cost(0), 
+	ResidualEdge() : active(INT_MIN), next(-1), prev(-1), cost(0), 
 							      reducedCost(0), upperBound(0) {}
 };
 
@@ -33,14 +34,16 @@ class ResidualGraph {
 		Bounds() : active(INT_MIN), start(-1), end(-1) {}
 	};
 
-	vector<ResidualEdge2> list;
+	vector<ResidualEdge> list;
 	vector<Bounds> bounds;
 	int activeFlag;
 	int dimensionSize;
 
+	friend class FlowGraphAlgorithms;
+
 	public:
 	ResidualGraph(int dimensionSize) : activeFlag(INT_MIN + 1), dimensionSize(dimensionSize) {
-		list.assign(dimensionSize * dimensionSize, ResidualEdge2());
+		list.assign(dimensionSize * dimensionSize, ResidualEdge());
 		bounds.assign(dimensionSize, Bounds());
 	}
 
@@ -48,7 +51,7 @@ class ResidualGraph {
 		activeFlag++;
 	}
 
-	ResidualEdge2 *getResidualEdge(int src, int dest) {
+	ResidualEdge *getResidualEdge(int src, int dest) {
 		auto& res = list[dimensionSize * src + dest];
 		return res.active >= activeFlag ? &res : NULL;
 	}
@@ -108,7 +111,7 @@ class ResidualGraph {
 	void markEdgesAlwaysActive(int src) {
 		bounds[src].active = INT_MAX;
 		int pos =  bounds[src].start;
-		ResidualEdge2 *edge;
+		ResidualEdge *edge;
 		do {
 			edge = &list[pos];
 			edge->active = INT_MAX;
@@ -122,7 +125,7 @@ class ResidualGraph {
 				continue;
 			}
 			int pos = bounds[i].start;
-			ResidualEdge2 *edge;
+			ResidualEdge *edge;
 			do {
 				edge = &list[pos];
 				edge->reducedCost = distances[i] + edge->cost - distances[pos % dimensionSize];
@@ -139,7 +142,7 @@ class ResidualGraph {
 				continue;
 			}
 			int z = bounds[i].start;
-			ResidualEdge2 *edge;
+			ResidualEdge *edge;
 			do {
 				edge = &list[z];
 				cout << i << " -> " << z % dimensionSize << " upper " << edge->upperBound << " reduced cost " << edge->reducedCost << " cost " << edge->cost << endl;

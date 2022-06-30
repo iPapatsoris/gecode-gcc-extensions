@@ -12,11 +12,8 @@ class Node {
 	// Efficient backtracking for edges
 	BtVector<NormalEdge> edgeList;
 	// No backtracking for residual graph; we build it from scratch each time
-	shared_ptr<vector<ResidualEdge>> residualEdgeList;
 
-	Node(int totalEdges) : edgeList(totalEdges) {
-		residualEdgeList = make_shared<vector<ResidualEdge>>();
-	}
+	Node(int totalEdges) : edgeList(totalEdges) {}
 	friend class FlowGraph;
 	friend class FlowGraphAlgorithms;
 };

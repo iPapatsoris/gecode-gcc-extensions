@@ -94,54 +94,13 @@ class FlowGraph {
 		void deleteEdge(int src, int dest) {
 			nodeList[src].edgeList.deleteVal(dest);
 		}
-		
-		void deleteResidualEdge(int src, int dest) {
-			bool found = false;
-			auto residual = nodeList[src].residualEdgeList;
-			for (auto it = residual->begin(); it != residual->end(); it++) {
-				if (it->destNode == dest) {
-					residual->erase(it);
-					found = true;
-					break;
-				}
-			}
-			assert(found);
-			if (!found) {
-				cout << "Internal error: did not find residual edge" << endl;
-				exit(1);
-			}
-			residualGraph->deleteResidualEdge(src, dest);
-		}
 
 		// Search for src->dest residual edge, return pointer to it or NULL if it
 		// doesn't exists. If index is not NULL, also return its position in that
 		// node's residual edges list 
-		ResidualEdge* getResidualEdge(int src, int dest, 
-																  int *index = NULL) {
-			residualGraph->getResidualEdge(src, dest);
-			for (unsigned int i=0; i < nodeList[src].residualEdgeList->size(); i++) {
-				ResidualEdge& edge = (*nodeList[src].residualEdgeList)[i];
-				if (edge.destNode == dest) {
-					if (index != NULL) {
-						*index = i;
-					}
-					return &edge;
-				}
-			}
-			return NULL;
-		}
 
 		// If existingEdge is NULL, create edge from src to newEdge.dest
 		// If existingEdge is not NULL, change it to newEdge
-		void setOrCreateResidualEdge(ResidualEdge* existingEdge, int src, 
-																 const ResidualEdge& newEdge) {
-			residualGraph->addOrUpdate(src, newEdge.destNode, newEdge.cost, newEdge.reducedCost, newEdge.upperBound);
-			if (existingEdge != NULL) {
-				*existingEdge = newEdge;
-			} else {
-				nodeList[src].residualEdgeList->push_back(newEdge);
-			}
-		}
 
 		// Check flow cost validity against upper bound
 		bool checkFlowCost(Int::IntView costUpperBound) {
@@ -150,16 +109,6 @@ class FlowGraph {
 				cout << *flowCost << "\n";
 			}
 			return *flowCost <= costUpperBound.max();
-		}
-
-		void calculateReducedCosts(const vector<int>& distances) {
-			residualGraph->calculateReducedCosts(distances);
-			for (unsigned int i = 0; i < nodeList.size(); i++) {
-				for (auto& edge : (*nodeList[i].residualEdgeList)) {
-				edge.reducedCost = distances[i] + edge.cost - 
-														distances[edge.destNode];
-				}
-			}
 		}
 
 	public:
@@ -192,7 +141,6 @@ class FlowGraph {
 		// the reduced costs.
 		void addTResidualEdges() {
 			for (int var = 0; var < totalVarNodes; var++) {
-				nodeList[tNode()].residualEdgeList->push_back(ResidualEdge(var, 1, 0));
 				residualGraph->addResidualEdge(tNode(), var, 0, 0, 1);
 			}
 			residualGraph->markEdgesAlwaysActive(tNode());

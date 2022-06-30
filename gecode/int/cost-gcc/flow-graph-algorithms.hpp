@@ -24,38 +24,24 @@ class FlowGraphAlgorithms {
 		void updateResidualGraph(int source, int dest, NormalEdge edge) {
 			int residualEdgeIndex;
 			int residualBackwardsEdgeIndex;
-			ResidualEdge* residualEdgeSearch = graph.getResidualEdge(source, dest, 
-																														&residualEdgeIndex);
-			ResidualEdge* residualBackwardsEdgeSearch = graph.getResidualEdge(
+			ResidualEdge* residualEdgeSearch = graph.residualGraph->getResidualEdge(source, dest);
+			ResidualEdge* residualBackwardsEdgeSearch = graph.residualGraph->getResidualEdge(
 																									 dest, 
-																									 source,
-																								   &residualBackwardsEdgeIndex);
+																									 source);
 			if (edge.flow < edge.upperBound) {
 				// Add / update forward residual edge
-				graph.setOrCreateResidualEdge(residualEdgeSearch, source, 
-																		  ResidualEdge(dest, 
-																								   edge.upperBound - edge.flow, 
-																									 edge.cost));
+				graph.residualGraph->addOrUpdate(source, dest, edge.cost, 0, edge.upperBound - edge.flow);
 
 			} else if (residualEdgeSearch != NULL) {
 				// Delete forward residual edge that should no longer exist
-				auto it = graph.nodeList[source].residualEdgeList->begin() + 
-																				 residualEdgeIndex;
-				graph.nodeList[source].residualEdgeList->erase(it);
 				graph.residualGraph->deleteResidualEdge(source, dest);
 			}
 
 			if (edge.flow > edge.lowerBound) {
 				// Add / update backward residual edge
-				graph.setOrCreateResidualEdge(residualBackwardsEdgeSearch, dest, 
-																		  ResidualEdge(source, 
-																									 edge.flow - edge.lowerBound, 
-																									 -edge.cost));
+				graph.residualGraph->addOrUpdate(dest, source, -edge.cost, 0, edge.flow - edge.lowerBound);
 			} else if (residualBackwardsEdgeSearch != NULL) {
 				// Delete backward residual edge that should no longer exist
-				auto it = graph.nodeList[dest].residualEdgeList->begin() + 
-																			 residualBackwardsEdgeIndex;
-				graph.nodeList[dest].residualEdgeList->erase(it);
 				graph.residualGraph->deleteResidualEdge(dest, source);
 			}
 		}
@@ -65,9 +51,6 @@ class FlowGraphAlgorithms {
 		// to also update BestBranch with the latest flow assignment.
 		void buildResidualGraph(BestBranch *bestBranch) {
 			// cout << "rebuild" << endl;
-			for (int i = 0; i < graph.tNode(); i++) {
-				graph.nodeList[i].residualEdgeList->clear();
-			}
 			graph.residualGraph->clear();
 
 			for (int i = graph.totalVarNodes; i < graph.tNode(); i++) {
@@ -75,18 +58,9 @@ class FlowGraphAlgorithms {
 				for (int j = 0; j < node.edgeList.listSize; j++) {
 					auto& edge = (*node.edgeList.list)[j];
 					if (edge.flow < edge.upperBound) {
-						node.residualEdgeList->push_back(ResidualEdge(
-																						  edge.destNode, 
-																						  edge.upperBound - edge.flow, 
-																							edge.cost));
 						graph.residualGraph->addResidualEdge(i, edge.destNode, edge.cost, 0, edge.upperBound - edge.flow);
 					}
 					if (edge.flow > edge.lowerBound) {
-						graph.nodeList[edge.destNode].residualEdgeList->push_back(
-																						 ResidualEdge(
-																							 i, 
-																							 edge.flow - edge.lowerBound, 
-																							 -edge.cost));
 						graph.residualGraph->addResidualEdge(edge.destNode, i, -edge.cost, 0, edge.flow - edge.upperBound);
 					}
 					if (bestBranch != NULL && edge.flow && edge.destNode < graph.totalVarNodes) {
@@ -133,28 +107,36 @@ class FlowGraphAlgorithms {
 			vector<int> updatedNodes2;
 			vector<int>* updatedNodesOld = &updatedNodes1;
 			vector<int> *updatedNodesNew = &updatedNodes2;
+			ResidualGraph *residual = &(*graph.residualGraph);
 			while (!updatedNodesOld->empty()) {
 				bool foundUpdate = false;
 				for (auto node: *updatedNodesOld) {
-					for (auto &edge : (*graph.nodeList[node].residualEdgeList)) {
+					if (residual->bounds[node].active < residual->activeFlag) {
+						continue;
+					}
+					int pos = residual->bounds[node].start;
+					do {
+						auto& edge = residual->list[pos];
+						int edgeDest = pos % residual->dimensionSize;
 						if ((dest == NULL || 
-							!(node == source && edge.destNode == *dest)) && 
+							!(node == source && edgeDest == *dest)) && 
 							dist[node] != INF_INT && dist[node] + edge.cost < 
-																			 dist[edge.destNode]) {
+																			 dist[edgeDest]) {
 							// Ignore direct source->dest edge when looking for shortest path 
 							// to specific requested destination
-							dist[edge.destNode] = dist[node] + edge.cost;
-							prev[edge.destNode] = node;
+							dist[edgeDest] = dist[node] + edge.cost;
+							prev[edgeDest] = node;
 							if (isCycle != NULL && 
-									++len[edge.destNode] == (int) graph.nodeList.size()) {
+									++len[edgeDest] == (int) graph.nodeList.size()) {
 								*isCycle = true;
-								traceCycle(prev, edge.destNode, cycle);
+								traceCycle(prev, edgeDest, cycle);
 								return;
 							}
 							foundUpdate = true;
-							updatedNodesNew->push_back(edge.destNode);
+							updatedNodesNew->push_back(edgeDest);
 						}
-					}
+						pos = edge.next;
+					} while (pos != -1);
 				}
 				if (!foundUpdate) {
 					// No updates between two iterations; early termination
@@ -368,17 +350,26 @@ class FlowGraphAlgorithms {
 					continue;
 				}
 
-				for (auto& edge: *graph.nodeList[node].residualEdgeList) {
-					if (visited[edge.destNode]) {
+				ResidualGraph *residual = &*graph.residualGraph;
+				if (residual->bounds[node].active < residual->activeFlag) {
+					continue;
+				}
+				int pos = residual->bounds[node].start;
+				do {
+					auto& edge = residual->list[pos];
+					int edgeDestNode = pos % residual->dimensionSize;
+					if (visited[edgeDestNode]) {
+						pos = edge.next;
 						continue;
 					}
 					int newDist = dist[node] + edge.reducedCost;
-					if (newDist < dist[edge.destNode]) {
+					if (newDist < dist[edgeDestNode]) {
 						// Found path of lower cost
-						dist[edge.destNode] = newDist;
-						heap.push(HeapItem(edge.destNode, newDist));
+						dist[edgeDestNode] = newDist;
+						heap.push(HeapItem(edgeDestNode, newDist));
 					}
-				}
+					pos = edge.next;
+				} while (pos != -1);
 			}
 		}
 
@@ -391,20 +382,28 @@ class FlowGraphAlgorithms {
 				int min = INF_INT;
 				for (int z = 0 ; z < graph.totalVarNodes ; z++) {
 					ResidualEdge *edgeZB;
-					if (z == y || ((edgeZB = graph.getResidualEdge(z, b)) == NULL)) {
+					if (z == y || ((edgeZB = graph.residualGraph->getResidualEdge(z, b)) == NULL)) {
 						continue;
 					}
-					for (auto& edgeZC: *graph.nodeList[z].residualEdgeList) {
-						min = std::min(min, edgeZB->reducedCost + edgeZC.reducedCost);
+					ResidualGraph *residual = &*graph.residualGraph;
+					if (residual->bounds[z].active < residual->activeFlag) {
+						continue;
 					}
+					int pos = residual->bounds[z].start;
+					do {
+						auto& edgeZC = residual->list[pos];
+						int edgeDestNode = pos % residual->dimensionSize;
+						min = std::min(min, edgeZB->reducedCost + edgeZC.reducedCost);
+						pos = edgeZC.next;
+					} while (pos != -1); 
 				}
 				return min;
 			};
 
 			NormalEdge* edgeSA = graph.getEdge(graph.sNode(), a);
 			NormalEdge* edgeSB = graph.getEdge(graph.sNode(), b);
-			ResidualEdge* edgeAY = graph.getResidualEdge(a, y);
-			ResidualEdge* edgeYB = graph.getResidualEdge(y, b);
+			ResidualEdge* edgeAY = graph.residualGraph->getResidualEdge(a, y);
+			ResidualEdge* edgeYB = graph.residualGraph->getResidualEdge(y, b);
 
 			if (edgeSA->flow < edgeSA->upperBound 
 					&& edgeSB->flow > edgeSB->lowerBound 
@@ -513,7 +512,7 @@ class FlowGraphAlgorithms {
 				// We have already removed flow from this Val->Var edge and updated 
 				// residual graph, so we know for sure that the only residual edge 
 				// direction will be the same as the original edge.
-				graph.deleteResidualEdge(e.src, e.dest);
+				graph.residualGraph->deleteResidualEdge(e.src, e.dest);
 				int val = (*graph.nodeToVal)[e.src];
 				graph.varToVals[e.dest].deleteVal(val);
 			}
@@ -526,7 +525,7 @@ class FlowGraphAlgorithms {
 															       Int::IntView costUpperBound) {
 			vector<int> distances, prev;
 			bellmanFordShortestPaths(graph.tNode(), prev, distances);
-		  graph.calculateReducedCosts(distances);
+		  graph.residualGraph->calculateReducedCosts(distances);
  
 			// Edge nodes, along with the actual value the src node
 			// corresponds to 
@@ -595,9 +594,9 @@ class FlowGraphAlgorithms {
 																						 graph.nodeToVal->find(a)->second));
 							continue;
 						}
-						ResidualEdge *residualEdge = graph.getResidualEdge(a, y);
+						ResidualEdge *residualEdge = graph.residualGraph->getResidualEdge(a, y);
 						int costAY = residualEdge->reducedCost;
-						int costYB = graph.getResidualEdge(y, b)->reducedCost;
+						int costYB = graph.residualGraph->getResidualEdge(y, b)->reducedCost;
 						if ((int)reducedDistances[a] > (costUpperBound.max() - 
 																					  *(graph.flowCost) 
 																		        - (int)costAY - (int)costYB)) {
