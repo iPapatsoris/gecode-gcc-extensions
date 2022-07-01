@@ -394,6 +394,9 @@ class FlowGraphAlgorithms {
 						continue;
 					}
 					for (auto& edgeZC: nodeList[z].residualEdgeList) {
+						if (edgeZC.destNode == b) {
+							continue;
+						}
 						min = std::min(min, edgeZB->reducedCost + edgeZC.reducedCost);
 					}
 				}
