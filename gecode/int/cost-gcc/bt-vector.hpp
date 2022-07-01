@@ -9,8 +9,10 @@ using namespace std;
 
 /**
  * Specialized vector for backtracking. Suitable only for deletions.
- * List and valToPos are pointers so that they will not be copied on branching.
- * Only listSize is backtracked.
+ * Place structure within a shared_ptr so that it will not be copied on cloning.
+ * For each instance created, there should be a "listSize" field that is placed 
+ * outside the class, because it is the only one that needs to be copied. 
+ * See "FlowGraph::edgeListSize" and "FlowGraph::varToValsSize".
  * On deletion, the element to be deleted is swapped with the last one,
  * and listSize is decremented by 1. The element is still within the vector.
  * When backtracking occurs, the previous value of listSize is restored,
@@ -30,53 +32,52 @@ using namespace std;
  */
 template <typename T>
 class BtVector {
-	shared_ptr<vector<T>> list;
-	shared_ptr<unordered_map<int, int>> valToPos;
-	int listSize; 
+	vector<T> list;
+	unordered_map<int, int> valToPos;
 
 	friend class FlowGraph;
 	friend class FlowGraphAlgorithms;
 
 	public:
-		BtVector(int totalEdges) : listSize(totalEdges) {
-			list = make_shared<vector<T>>();
-			valToPos = make_shared<unordered_map<int, int>>();
-			valToPos->reserve(totalEdges);
-			list->reserve(totalEdges);
+		BtVector(int totalEdges) {
+			valToPos.reserve(totalEdges);
+			list.reserve(totalEdges);
 		}
 
 		// Search val in map, return the actual element
-		T* getVal(int val) {
+		T* getVal(int val, int listSize) {
 				int pos;
-				if (!getValPos(val, &pos)) {
+				if (!getValPos(val, &pos, listSize)) {
 					return NULL;
 				}
-				return &(*list)[pos];
+				return &(list)[pos];
 			}
-
-		void deleteVal(int val) {
+			
+		// Swap element to be deleted with the last one, decrement listSize
+		void deleteVal(int val, int *listSize) {
 			int pos;
-			if (!getValPos(val, &pos)) {
+			if (!getValPos(val, &pos, *listSize)) {
 				return;
 			}
-			auto lastElement = getValID((*list)[listSize - 1]);
-			deleteValAtPos(val, pos, lastElement);
+			auto lastElement = getValID((list)[*listSize - 1]);
+			deleteValAtPos(val, pos, lastElement, listSize);
 		}
 
 		// Values should NOT be added after search begins
-		void pushVal(T val) {
-			list->push_back(val);
-			valToPos->insert(pair<int, int>(getValID(val), list->size() - 1));
+		void pushVal(T val, int *listSize) {
+			list.push_back(val);
+			valToPos.insert(pair<int, int>(getValID(val), list.size() - 1));
+			(*listSize)++;
 		}
 
-		void print() const {
+		void print(int listSize) const {
 			cout << "size: " << listSize << "\n";
 			cout << "valToPos:";
-			for (auto& p: *valToPos) {
+			for (auto& p: valToPos) {
 				cout << p.first << ": " << p.second << " ";
 			}
 			cout << "list:\n";
-			for (auto& e: *list) {
+			for (auto& e: list) {
 				cout << e << " ";
 			}
 			cout << endl;
@@ -85,9 +86,9 @@ class BtVector {
 	private:
 		// Search val in map, return true and the postion in list if found,
 		// false otherwise 
-		bool getValPos(int val, int *pos) const {
-			auto res = valToPos->find(val);
-			if (res == valToPos->end() || res->second >= listSize) {
+		bool getValPos(int val, int *pos, int listSize) const {
+			auto res = valToPos.find(val);
+			if (res == valToPos.end() || res->second >= listSize) {
 				return false;
 			}
 
@@ -97,13 +98,13 @@ class BtVector {
 
 		// Swap element to be deleted with the last one, decrement listSize
 		void deleteValAtPos(int val, int pos, 
-												int lastElement)
+												int lastElement, int *listSize)
 		{
-			swap((*list)[pos], (*list)[listSize - 1]);
+			swap((list)[pos], (list)[*listSize - 1]);
 			
-			(*valToPos)[val] = listSize - 1;
-			(*valToPos)[lastElement] = pos;
-			listSize -= 1;
+			(valToPos)[val] = *listSize - 1;
+			(valToPos)[lastElement] = pos;
+			*listSize -= 1;
 		}
 
 		// Get identification for map

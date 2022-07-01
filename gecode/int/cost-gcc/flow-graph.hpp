@@ -27,40 +27,64 @@ using namespace std;
  * not backtracked. Thus when the a graph is backtracked, we need to make sure
  * that we are still on a min cost flow, and if not repair it, since the 
  * addition of previously deleted edges might remove the optimality of our flow.
- * A pointer is used for members that don't need to be backtracked, to have them
- * reside in the same memory location and not copy on each iteration.
  */
 class FlowGraph {
 	friend class FlowGraphAlgorithms;
 	private:
+		/**
+		 * Holds content that does not need to be backtracked, thus should not be
+		 * copied when the space is cloned.
+		 */
+		struct BacktrackStableContent {
+			// Value network graph including edge bounds and flow values.
+			// The node order in nodeList is variables,values,S,T.
+			vector<Node> nodeList;
 
-		// The node order in nodeList is variables,values,S,T.
-		vector<Node> nodeList;
+			// Fast lookup of what node a value corresponds to
+			unordered_map<int, int> valToNode;
+			
+			// Fast lookup of what value a node corresponds to
+			unordered_map<int, int> nodeToVal;
+			
+			// Total flow through the graph. Since the flow is not 
+			// backtracked, its cost should also not be.
+			int flowCost;
+
+			// Holds each variable's domain. Is needed to find out which values got
+			// pruned between iterations, by comparing with Gecode's variable domains.
+			// We know which variables got changed by using advisors, so domain
+			// comparison is only done among those. We need it for fast lookup,
+			// because the graph we hold has Val->Var edges and not the inverse.
+			vector<BtVector<int>> varToVals;
+
+			BacktrackStableContent() : flowCost(0) {}
+		};
+
+		// Heap allocation to avoid deep copies, with smart pointer so that at 
+		// the end of the program the memory will be deallocated. Cannot be done 
+		// manually with raw pointer without a memory leak. We pack all the content
+		// in one structure, to maintain only one shared_ptr, as they can be
+		// expensive.
+		shared_ptr<BacktrackStableContent> backtrackStable;
+
+		// These two fields normally belong to BtVector, but we place them 
+		// externally because they need to backtracked, while the rest of BtVector
+		// does not. We need one "size" int field for each BtVector instance that 
+		// exists in the program. On deletion of a BtVector element, we
+		// swap the element with the last one, and decrement the respective 
+		// size field accordingly (the actual vector size remains unchanged).
+		// This allows us to backtrack to previous graph states just by recovering
+		// the old value of the size, without needing to copy the graph each time. 
+		vector<int> edgeListSize;
+		vector<int> varToValsSize;
 		
 		// The total number of nodes that correspond to a variable
 		int totalVarNodes; 
-		
-		// Fast lookup of what node a value corresponds to
-		shared_ptr<unordered_map<int, int>> valToNode;
-		
-		// Fast lookup of what value a node corresponds to
-		shared_ptr<unordered_map<int, int>> nodeToVal;
-		
-		// Holds each variable's domain. Is needed to find out which values got
-		// pruned between iterations, by comparing with Gecode's variable domains.
-		// We know which variables got changed by using advisors, so domain
-		// comparison is only done among those. We need it for fast lookup,
-		// because the graph we hold has Val->Var edges and not the other direction.
-		vector<BtVector<int>> varToVals;
-
-		// Total flow through the graph, starts at 0. Since the flow is not 
-		// backtracked, its cost should also not be, thus the use of pointer.
-		shared_ptr<int> flowCost;
 
 		// Position of S node
-		int sNode() const { return nodeList.size() - 2; }
+		int sNode() const { return backtrackStable->nodeList.size() - 2; }
 		// Position of T node
-		int tNode() const { return nodeList.size() - 1; }
+		int tNode() const { return backtrackStable->nodeList.size() - 1; }
 
 		// Mark the first time we find a solution. The first solution is of minimal
 		// cost, use this variable to print it for debugging or testing
@@ -69,10 +93,10 @@ class FlowGraph {
 		// Search for an edge flow violating lower bounds
 		// Return false if none exists
 		bool getLowerBoundViolatingEdge(EdgeInfo& violation) const {
-			for (unsigned int i = 0; i < nodeList.size(); i++) {
-				auto& edges = nodeList[i].edgeList;
-				for (int e = 0; e < edges.listSize; e++) {
-					auto& edge = (*edges.list)[e];
+			for (unsigned int i = 0; i < backtrackStable->nodeList.size(); i++) {
+				auto& edges = backtrackStable->nodeList[i].edgeList;
+				for (int e = 0; e < edgeListSize[i]; e++) {
+					auto& edge = (edges.list)[e];
 					if (edge.flow < edge.lowerBound) {
 						violation.src = i;
 						violation.dest = edge.destNode;
@@ -86,19 +110,21 @@ class FlowGraph {
 		// Search for src->dest edge, return pointer to it or NULL if it 
 		// doesn't exist
 		NormalEdge* getEdge(int src, int dest) {
-			return nodeList[src].edgeList.getVal(dest);
+			return backtrackStable->nodeList[src].edgeList.getVal(dest, 
+																													  edgeListSize[src]);
 		}
 
 		void deleteEdge(int src, int dest) {
-			nodeList[src].edgeList.deleteVal(dest);
+			backtrackStable->nodeList[src].edgeList.deleteVal(dest, 
+																												&edgeListSize[src]);
 		}
 		
 		void deleteResidualEdge(int src, int dest) {
 			bool found = false;
-			auto residual = nodeList[src].residualEdgeList;
-			for (auto it = residual->begin(); it != residual->end(); it++) {
+			auto& residual = backtrackStable->nodeList[src].residualEdgeList;
+			for (auto it = residual.begin(); it != residual.end(); it++) {
 				if (it->destNode == dest) {
-					residual->erase(it);
+					residual.erase(it);
 					found = true;
 					break;
 				}
@@ -115,8 +141,10 @@ class FlowGraph {
 		// node's residual edges list 
 		ResidualEdge* getResidualEdge(int src, int dest, 
 																  int *index = NULL) {
-			for (unsigned int i=0; i < nodeList[src].residualEdgeList->size(); i++) {
-				ResidualEdge& edge = (*nodeList[src].residualEdgeList)[i];
+			for (unsigned int i = 0; 
+					 i < backtrackStable->nodeList[src].residualEdgeList.size(); 
+					 i++) {
+				ResidualEdge& edge = backtrackStable->nodeList[src].residualEdgeList[i];
 				if (edge.destNode == dest) {
 					if (index != NULL) {
 						*index = i;
@@ -134,22 +162,23 @@ class FlowGraph {
 			if (existingEdge != NULL) {
 				*existingEdge = newEdge;
 			} else {
-				nodeList[src].residualEdgeList->push_back(newEdge);
+				backtrackStable->nodeList[src].residualEdgeList.push_back(newEdge);
 			}
 		}
 
 		// Check flow cost validity against upper bound
 		bool checkFlowCost(Int::IntView costUpperBound) {
-			if (firstTimeValidCost && *flowCost <= costUpperBound.max()) {
+			if (firstTimeValidCost && backtrackStable->flowCost <= 
+															  costUpperBound.max()) {
 				firstTimeValidCost = false;
-				cout << *flowCost << "\n";
+				cout << backtrackStable->flowCost << "\n";
 			}
-			return *flowCost <= costUpperBound.max();
+			return backtrackStable->flowCost <= costUpperBound.max();
 		}
 
 		void calculateReducedCosts(const vector<int>& distances) {
-			for (unsigned int i = 0; i < nodeList.size(); i++) {
-				for (auto& edge : (*nodeList[i].residualEdgeList)) {
+			for (unsigned int i = 0; i < backtrackStable->nodeList.size(); i++) {
+				for (auto& edge : backtrackStable->nodeList[i].residualEdgeList) {
 					edge.reducedCost = distances[i] + edge.cost - 
 														 distances[edge.destNode];
 				}
@@ -186,7 +215,8 @@ class FlowGraph {
 		// the reduced costs.
 		void addTResidualEdges() {
 			for (int var = 0; var < totalVarNodes; var++) {
-				nodeList[tNode()].residualEdgeList->push_back(ResidualEdge(var, 1, 0));
+				backtrackStable->nodeList[tNode()].residualEdgeList.push_back(
+																					 ResidualEdge(var, 1, 0));
 			}
 		}
 };

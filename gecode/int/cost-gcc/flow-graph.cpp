@@ -8,13 +8,6 @@ FlowGraph::FlowGraph(
 	const IntArgs& upperBounds, const IntArgs& costs) 
 		: firstTimeValidCost(true) {
 	
-	for (unsigned int var = 0; var < varToVals.size(); var++) {
-		this->varToVals.push_back(BtVector<int>(varToVals[var].size()));
-		for (auto val: varToVals[var]) {
-			this->varToVals[var].pushVal(val);
-		}
-	}
-	flowCost = make_shared<int>(0);
 	totalVarNodes = vars.size();
 	int totalValNodes = inputVals.size();
 	// Nodes are variable nodes, values nodes, S and T nodes
@@ -23,15 +16,25 @@ FlowGraph::FlowGraph(
 	int sNode = totalNodes - 2;
 	// T node position
 	int tNode = totalNodes - 1;
-	nodeToVal = make_shared<unordered_map<int, int>>();
-	valToNode = make_shared<unordered_map<int, int>>();
-	nodeList.reserve(totalNodes);
+
+	edgeListSize.assign(totalNodes, 0);
+	varToValsSize.assign(totalVarNodes, 0);
+	backtrackStable = make_shared<BacktrackStableContent>();
+	backtrackStable->nodeList.reserve(totalNodes);
+
+	for (unsigned int var = 0; var < varToVals.size(); var++) {
+		this->backtrackStable->varToVals.push_back(BtVector<int>(
+																							 varToVals[var].size()));
+		for (auto val: varToVals[var]) {
+			this->backtrackStable->varToVals[var].pushVal(val, &varToValsSize[var]);
+		}
+	}
 
 	// Insert variable nodes and var->T edges
 	for (int x = 0; x < totalVarNodes; x++) {
-		nodeList.push_back(Node(1));
-		//debug.push_back(1);
-		nodeList.back().edgeList.pushVal(NormalEdge(tNode, 1, 1, 0));
+		backtrackStable->nodeList.push_back(Node(1));
+		NormalEdge e(tNode, 1, 1, 0);
+		backtrackStable->nodeList.back().edgeList.pushVal(e, &edgeListSize[x]);
 	}
 
 	Matrix<IntArgs> c(costs, inputVals.size(), vars.size());
@@ -44,37 +47,46 @@ FlowGraph::FlowGraph(
 	for (int i = 0; i < inputVals.size(); i++) {
 		int val = inputVals[i];
 		auto it = valToVars.find(val);
-		valToNode->insert({val, nodeList.size()});
-		nodeToVal->insert({nodeList.size(), val});
+		int valNode = backtrackStable->nodeList.size();
+		backtrackStable->valToNode.insert({val, valNode});
+		backtrackStable->nodeToVal.insert({valNode, val});
 		bool valIsPruned = (it == valToVars.end());
-		nodeList.push_back(Node(valIsPruned ? 0 : it->second.size()));
+		backtrackStable->nodeList.push_back(Node(valIsPruned ? 0 :
+																						 it->second.size()));
 		if (!valIsPruned) {
 			// Add edges only if value is not already pruned
 			for (auto &var : it->second) {
-				nodeList.back().edgeList.pushVal(NormalEdge(var, 0, 1, c(i, var)));
+				NormalEdge e(var, 0, 1, c(i, var));
+				backtrackStable->nodeList.back().edgeList.pushVal(
+																													e, 
+																													&edgeListSize[valNode]
+																												);
 			}
 		}
 	}
 
 	// Insert S node and S->Val edges
-	nodeList.push_back(Node(inputVals.size()));
+	backtrackStable->nodeList.push_back(Node(inputVals.size()));
 	for (int i = 0; i < inputVals.size(); i++) {
 		int val = inputVals[i];
-		auto valNode = valToNode->find(val);
-		nodeList.back().edgeList.pushVal(NormalEdge(valNode->second, 
-																			lowerBounds[i], upperBounds[i], 0));
+		auto valNode = backtrackStable->valToNode.find(val);
+		NormalEdge e(valNode->second, lowerBounds[i], upperBounds[i], 0);
+		backtrackStable->nodeList.back().edgeList.pushVal(e, &edgeListSize[sNode]);
 	}
 
 	// Insert T node and T->S edge
-	nodeList.push_back(Node(1));
-	nodeList.back().edgeList.pushVal(NormalEdge(sNode, totalVarNodes, 
-																			totalVarNodes, 0));
+	backtrackStable->nodeList.push_back(Node(1));
+	NormalEdge e(sNode, totalVarNodes, totalVarNodes, 0);
+	backtrackStable->nodeList.back().edgeList.pushVal(e, &edgeListSize[tNode]);
+
+																		
 	// Create residual graph
-	for (auto &node : nodeList) {
+	for (unsigned int i = 0; i < backtrackStable->nodeList.size(); i++) {
+		auto& node = backtrackStable->nodeList[i];
 		auto& edges = node.edgeList;
-		for (int e = 0; e < edges.listSize; e++) {
-			auto& edge = (*edges.list)[e];
-			node.residualEdgeList->push_back(ResidualEdge(edge));
+		for (int e = 0; e < edgeListSize[i]; e++) {
+			auto& edge = (edges.list)[e];
+			node.residualEdgeList.push_back(ResidualEdge(edge));
 		}
 	}
 }
@@ -91,11 +103,11 @@ bool FlowGraph::updatePrunedValues(Int::IntView x, int xIndex,
 	// valToVars after iteration is done
 	vector<int> prunedValues; 
 	// Iterate all values for which there is an edge to X
-	auto& values = varToVals[xIndex];
+	auto& values = backtrackStable->varToVals[xIndex];
 	bool isFeasible = true;
-	for (int i = 0; i < values.listSize; i++) {
-		auto value = (*values.list)[i];
-		auto valueNode = valToNode->find(value)->second;
+	for (int i = 0; i < varToValsSize[xIndex]; i++) {
+		auto value = (values.list)[i];
+		auto valueNode = backtrackStable->valToNode.find(value)->second;
 		NormalEdge* edge = getEdge(valueNode, xIndex);
 		assert(edge != NULL);
 		if (!x.in(value)) {
@@ -119,17 +131,17 @@ bool FlowGraph::updatePrunedValues(Int::IntView x, int xIndex,
 	}
 
 	for (auto val: prunedValues) {
-		values.deleteVal(val);
+		values.deleteVal(val, &varToValsSize[xIndex]);
 	}
 	return isFeasible;
 }
 
 void FlowGraph::print() const {
-	for (unsigned int i = 0; i < nodeList.size(); i++) {
-		auto& node = nodeList[i];
+	for (unsigned int i = 0; i < backtrackStable->nodeList.size(); i++) {
+		auto& node = backtrackStable->nodeList[i];
 		auto& edges = node.edgeList;
-		for (int j = 0; j < edges.listSize; j++) {
-			auto& edge = (*edges.list)[j];
+		for (int j = 0; j < edgeListSize[i]; j++) {
+			auto& edge = (edges.list)[j];
 			cout << i << " -> ";
 			edge.print();
 		}
@@ -138,9 +150,9 @@ void FlowGraph::print() const {
 }
 
 void FlowGraph::printResidual() const {
-	for (unsigned int i = 0; i < nodeList.size(); i++) {
-		auto& node = nodeList[i];
-		for (auto& edge: *node.residualEdgeList) {
+	for (unsigned int i = 0; i < backtrackStable->nodeList.size(); i++) {
+		auto& node = backtrackStable->nodeList[i];
+		for (auto& edge: node.residualEdgeList) {
 			cout << i << " -> ";
 			edge.print();
 		}

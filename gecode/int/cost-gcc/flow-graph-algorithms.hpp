@@ -22,6 +22,7 @@ class FlowGraphAlgorithms {
 		// Add / update / delete residual edges related to the original graph edge 
 		// source->dest.
 		void updateResidualGraph(int source, int dest, NormalEdge edge) {
+			auto& nodeList = graph.backtrackStable->nodeList;
 			int residualEdgeIndex;
 			int residualBackwardsEdgeIndex;
 			ResidualEdge* residualEdgeSearch = graph.getResidualEdge(source, dest, 
@@ -38,9 +39,8 @@ class FlowGraphAlgorithms {
 																									 edge.cost));
 			} else if (residualEdgeSearch != NULL) {
 				// Delete forward residual edge that should no longer exist
-				auto it = graph.nodeList[source].residualEdgeList->begin() + 
-																				 residualEdgeIndex;
-				graph.nodeList[source].residualEdgeList->erase(it);
+				auto it = nodeList[source].residualEdgeList.begin() + residualEdgeIndex;
+				nodeList[source].residualEdgeList.erase(it);
 			}
 
 			if (edge.flow > edge.lowerBound) {
@@ -51,9 +51,9 @@ class FlowGraphAlgorithms {
 																									 -edge.cost));
 			} else if (residualBackwardsEdgeSearch != NULL) {
 				// Delete backward residual edge that should no longer exist
-				auto it = graph.nodeList[dest].residualEdgeList->begin() + 
-																			 residualBackwardsEdgeIndex;
-				graph.nodeList[dest].residualEdgeList->erase(it);
+				auto it = nodeList[dest].residualEdgeList.begin() + 
+																	                residualBackwardsEdgeIndex;
+				nodeList[dest].residualEdgeList.erase(it);
 			}
 		}
 
@@ -61,30 +61,32 @@ class FlowGraphAlgorithms {
 		// Since we iterate through the graph, this step is a good opportunity
 		// to also update BestBranch with the latest flow assignment.
 		void buildResidualGraph(BestBranch *bestBranch) {
+			auto& nodeList = graph.backtrackStable->nodeList;
 			for (int i = 0; i < graph.tNode(); i++) {
-				graph.nodeList[i].residualEdgeList->clear();
+				nodeList[i].residualEdgeList.clear();
 			}
 
 			for (int i = graph.totalVarNodes; i < graph.tNode(); i++) {
-				auto& node = graph.nodeList[i];
-				for (int j = 0; j < node.edgeList.listSize; j++) {
-					auto& edge = (*node.edgeList.list)[j];
+				auto& node = nodeList[i];
+				for (int j = 0; j < graph.edgeListSize[i]; j++) {
+					auto& edge = (node.edgeList.list)[j];
 					if (edge.flow < edge.upperBound) {
-						node.residualEdgeList->push_back(ResidualEdge(
+						node.residualEdgeList.push_back(ResidualEdge(
 																						  edge.destNode, 
 																						  edge.upperBound - edge.flow, 
 																							edge.cost));
 					}
 					if (edge.flow > edge.lowerBound) {
-						graph.nodeList[edge.destNode].residualEdgeList->push_back(
+						nodeList[edge.destNode].residualEdgeList.push_back(
 																						 ResidualEdge(
 																							 i, 
 																							 edge.flow - edge.lowerBound, 
 																							 -edge.cost));
 					}
-					if (bestBranch != NULL && edge.flow && edge.destNode < graph.totalVarNodes) {
+					if (bestBranch != NULL && edge.flow && edge.destNode < 
+																								 graph.totalVarNodes) {
 						// If edge is of type Val->Var and has flow, update BestBranch
-						(*bestBranch)[edge.destNode] = (*graph.nodeToVal)[i];
+						(*bestBranch)[edge.destNode] = graph.backtrackStable->nodeToVal[i];
 					}
 				}
 			}
@@ -92,34 +94,33 @@ class FlowGraphAlgorithms {
 
 		// Bellman-Ford algorithm for shortest paths with negative costs.
 		// Based on the Shortest Path Faster Algorithm optimization.
-		// When called, the residual graph should NOT contain cycles, because 
-		// in that case it will run infinitely. If cycles can exist,
-		// use bellmanFordShortestPathsCycles instead.
+		// If isCycle is NULL, it does NOT check for cycles. If it is not, it puts
+		// the first cycle that it finds in "cycle" vector parameter.
+		// If the graph can contain a cycle, always call with isCycle not NULL, 
+		// because otherwise it will run infinitely.
 		// If dest is not NULL, ignore any direct source->dest edge.
 		// This is needed when searching for shortest path to a specific 
 		// destination, by the min cost flow algorithm. When searching without 
 		// a specific destination, pass as NULL.
-     
-
-		// Just like bellmanFordShortestPaths, but also detect a cycle.
-		// Under a cycle, normally the distance of the nodes within and reachable
+    // Under a cycle, normally the distance of the nodes within and reachable
 		// by it would become infinite. We keep track of the length of the 
 		// shortest path to each node. Under no cycles, the maximum possible
 		// would be equal to all the graph nodes. So if we exceed that limit for a
-		// node, it means that there is a cycle. Place it in the appropriate 
-		// parameter and also set isCycle to true.
+		// node, it means that there is a cycle. Places it in the appropriate 
+		// parameter and also sets isCycle to true.
 		void bellmanFordShortestPaths(int source, 
 																	vector<int>& prev, vector<int>& dist,
 																	int* dest = NULL,
 																	vector<int> *cycle = NULL, 
 																	bool *isCycle = NULL
 																	) const {
-			prev.assign(graph.nodeList.size(), NONE_INT);
-			dist.assign(graph.nodeList.size(), INF_INT);
+			auto& nodeList = graph.backtrackStable->nodeList;
+			prev.assign(nodeList.size(), NONE_INT);
+			dist.assign(nodeList.size(), INF_INT);
 			dist[source] = 0;
 			vector<int> len;
 			if (isCycle != NULL) {
-				len.assign(graph.nodeList.size(), 0);
+				len.assign(nodeList.size(), 0);
 			}
 			vector<int> updatedNodes1 = {source};
 			vector<int> updatedNodes2;
@@ -128,7 +129,7 @@ class FlowGraphAlgorithms {
 			while (!updatedNodesOld->empty()) {
 				bool foundUpdate = false;
 				for (auto node: *updatedNodesOld) {
-					for (auto &edge : (*graph.nodeList[node].residualEdgeList)) {
+					for (auto &edge : nodeList[node].residualEdgeList) {
 						if ((dest == NULL || 
 							!(node == source && edge.destNode == *dest)) && 
 							dist[node] != INF_INT && dist[node] + edge.cost < 
@@ -138,7 +139,7 @@ class FlowGraphAlgorithms {
 							dist[edge.destNode] = dist[node] + edge.cost;
 							prev[edge.destNode] = node;
 							if (isCycle != NULL && 
-									++len[edge.destNode] == (int) graph.nodeList.size()) {
+									++len[edge.destNode] == (int) nodeList.size()) {
 								*isCycle = true;
 								traceCycle(prev, edge.destNode, cycle);
 								return;
@@ -182,9 +183,10 @@ class FlowGraphAlgorithms {
 			if (edge != NULL) {
 				// Path residual edge is a forward edge in the original graph
 				edge->flow++;
-				*graph.flowCost += edge->cost;
+				graph.backtrackStable->flowCost += edge->cost;
 				if (edge->destNode < graph.totalVarNodes && bestBranch != NULL) {
-					(*bestBranch)[edge->destNode] = (*graph.nodeToVal)[*prev];
+					(*bestBranch)[edge->destNode] = graph.backtrackStable->
+																				  nodeToVal[*prev];
 				}
 				updateResidualGraph(*prev, cur, *edge);
 			}	else {
@@ -192,7 +194,7 @@ class FlowGraphAlgorithms {
 				edge = graph.getEdge(cur, *prev);
 				edge->flow--;
 				if (!edge->flow) {
-					*graph.flowCost -= edge->cost;
+					graph.backtrackStable->flowCost -= edge->cost;
 				}
 				updateResidualGraph(cur, *prev, *edge);
 			}
@@ -202,7 +204,8 @@ class FlowGraphAlgorithms {
 		// Send flow along the path. In the case of a normal path, we traverse
 		// in reverse because we got it reversed from the shortest path algorithm.
 		// In case of cycle, traverse normally.
-		void sendFlow(int src, const vector<int>& path, BestBranch* bestBranch, bool isCycle) {
+		void sendFlow(int src, const vector<int>& path, BestBranch* bestBranch, 
+									bool isCycle) {
 			int prev = src;
 			if (!isCycle) {;
 				for(auto it = path.rbegin(); it != path.rend(); it++) {
@@ -221,7 +224,7 @@ class FlowGraphAlgorithms {
 		// applying it.
 		int calculateFlowCostChange(int src, vector<int>& shortestPath) {
 			int prev = src;
-			int flowCost = *graph.flowCost;
+			int flowCost = graph.backtrackStable->flowCost;
 			for (auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
 				// Bellman returns the path in reverse, so traverse it in reverse
 				NormalEdge *e = graph.getEdge(prev, *it);
@@ -241,8 +244,9 @@ class FlowGraphAlgorithms {
 		// If called with non-NULL isCycle, cycles will be taken into account in
 		// the search. If a cycle is found, repair the cycle instead of
 		// the violation, and isCycle will be set to true.
-		bool minCostFlowIteration(const EdgeInfo& violation, bool *isCycle, BestBranch* bestBranch, 
-														  Int::IntView costUpperBound) {		
+		bool minCostFlowIteration(const EdgeInfo& violation, bool *isCycle,
+														  BestBranch* bestBranch, 
+															Int::IntView costUpperBound) {		
 			vector<int> shortestPath;
 			vector<int> dist;
 			if (!findShortestPathNegativeCosts(violation.dest, violation.src, 
@@ -253,7 +257,8 @@ class FlowGraphAlgorithms {
 
 			if (isCycle != NULL && *isCycle) {
 				// Repair cycle
-				sendFlow(shortestPath[shortestPath.size() - 1], shortestPath, bestBranch, true);
+				sendFlow(shortestPath[shortestPath.size() - 1], shortestPath,
+								 bestBranch, true);
 				return true;		
 			}
 
@@ -310,9 +315,10 @@ class FlowGraphAlgorithms {
 																			 unordered_set<int>& targetNodes, 
 																			 vector<int>& dist, 
 																			 int costLowerBound) const {
+			auto& nodeList = graph.backtrackStable->nodeList;
 			vector<bool> visited;
-			visited.assign(graph.nodeList.size(), false);
-			dist.assign(graph.nodeList.size(), INF_INT);
+			visited.assign(nodeList.size(), false);
+			dist.assign(nodeList.size(), INF_INT);
 			dist[source] = 0;
 			if (targetNodes.empty()) {
 				return;
@@ -360,7 +366,7 @@ class FlowGraphAlgorithms {
 					continue;
 				}
 
-				for (auto& edge: *graph.nodeList[node].residualEdgeList) {
+				for (auto& edge: nodeList[node].residualEdgeList) {
 					if (visited[edge.destNode]) {
 						continue;
 					}
@@ -380,13 +386,14 @@ class FlowGraphAlgorithms {
 										int m) const {
 
 			auto mFactor = [](int b, int y, FlowGraph& graph) {
+				auto& nodeList = graph.backtrackStable->nodeList;
 				int min = INF_INT;
 				for (int z = 0 ; z < graph.totalVarNodes ; z++) {
 					ResidualEdge *edgeZB;
 					if (z == y || ((edgeZB = graph.getResidualEdge(z, b)) == NULL)) {
 						continue;
 					}
-					for (auto& edgeZC: *graph.nodeList[z].residualEdgeList) {
+					for (auto& edgeZC: nodeList[z].residualEdgeList) {
 						min = std::min(min, edgeZB->reducedCost + edgeZC.reducedCost);
 					}
 				}
@@ -431,7 +438,8 @@ class FlowGraphAlgorithms {
 		bool findMinCostFlow(BestBranch* bestBranch, Int::IntView costUpperBound) {
 			EdgeInfo violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
-				if (!minCostFlowIteration(violation, NULL, bestBranch, costUpperBound)) {
+				if (!minCostFlowIteration(violation, NULL, bestBranch, 
+																	costUpperBound)) {
 					return false;
 				}
 			}
@@ -451,7 +459,8 @@ class FlowGraphAlgorithms {
 		// necessary to search for such cycles first and send flow along them, 
 		// to establish a min cost flow.
 		// Then, repair violation and delete the edge in question.
-		bool updateMinCostFlow(vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch, 
+		bool updateMinCostFlow(vector<EdgeInfo>& updatedEdges, 
+													 BestBranch* bestBranch, 
 												   Int::IntView costUpperBound) {
 			buildResidualGraph(bestBranch);
 			assert(updatedEdges.size());
@@ -503,8 +512,11 @@ class FlowGraphAlgorithms {
 				// residual graph, so we know for sure that the only residual edge 
 				// direction will be the same as the original edge.
 				graph.deleteResidualEdge(e.src, e.dest);
-				int val = (*graph.nodeToVal)[e.src];
-				graph.varToVals[e.dest].deleteVal(val);
+				int val = graph.backtrackStable->nodeToVal[e.src];
+				graph.backtrackStable->varToVals[e.dest].deleteVal(
+																									val, 
+																									&graph.varToValsSize[e.dest]
+																									);
 			}
 			return graph.checkFlowCost(costUpperBound);
 		}
@@ -533,24 +545,24 @@ class FlowGraphAlgorithms {
 
 			// Gather the targetNodes we want to find shortests paths to from B,
 			// and check early prune conditions to skip finding some
-			auto& sNode = graph.nodeList[graph.sNode()];
-			for (int i = 0; i < sNode.edgeList.listSize; i++) {
-				auto& edge = (*sNode.edgeList.list)[i];
+			auto& sNode = graph.backtrackStable->nodeList[graph.sNode()];
+			for (int i = 0; i < graph.edgeListSize[graph.sNode()]; i++) {
+				auto& edge = (sNode.edgeList.list)[i];
 				if (edge.flow > 0) {
 					vector<int> yList;
 					int b = edge.destNode;
 					unordered_set<int> targetNodes;
 					vector< pair<int, int>> ayList;
-					auto& bNode = graph.nodeList[b];
-					for (int j = 0; j < bNode.edgeList.listSize; j++) {
-						auto& edgeBY = (*bNode.edgeList.list)[j];
+					auto& bNode = graph.backtrackStable->nodeList[b];
+					for (int j = 0; j < graph.edgeListSize[b]; j++) {
+						auto& edgeBY = (bNode.edgeList.list)[j];
 						if (edgeBY.flow == 1) {
 							int y = edgeBY.destNode;
 							for (IntVarValues v(vars[y]); v(); ++v) {
-								int a = (*graph.valToNode)[v.val()];
+								int a = (graph.backtrackStable->valToNode)[v.val()];
 								if (a != b) {
 									if (earlyPrune(a, b, y, costUpperBound.max() - 
-															   *(graph.flowCost))) {
+															   graph.backtrackStable->flowCost)) {
 										edgesToPrune.push_back(EdgeWithVal(a, y, v.val()));
 										continue;
 									}
@@ -566,7 +578,8 @@ class FlowGraphAlgorithms {
 						continue;
 					}
 					findShortestPathsReducedCosts(b, targetNodes, reducedDistances, 
-																			  costUpperBound.max() - *(graph.flowCost)
+																			  costUpperBound.max() - 
+																				graph.backtrackStable->flowCost
 																			 );
 					
 					for (const auto& ay: ayList) {
@@ -580,18 +593,22 @@ class FlowGraphAlgorithms {
 							// (dist > costUpperBound - flowCost).
 							// Since all reduced costs are non-negative, we already know
 							// that (dist > costUpperBound - flowCost - costAY - costYB)
-							edgesToPrune.push_back(EdgeWithVal(a, y, 
-																						 graph.nodeToVal->find(a)->second));
+							edgesToPrune.push_back(EdgeWithVal(
+														 a, 
+														 y, 
+														 graph.backtrackStable->nodeToVal.find(a)->second));
 							continue;
 						}
 						ResidualEdge *residualEdge = graph.getResidualEdge(a, y);
 						int costAY = residualEdge->reducedCost;
 						int costYB = graph.getResidualEdge(y, b)->reducedCost;
 						if ((int)reducedDistances[a] > (costUpperBound.max() - 
-																					  *(graph.flowCost) 
+																					  graph.backtrackStable->flowCost 
 																		        - (int)costAY - (int)costYB)) {
-							edgesToPrune.push_back(EdgeWithVal(a, y,
-																						 graph.nodeToVal->find(a)->second));
+							edgesToPrune.push_back(EdgeWithVal(
+														 a, 
+														 y,
+														 graph.backtrackStable->nodeToVal.find(a)->second));
 						} 
 					}
 				}
