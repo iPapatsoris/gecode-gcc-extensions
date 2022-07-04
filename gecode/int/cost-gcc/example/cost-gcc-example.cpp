@@ -19,7 +19,7 @@ CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
 	// the propagator 
 	BestBranch bestBranch(*this, x.size());
 
-	auto simpleBranchVar = INT_VAR_SIZE_MIN();
+	auto simpleBranchVar = INT_VAR_REGRET_MAX_MAX();
 	auto simpleBranchVal = INT_VAL_MIN();
 
 	switch(opt.model()) {

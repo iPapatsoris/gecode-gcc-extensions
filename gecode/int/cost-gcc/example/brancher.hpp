@@ -72,11 +72,13 @@ public:
   virtual Choice* choice(Space&) {
 
 		int p = start;
-    unsigned int s = x[p].size();
-    for (int i=start+1; i<x.size(); i++)
-      if (!x[i].assigned() && (x[i].size() < s)) {
-        p = i; s = x[p].size();
-      }
+    int maxRegret = x[start].regret_max();
+    for (int i=start+1; i<x.size(); i++) {
+			int regret;
+			if (!x[i].assigned() && ((regret = x[i].regret_max()) > maxRegret)) {
+				p = i; maxRegret = regret;
+			}
+		}
     return new PosVal(*this,p, bestBranch[p]);
   }
   virtual Choice* choice(const Space&, Archive& e) {
