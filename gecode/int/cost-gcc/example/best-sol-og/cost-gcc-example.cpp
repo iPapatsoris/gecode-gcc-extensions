@@ -35,7 +35,7 @@ CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
 	minCostFlowCost = IntVar(*this, Int::Limits::min, Int::Limits::max);
 	linear(*this, costs, varValue, IRT_EQ, minCostFlowCost, opt.ipl());
 
-	auto simpleBranchVar = INT_VAR_SIZE_MIN();
+	auto simpleBranchVar = INT_VAR_REGRET_MAX_MAX();
 	auto simpleBranchVal = INT_VAL_MIN();
 
 	BestBranch bestBranch(*this, x.size());

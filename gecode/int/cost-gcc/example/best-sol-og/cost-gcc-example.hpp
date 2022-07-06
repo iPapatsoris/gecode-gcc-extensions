@@ -31,7 +31,8 @@ public:
 	}
 
 	void print(ostream& os) const {
-		os << "\tSolution: " << x << "\n" << cost() << endl;
+		// os << "\tSolution: " << x << "\n" << cost() << endl;
+		os << cost() << endl;
 	}
 
 	void constrain(const Space& _best);

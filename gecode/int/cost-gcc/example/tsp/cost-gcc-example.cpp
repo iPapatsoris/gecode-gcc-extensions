@@ -24,6 +24,8 @@ CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
 		x[i] = IntVar(*this, domain[i]);
 	}
 
+	// cout << x << vals << lowerBounds << upperBounds << costs << endl;
+
 	// Local object handle, to branch using heuristic information provided by 
 	// the propagator 
 	BestBranch bestBranch(*this, x.size());
@@ -42,7 +44,7 @@ CountCostsExample::CountCostsExample(const InstanceOptions& opt) : Script(opt) {
 	total = IntVar(*this, 0, Int::Limits::max);
 	linear(*this, costs, varValue, IRT_EQ, total);
 	
-	auto simpleBranchVar = INT_VAR_SIZE_MIN();
+	auto simpleBranchVar = INT_VAR_REGRET_MAX_MAX();
 	auto simpleBranchVal = INT_VAL_MIN();
 
 	switch(opt.model()) {

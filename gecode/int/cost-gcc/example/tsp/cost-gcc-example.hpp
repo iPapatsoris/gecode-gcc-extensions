@@ -32,7 +32,8 @@ class CountCostsExample : public Script {
 		virtual void constrain(const Space& _best);
 
 		void print(ostream& os) const {
-			os << "\tSolution: " << x << "\n" << cost() << endl;
+			os << cost() << endl;
+			// os << "\tSolution: " << x << "\n" << cost() << endl;
 		}
 
 		virtual IntVar cost(void) const {
