@@ -4,12 +4,11 @@
 #include "LI.hpp"
 #include "brancher.hpp"
 
-SymmetricGccExample::SymmetricGccExample(const FileOptions& opt) 
-	: Script(opt), model((Model) opt.model())
-																																 {
+SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt) 
+	: Script(opt), model((Model) opt.model()) {
 	IntSetArgs domain;
 	IntArgs vals, lowerValBounds, upperValBounds, lowerVarBounds, upperVarBounds;
-	readInput(opt.file(), varsCount, domain, vals, lowerValBounds, upperValBounds, 
+	readInput(opt.instance(), varsCount, domain, vals, lowerValBounds, upperValBounds, 
 						lowerVarBounds, upperVarBounds);
 	valsCount = vals.size();
 	
@@ -43,6 +42,9 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt)
 	// the propagator 
 	LI li(*this, varsCount);
 
+	auto simpleBranchVar = SET_VAR_DEGREE_MIN();
+	auto simpleBranchVal = SET_VAL_MIN_EXC();
+
 	switch(opt.model()) {
 		case MODEL_SINGLE:
 			x = SetVarArray(*this, varsCount);
@@ -50,10 +52,10 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt)
 				x[i] = SetVar(*this, IntSet::empty, domain[i], lowerVarBounds[i], upperVarBounds[i]);
 			}
 			symmetricGCC(*this, x, vals, lowerValBounds, upperValBounds, 
-										lowerVarBounds, upperVarBounds, opt.branch() ? &li : NULL, 
+										lowerVarBounds, upperVarBounds, opt.branching() ? &li : NULL, 
 										opt.ipl());
 		//dom(*this, x[4], SRT_EQ, IntSet{3, 5});
-			if (opt.branch()) {
+			if (opt.branching()) {
 				bestval(*this, x, li);
 			} else { 
 				branch(*this, x, SET_VAR_DEGREE_MIN(), SET_VAL_MIN_EXC());
@@ -113,7 +115,7 @@ SymmetricGccExample::SymmetricGccExample(const FileOptions& opt)
 	
 
 int main(int argc, char *argv[]) {
-	FileOptions opt("Cost GCC");
+	InstanceOptions opt("Cost GCC");
 	opt.model(SymmetricGccExample::MODEL_SINGLE,
 						"single", "use single costgcc");
 	opt.model(SymmetricGccExample::MODEL_COUNT,
@@ -121,11 +123,16 @@ int main(int argc, char *argv[]) {
 	opt.model(SymmetricGccExample::MODEL_LINEAR,
 						"linear", "use linear constraints");
 	opt.model(SymmetricGccExample::MODEL_SINGLE);
+	opt.branching(SymmetricGccExample::BRANCHING_SIMPLE,
+	          "0", "use simple branching");
+	opt.branching(SymmetricGccExample::BRANCHING_CUSTOM,
+	          "1", "use custom branching");
+	opt.branching(SymmetricGccExample::BRANCHING_CUSTOM);
 	opt.ipl(IPL_DOM);
 	opt.solutions(0);
 	opt.parse(argc, argv);
 
-	Script::run<SymmetricGccExample, DFS, FileOptions>(opt);
+	Script::run<SymmetricGccExample, DFS, InstanceOptions>(opt);
 
 	return 0;
 }

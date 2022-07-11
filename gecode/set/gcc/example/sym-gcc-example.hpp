@@ -10,21 +10,6 @@
 using namespace Gecode;
 using namespace std;
 
-class FileOptions : public Options {
-protected:
-	Driver::StringValueOption _file;
-	Driver::BoolOption _branch;
-public:
-	FileOptions(const char* scriptName) : 
-			Options(scriptName),
-			_file("file","input file name", ""),
-			_branch("branch", "branch heuristic flag", true) { 
-		add(_file);
-		add(_branch);
-	}
-  string file(void) const { return _file.value(); }
-	bool branch(void) const { return _branch.value(); }
-};
 
 class SymmetricGccExample : public Script {
 protected:
@@ -37,12 +22,15 @@ protected:
 
 public:
 	enum Model {
-		MODEL_SINGLE, MODEL_COUNT, MODEL_LINEAR
+		MODEL_SINGLE, MODEL_COUNT, MODEL_LINEAR 
+	};
+
+	enum Branching {
+		BRANCHING_SIMPLE, BRANCHING_CUSTOM
 	};
 
 	Model model;
-
-	SymmetricGccExample(const FileOptions& opt);
+	SymmetricGccExample(const InstanceOptions& opt);
 	SymmetricGccExample(SymmetricGccExample &s) : Script(s) {
 		model = s.model;
 		varsCount = s.varsCount;
