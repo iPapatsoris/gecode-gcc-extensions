@@ -138,5 +138,7 @@ void readFromGecode(string fileName, int& vars, IntSetArgs& domain, IntArgs& val
 
 void readInput(string fileName, int& vars, IntSetArgs& domain, IntArgs& vals,
 							 IntArgs& lowerBounds, IntArgs& upperBounds, IntArgs& costs) {
-	readFromGecode(fileName, vars, domain, vals, lowerBounds, upperBounds, costs);
+	// readFromGecode(fileName, vars, domain, vals, lowerBounds, upperBounds, costs);
+	readFromTSP(fileName, vars, domain, vals, lowerBounds, upperBounds, costs);
+
 }
