@@ -1,5 +1,4 @@
 #include "flow-graph.hpp"
-#include "example/cost-gcc-example.hpp"
 FlowGraph::FlowGraph(
 	const ViewArray<Int::IntView>& vars, 
 	const vector<unordered_set<int> >& varToVals,
