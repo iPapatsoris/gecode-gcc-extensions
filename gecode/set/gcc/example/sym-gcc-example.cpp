@@ -58,7 +58,7 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 			if (opt.branching()) {
 				bestval(*this, x, li);
 			} else { 
-				branch(*this, x, SET_VAR_DEGREE_MIN(), SET_VAL_MIN_EXC());
+				branch(*this, x, simpleBranchVar, simpleBranchVal);
 			}
 			break;
 
@@ -75,13 +75,13 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 				}
 			}
 			for (int i = 0; i < m.height(); i++) {
-				count(*this, m.row(i), 1, IRT_GQ, lowerVarBounds[i]);
-				count(*this, m.row(i), 1, IRT_LQ, upperVarBounds[i]);
+				count(*this, m.row(i), 1, IRT_GQ, lowerVarBounds[i], opt.ipl());
+				count(*this, m.row(i), 1, IRT_LQ, upperVarBounds[i], opt.ipl());
 				//count(*this, m.row(i), varBounds[i], 1);
 			}
 			for (int j = 0; j < m.width(); j++) {
-				count(*this, m.col(j), 1, IRT_GQ, lowerValBounds[j]);
-				count(*this, m.col(j), 1, IRT_LQ, upperValBounds[j]);
+				count(*this, m.col(j), 1, IRT_GQ, lowerValBounds[j], opt.ipl());
+				count(*this, m.col(j), 1, IRT_LQ, upperValBounds[j], opt.ipl());
 				//count(*this, m.col(j), bounds, ones);
 			}
 			branch(*this, y, INT_VAL_MAX());
@@ -99,13 +99,13 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 				}
 			}
 			for (int i = 0; i < mB.height(); i++) {
-				linear(*this, mB.row(i), IRT_GQ, lowerVarBounds[i]);
-				linear(*this, mB.row(i), IRT_LQ, upperVarBounds[i]);
+				linear(*this, mB.row(i), IRT_GQ, lowerVarBounds[i], opt.ipl());
+				linear(*this, mB.row(i), IRT_LQ, upperVarBounds[i], opt.ipl());
 				//count(*this, m.row(i), varBounds[i], 1);
 			}
 			for (int j = 0; j < mB.width(); j++) {
-				linear(*this, mB.col(j), IRT_GQ, lowerValBounds[j]);
-				linear(*this, mB.col(j), IRT_LQ, upperValBounds[j]);
+				linear(*this, mB.col(j), IRT_GQ, lowerValBounds[j], opt.ipl());
+				linear(*this, mB.col(j), IRT_LQ, upperValBounds[j], opt.ipl());
 				//count(*this, m.col(j), bounds, ones);
 			}
 			branch(*this, z, BOOL_VAL_MAX());

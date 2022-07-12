@@ -79,6 +79,9 @@ class FlowGraphAlgorithms {
 					// Path residual edge is a backward edge in the original graph
 					edge = graph.getEdge(*it, prev);
 					edge->flow -= minUpperBound;
+					if (edge->destNode < graph.totalVarNodes && li != NULL) {
+						(*li)[edge->destNode].erase((*graph.nodeToVal)[prev]);
+					}
 					updateResidualGraph(*it, prev, *edge);
 				}
 				prev = *it;
@@ -215,6 +218,7 @@ class FlowGraphAlgorithms {
 				}
 			}
 			graph.oldFlowIsFeasible = true;
+			// graph.print();
 			return true;
 		}
 
@@ -251,6 +255,7 @@ class FlowGraphAlgorithms {
 				}
 			}
 			graph.oldFlowIsFeasible = true;
+			// graph.print();
 			return true;
 		}
 	

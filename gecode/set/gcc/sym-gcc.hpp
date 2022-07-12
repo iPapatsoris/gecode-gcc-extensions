@@ -11,7 +11,7 @@
 using namespace Gecode;
 using namespace std;
 
-typedef NaryPropagator<Set::SetView, Set::PC_SET_ANY> SymGccBase;
+typedef NaryPropagator<Set::SetView, Set::PC_SET_NONE> SymGccBase;
 
 class SymGcc : public SymGccBase {
 

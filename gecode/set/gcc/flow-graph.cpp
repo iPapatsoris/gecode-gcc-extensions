@@ -115,9 +115,9 @@ void FlowGraph::updatePrunedValues(Set::SetView x, unsigned int xIndex,
 				edge->upperBound = 0;
 				if (edge->flow == 1) {
 					oldFlowIsFeasible = false;
-					if (li != NULL) {
-						(*li)[xIndex].erase(val);
-					}
+					// if (li != NULL) {
+					// 	(*li)[xIndex].erase(val);
+					// }
 				}
 				updatedEdges.push_back({valNode, xIndex});
 				prunedValues.push_back(valIt);
