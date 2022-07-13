@@ -6,6 +6,7 @@
 #include <unordered_set>
 
 using namespace Gecode;
+using namespace std;
 typedef unordered_set<int> BestValsType;
 
 /*struct BestValsWrapper {

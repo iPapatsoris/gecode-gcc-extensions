@@ -37,56 +37,57 @@ protected:
 		};
 		Council<ViewAdvisor> c;
 		FlowGraph* graph;
-		vector<EdgeNodes> updatedEdges;
-		LI li;
+		vector<EdgeInfo> updatedEdges;
+		BestBranch bestBranch;
 		bool usingLocalHandle;
 		// TODO: do not store, instead use different post functions?
 		IntPropLevel ipl;
 
 public:
 	SymGcc(Space& home, ViewArray<Set::SetView> x, FlowGraph* graph, 
-					const vector<EdgeNodes>& updatedEdges, LI* li, 
+					const vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch, 
 					IntPropLevel ipl)
 			: NaryPropagator(home, x), c(home), graph(graph), 
-				updatedEdges(updatedEdges), usingLocalHandle(li != NULL), 
+				updatedEdges(updatedEdges), usingLocalHandle(bestBranch != NULL), 
 				ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
 			(void)new (home) ViewAdvisor(home, *this, c, x[i], i);
 		}
 		if (usingLocalHandle) {
-			this->li = *li;
+			this->bestBranch = *bestBranch;
 		}
 		home.notice(*this, AP_DISPOSE);
 	}
 
 	static ExecStatus post(Space& home, ViewArray<Set::SetView>& vars,
-												MapToSet<int, unsigned int>& valToVars,
+												const vector<unordered_set<int> >& varToVals,
+												MapToSet& valToVars,
 												const IntArgs& inputVals, 
 												const IntArgs& lowerValBounds, 
 												const IntArgs& upperValBounds,
 												const IntArgs& lowerVarBounds, 
-												const IntArgs& upperVarBounds, LI* li,
+												const IntArgs& upperVarBounds, BestBranch* bestBranch,
 												IntPropLevel ipl) {
 
 		#ifndef NDEBUG
 			//assertCorrectDomains(vars, valToVars);
 		#endif
-		FlowGraph* graph = new FlowGraph(vars, valToVars, inputVals, 
+		FlowGraph* graph = new FlowGraph(vars, varToVals, valToVars, inputVals, 
 																		 lowerValBounds, upperValBounds, 
 																		 lowerVarBounds, upperVarBounds);
 
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 
-		if (!graphAlgorithms.findMinCostFlow(li)) {
+		if (!graphAlgorithms.findMinCostFlow(bestBranch)) {
 			return ES_FAILED;
 		}
 
-		vector<pair<unsigned int, unsigned int>> updatedEdges;
+		vector<EdgeInfo> updatedEdges;
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges) != ES_OK) {
 				return ES_FAILED;
 		}
 
-		(void)new (home) SymGcc(home, vars, graph, updatedEdges, li, ipl);
+		(void)new (home) SymGcc(home, vars, graph, updatedEdges, bestBranch, ipl);
 		return ES_OK;
 	}
 
@@ -95,8 +96,8 @@ public:
     x.update(home, p.x);
 		usingLocalHandle = p.usingLocalHandle;
 		if (usingLocalHandle) {
-			li.update(home, p.li);
-			//cout << "SymGcc copy: " << p.li[0] << endl;
+			bestBranch.update(home, p.bestBranch);
+			//cout << "SymGcc copy: " << p.bestBranch[0] << endl;
 		}
 		graph = new FlowGraph(*(p.graph));
 		updatedEdges = p.updatedEdges;
@@ -162,7 +163,7 @@ public:
 		//cout << "propagate" << endl;
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, 
-																					 usingLocalHandle ? &li : NULL
+																					 usingLocalHandle ? &bestBranch : NULL
 			 )) {
 			//cout << "yo updateMinCostFlow fail lmao" << endl;
 			return ES_FAILED;
@@ -180,12 +181,9 @@ public:
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
 		//cout << "\nadvisor on " << xIndex << endl;
-		graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges, 
-															usingLocalHandle ? &li : NULL);
-		/*for (auto e: updatedEdges) {
-			cout << e.first << "->" << e.second << endl;
-		}*/
-		return graph->getOldFlowIsFeasible() ? ES_FIX : ES_NOFIX;
+		bool isFeasible = graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges, 
+															usingLocalHandle ? &bestBranch : NULL);
+		return isFeasible ? ES_FIX : ES_NOFIX;
 	}
 
 private:

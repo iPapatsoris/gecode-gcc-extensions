@@ -6,17 +6,15 @@
 #include <unordered_set>
 #include "util.hpp"
 #include "sym-gcc.hpp"
-#include "example/LI.hpp"
+#include "example/BestBranch.hpp"
 
 using namespace Gecode;
 using namespace std;
 
-
-
 void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 								const IntArgs& lowerValBounds, const IntArgs& upperValBounds,
 								const IntArgs& lowerVarBounds, const IntArgs& upperVarBounds,
-								LI* li, IntPropLevel ipl) {
+								BestBranch* bestBranch, IntPropLevel ipl) {
 								
 	using namespace Int;
 
@@ -52,19 +50,29 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 		valsSet.insert(v);
 	}
 
+	vector<unordered_set<int> > varToVals;
+	for (int x = 0; x < vars.size(); x++) {	
+		varToVals.push_back(unordered_set<int>());
+		for (SetVarLubValues i(vars[x]); i(); ++i) {
+			varToVals.back().insert(i.val());
+		}
+		for (SetVarGlbValues i(vars[x]); i(); ++i) {
+			varToVals.back().insert(i.val());
+		}
+	}
+
 	// Map variables to their values
 	// Is used to compare old domain with current Gecode domain, to find which
 	// values got pruned between executions
-	MapToSet<int, unsigned int> valToVars;
+	MapToSet valToVars;
 	for (int x = 0; x < vars.size(); x++) {
-		for (SetVarLubValues i(vars[x]); i(); ++i) {
-			if (valsSet.find(i.val()) == valsSet.end()) {
+		for (auto val: varToVals[x]) {
+			if (valsSet.find(val) == valsSet.end()) {
 				throw ArgumentSizeMismatch("Int::symmetricGCC domain value doesn't exist in values array");
 			}
-			auto it = valToVars.map.find(i.val());
-			if (it == valToVars.map.end()) {
-				valToVars.map.insert({i.val(), 
-														  unordered_set<unsigned int>({(unsigned int) x})});
+			auto it = valToVars.find(val);
+			if (it == valToVars.end()) {
+				valToVars.insert({val, unordered_set<int>({x})});
 			} else {
 				it->second.insert(x);
 			}
@@ -93,9 +101,9 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 	
 	ViewArray<Set::SetView> views(home, vars);
 	GECODE_POST;
-	GECODE_ES_FAIL(SymGcc::post(home, views, valToVars, vals, lowerValBounds, 
+	GECODE_ES_FAIL(SymGcc::post(home, views, varToVals, valToVars, vals, lowerValBounds, 
 															upperValBounds, lowerVarBounds, upperVarBounds, 
-															li, ipl
+															bestBranch, ipl
 															));
 }
 

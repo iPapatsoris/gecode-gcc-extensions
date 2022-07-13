@@ -1,9 +1,10 @@
 #ifndef H_FLOW_GRAPH
 #define H_FLOW_GRAPH
 
-#include "graph-base-components.hpp"
-#include "LI.hpp"
+#include "node.hpp"
+#include "BestBranch.hpp"
 #include "util.hpp"
+#include "bt-vector.hpp"
 #include <iostream>
 #include <vector>
 #include <unordered_map>
@@ -12,18 +13,9 @@
 #include <gecode/int.hh>
 #include <gecode/minimodel.hh>
 
+
 using namespace Gecode;
 using namespace std;
-// Edge containing both source node and destination info
-// Normally source is not included in Edge class, because node ID N corresponds
-// to the N-th position in the node list arrays
-// It is typically used in updatedEdges vectors, which hold which edges got 
-// updated due to some pruning or assignment, and need to be checked on when
-// we next update the residual graph. It is important to have NormalEdge object
-// and not NormalEdge*, because when search finds a solution or fails, it will
-// clone the graph and destroy the original, thus invalidating the pointer.
-typedef pair<unsigned int, unsigned int> EdgeNodes;
-
 /**
  * Graph used to solve min cost flow problem, to prove consistency of
  * costgcc, and also achieve arc consistency later on.
@@ -45,45 +37,66 @@ typedef pair<unsigned int, unsigned int> EdgeNodes;
 class FlowGraph {
 	friend class FlowGraphAlgorithms;
 	private:
+		/**
+		 * Holds content that does not need to be backtracked, thus should not be
+		 * copied when the space is cloned.
+		 */
+		struct BacktrackStableContent {
+			// Value network graph including edge bounds and flow values.
+			// The node order in nodeList is variables,values,S,T.
+			vector<Node> nodeList;
 
-		// The node order in nodeList is variables,values,S,T.
-		vector<Node> nodeList;
+			// Fast lookup of what node a value corresponds to
+			unordered_map<int, int> valToNode;
+			
+			// Fast lookup of what value a node corresponds to
+			unordered_map<int, int> nodeToVal;
+			
+			// Holds each variable's domain. Is needed to find out which values got
+			// pruned between iterations, by comparing with Gecode's variable domains.
+			// We know which variables got changed by using advisors, so domain
+			// comparison is only done among those. We need it for fast lookup,
+			// because the graph we hold has Val->Var edges and not the inverse.
+			vector<BtVector<int>> varToVals;
+
+			BacktrackStableContent() {}
+		};
+
+		// Heap allocation to avoid deep copies, with smart pointer so that at 
+		// the end of the program the memory will be deallocated. Cannot be done 
+		// manually with raw pointer without a memory leak. We pack all the content
+		// in one structure, to maintain only one shared_ptr, as they can be
+		// expensive.
+		shared_ptr<BacktrackStableContent> backtrackStable;
+
+		// These two fields normally belong to BtVector, but we place them 
+		// externally because they need to backtracked, while the rest of BtVector
+		// does not. We need one "size" int field for each BtVector instance that 
+		// exists in the program. On deletion of a BtVector element, we
+		// swap the element with the last one, and decrement the respective 
+		// size field accordingly (the actual vector size remains unchanged).
+		// This allows us to backtrack to previous graph states just by recovering
+		// the old value of the size, without needing to copy the graph each time. 
+		vector<int> edgeListSize;
+		vector<int> varToValsSize;
+
 		unsigned int totalVarNodes; 
-		// Fast lookup of what node a value corresponds to
-		unordered_map<int, unsigned int> *valToNode; 			  // TODO: memory leak, use shared object
-		// Fast lookup of what value a node corresponds to
-		unordered_map<unsigned int, int> *nodeToVal;				 // TODO: same
-
-		// TODO: update this comment
-		// Holds each variable's domain. Is needed to find out which values got
-		// pruned during an iteration, by comparing with Gecode's variable domains.
-		// We know which variables got changed by using advisors, so domain
-		// comparison is only done among those.
-		// Should be kept up to date with assignments and pruning.
-		vector< unordered_set<int> > varToGlb;
-		vector< unordered_set<int> > varToLub;
-
-		// When values are pruned or variables are assigned, we update the 
-		// bounds of the corresponding edges. At that point, set this variable
-		// to note whether our old flow is still feasible, or if we need to find a 
-		// new one. It is much more efficient to check this when we update 
-		// the bounds of specific edges, than to scan the whole graph later to see 
-		// if the old flow still stands
-		bool oldFlowIsFeasible;
 
 		// Position of S node
-		unsigned int sNode() const { return nodeList.size() - 2; }
+		unsigned int sNode() const { return backtrackStable->nodeList.size() - 2; }
 		// Position of T node
-		unsigned int tNode() const { return nodeList.size() - 1; }
+		unsigned int tNode() const { return backtrackStable->nodeList.size() - 1; }
 
 		// Search for an edge flow violating lower bounds
 		// Return false if none exists
-		bool getLowerBoundViolatingEdge(pair<unsigned int, unsigned int>& violation) 
-			const {
-			for (unsigned int i = 0; i < nodeList.size(); i++) {
-				for (auto& edge: nodeList[i].edgeList) {
+		bool getLowerBoundViolatingEdge(EdgeInfo& violation) const {
+			for (unsigned int i = 0; i < backtrackStable->nodeList.size(); i++) {
+				auto& edges = backtrackStable->nodeList[i].edgeList;
+				for (int e = 0; e < edgeListSize[i]; e++) {
+					auto& edge = (edges.list)[e];
 					if (edge.flow < edge.lowerBound) {
-						violation = {i, edge.destNode};
+						violation.src = i;
+						violation.dest = edge.destNode;
 						return true;
 					}
 				}
@@ -94,21 +107,18 @@ class FlowGraph {
 		// Search for source->dest edge, return pointer to it or NULL if it 
 		// doesn't exist
 		NormalEdge* getEdge(unsigned int source, unsigned int dest) {
-			for (auto& edge: nodeList[source].edgeList) {
-				if (edge.destNode == dest) {
-					return &edge;
-				}
-			}
-			return NULL;
+			return backtrackStable->nodeList[source].edgeList.getVal(dest, edgeListSize[source]);
 		}
 		
-		// Search for source->dest residual edge, return pointer to it or NULL if it
+		// Search for src->dest residual edge, return pointer to it or NULL if it
 		// doesn't exists. If index is not NULL, also return its position in that
 		// node's residual edges list 
-		ResidualEdge* getResidualEdge(unsigned int source, unsigned int dest, 
-																  unsigned int *index = NULL) {
-			for (unsigned int i=0; i<nodeList[source].residualEdgeList.size(); i++) {
-				ResidualEdge& edge = nodeList[source].residualEdgeList[i];
+		ResidualEdge* getResidualEdge(int src, int dest, 
+																int *index = NULL) {
+			for (unsigned int i = 0; 
+					 i < backtrackStable->nodeList[src].residualEdgeList.size(); 
+					 i++) {
+				ResidualEdge& edge = backtrackStable->nodeList[src].residualEdgeList[i];
 				if (edge.destNode == dest) {
 					if (index != NULL) {
 						*index = i;
@@ -119,15 +129,35 @@ class FlowGraph {
 			return NULL;
 		}
 
-		// If existingEdge is NULL, create edge from source to newEdge.dest
+		// If existingEdge is NULL, create edge from src to newEdge.dest
 		// If existingEdge is not NULL, change it to newEdge
-		void setOrCreateResidualEdge(ResidualEdge* existingEdge, 
-															   unsigned int source, 
+		void setOrCreateResidualEdge(ResidualEdge* existingEdge, int src, 
 																 const ResidualEdge& newEdge) {
 			if (existingEdge != NULL) {
 				*existingEdge = newEdge;
 			} else {
-				nodeList[source].residualEdgeList.push_back(newEdge);
+				backtrackStable->nodeList[src].residualEdgeList.push_back(newEdge);
+			}
+		}
+		void deleteEdge(int src, int dest) {
+			backtrackStable->nodeList[src].edgeList.deleteVal(dest, 
+																												&edgeListSize[src]);
+		}
+		
+		void deleteResidualEdge(int src, int dest) {
+			bool found = false;
+			auto& residual = backtrackStable->nodeList[src].residualEdgeList;
+			for (auto it = residual.begin(); it != residual.end(); it++) {
+				if (it->destNode == dest) {
+					residual.erase(it);
+					found = true;
+					break;
+				}
+			}
+			assert(found);
+			if (!found) {
+				cout << "Internal error: did not find residual edge" << endl;
+				exit(1);
 			}
 		}
 
@@ -135,7 +165,8 @@ class FlowGraph {
 
 		FlowGraph(
 			const ViewArray<Set::SetView>& vars, 
-			const MapToSet<int, unsigned int>& valToVars,
+			const vector<unordered_set<int> >& varToVals,
+			const MapToSet& valToVars,
 			const IntArgs& inputVals, const IntArgs& lowerValBounds, 
 			const IntArgs& upperValBounds, const IntArgs& lowerVarBounds, 
 			const IntArgs& upperVarBounds);
@@ -151,27 +182,12 @@ class FlowGraph {
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		void updatePrunedValues(Set::SetView x, unsigned int xIndex, 
-													  vector<EdgeNodes>& updatedEdges, LI* li); 
+		bool updatePrunedValues(Set::SetView x, unsigned int xIndex, 
+													  vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch); 
 
 		void print() const;
 		void printResidual() const; 
 		void printBounds(int x) const;
-
-
-		bool getOldFlowIsFeasible() const {
-			return oldFlowIsFeasible;
-		}
-
-		void addTResidualEdges() {
-			for (unsigned int var = 0; var < totalVarNodes; var++) {
-				nodeList[tNode()].residualEdgeList.push_back(ResidualEdge(var, 1));
-			}
-		}
-
-		void removeTResidualEdges() {
-			nodeList[tNode()].residualEdgeList.clear();
-		}
 };
 
 #endif

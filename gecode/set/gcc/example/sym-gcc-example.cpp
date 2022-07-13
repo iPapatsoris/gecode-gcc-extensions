@@ -1,7 +1,7 @@
 #include "sym-gcc-example.hpp"
 #include "../sym-gcc-post.hpp"
 
-#include "LI.hpp"
+#include "BestBranch.hpp"
 #include "brancher.hpp"
 
 SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt) 
@@ -40,7 +40,7 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 
 	// Local object handle, to branch using heuristic information provided by 
 	// the propagator 
-	LI li(*this, varsCount);
+	BestBranch bestBranch(*this, varsCount);
 
 	auto simpleBranchVar = SET_VAR_DEGREE_MIN();
 	auto simpleBranchVal = SET_VAL_MIN_EXC();
@@ -52,11 +52,11 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 				x[i] = SetVar(*this, IntSet::empty, domain[i], lowerVarBounds[i], upperVarBounds[i]);
 			}
 			symmetricGCC(*this, x, vals, lowerValBounds, upperValBounds, 
-										lowerVarBounds, upperVarBounds, opt.branching() ? &li : NULL, 
+										lowerVarBounds, upperVarBounds, opt.branching() ? &bestBranch : NULL, 
 										opt.ipl());
 		//dom(*this, x[4], SRT_EQ, IntSet{3, 5});
 			if (opt.branching()) {
-				bestval(*this, x, li);
+				bestval(*this, x, bestBranch);
 			} else { 
 				branch(*this, x, simpleBranchVar, simpleBranchVal);
 			}
