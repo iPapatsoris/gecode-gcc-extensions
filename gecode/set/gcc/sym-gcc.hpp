@@ -36,7 +36,7 @@ protected:
 				}
 		};
 		Council<ViewAdvisor> c;
-		FlowGraph* graph;
+		FlowGraph graph;
 		vector<EdgeInfo> updatedEdges;
 		BestBranch bestBranch;
 		bool usingLocalHandle;
@@ -44,7 +44,7 @@ protected:
 		IntPropLevel ipl;
 
 public:
-	SymGcc(Space& home, ViewArray<Set::SetView> x, FlowGraph* graph, 
+	SymGcc(Space& home, ViewArray<Set::SetView> x, FlowGraph graph, 
 					const vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch, 
 					IntPropLevel ipl)
 			: NaryPropagator(home, x), c(home), graph(graph), 
@@ -72,11 +72,11 @@ public:
 		#ifndef NDEBUG
 			//assertCorrectDomains(vars, valToVars);
 		#endif
-		FlowGraph* graph = new FlowGraph(vars, varToVals, valToVars, inputVals, 
+		FlowGraph graph = FlowGraph(vars, varToVals, valToVars, inputVals, 
 																		 lowerValBounds, upperValBounds, 
 																		 lowerVarBounds, upperVarBounds);
 
-		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
+		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(graph);
 
 		if (!graphAlgorithms.findMinCostFlow(vars, bestBranch)) {
 			return ES_FAILED;
@@ -91,7 +91,7 @@ public:
 		return ES_OK;
 	}
 
-	SymGcc(Space& home, SymGcc& p) : SymGccBase(home, p) {
+	SymGcc(Space& home, SymGcc& p) : SymGccBase(home, p), graph(p.graph) {
 		c.update(home, p.c);
     x.update(home, p.x);
 		usingLocalHandle = p.usingLocalHandle;
@@ -99,7 +99,6 @@ public:
 			bestBranch.update(home, p.bestBranch);
 			//cout << "SymGcc copy: " << p.bestBranch[0] << endl;
 		}
-		graph = new FlowGraph(*(p.graph));
 		updatedEdges = p.updatedEdges;
 		ipl = p.ipl;
   }
@@ -114,7 +113,7 @@ public:
 
 	virtual size_t dispose(Space& home) {
 		home.ignore(*this, AP_DISPOSE);
-		delete graph;
+		graph.~FlowGraph();
 		updatedEdges.~vector();
     c.dispose(home);
     (void) SymGccBase::dispose(home);
@@ -161,7 +160,7 @@ public:
 			exit(1);
 		*/
 		//cout << "propagate" << endl;
-		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
+		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(graph);
 		if (!graphAlgorithms.updateMinCostFlow(x, updatedEdges, 
 																					 usingLocalHandle ? &bestBranch : NULL
 			 )) {
@@ -181,7 +180,7 @@ public:
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
 		//cout << "\nadvisor on " << xIndex << endl;
-		bool isFeasible = graph->updatePrunedValues(x[xIndex], xIndex, 
+		bool isFeasible = graph.updatePrunedValues(x[xIndex], xIndex, 
 																							  updatedEdges);
 		return isFeasible ? ES_FIX : ES_NOFIX;
 	}
