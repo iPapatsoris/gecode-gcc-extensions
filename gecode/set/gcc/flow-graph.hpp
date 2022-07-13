@@ -80,12 +80,12 @@ class FlowGraph {
 		vector<int> edgeListSize;
 		vector<int> varToValsSize;
 
-		unsigned int totalVarNodes; 
+		int totalVarNodes; 
 
 		// Position of S node
-		unsigned int sNode() const { return backtrackStable->nodeList.size() - 2; }
+		int sNode() const { return backtrackStable->nodeList.size() - 2; }
 		// Position of T node
-		unsigned int tNode() const { return backtrackStable->nodeList.size() - 1; }
+		int tNode() const { return backtrackStable->nodeList.size() - 1; }
 
 		// Search for an edge flow violating lower bounds
 		// Return false if none exists
@@ -106,8 +106,9 @@ class FlowGraph {
 
 		// Search for source->dest edge, return pointer to it or NULL if it 
 		// doesn't exist
-		NormalEdge* getEdge(unsigned int source, unsigned int dest) {
-			return backtrackStable->nodeList[source].edgeList.getVal(dest, edgeListSize[source]);
+		NormalEdge* getEdge(int source, int dest) {
+			return backtrackStable->nodeList[source].edgeList.getVal(dest, 
+																										      edgeListSize[source]);
 		}
 		
 		// Search for src->dest residual edge, return pointer to it or NULL if it
@@ -139,6 +140,7 @@ class FlowGraph {
 				backtrackStable->nodeList[src].residualEdgeList.push_back(newEdge);
 			}
 		}
+
 		void deleteEdge(int src, int dest) {
 			backtrackStable->nodeList[src].edgeList.deleteVal(dest, 
 																												&edgeListSize[src]);
@@ -182,8 +184,8 @@ class FlowGraph {
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		bool updatePrunedValues(Set::SetView x, unsigned int xIndex, 
-													  vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch); 
+		bool updatePrunedValues(Set::SetView x, int xIndex, 
+													  vector<EdgeInfo>& updatedEdges); 
 
 		void print() const;
 		void printResidual() const; 

@@ -80,17 +80,16 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 	}
 
 	// Bounds must be nonnegative and lowerBound smaller or equal to upperBound
-	// upperBound must also be at least 1
 	for (auto i = 0; i < vals.size(); i++) {
 		Int::Limits::nonnegative(lowerValBounds[i], "Int::symmetricGCC");
 		Int::Limits::nonnegative(upperValBounds[i], "Int::symmetricGCC");
-		if (upperValBounds[i] < lowerValBounds[i] || upperValBounds[i] < 1) {
+		if (upperValBounds[i] < lowerValBounds[i]) {
 			throw OutOfLimits("Int::symmetricGCC");
 		}
 	}
 
 	// Variable bounds must be nonnegative and lowerBound smaller or equal to 
-	// upperBounb
+	// upperBound
 	for (auto i = 0; i < vars.size(); i++) {
 		Int::Limits::nonnegative(lowerVarBounds[i], "Int::symmetricGCC");
 		Int::Limits::nonnegative(upperVarBounds[i], "Int::symmetricGCC");

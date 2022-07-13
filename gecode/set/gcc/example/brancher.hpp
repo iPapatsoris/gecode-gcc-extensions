@@ -38,12 +38,14 @@ protected:
   class PosVal : public Choice {
   public:
     int pos; BestValsType val;
-		bool isEmptySetVal;
-    PosVal(const BestVal& b, int p, BestValsType v, bool emptySet)
-      : Choice(b,2), pos(p), val(v), isEmptySetVal(emptySet) {}
+    PosVal(const BestVal& b, int p, BestValsType v)
+      : Choice(b,2), pos(p), val(v) {}
     virtual void archive(Archive& e) const {
       Choice::archive(e);
-      //e << pos << val;
+      e << pos;
+			for (auto v: val) {
+				e << v;
+			}
     }
   };
 public:
@@ -80,7 +82,7 @@ public:
     //     p = i;// s = x[p].unknownSize();
     //   }
 
-		return new PosVal(*this, p, bestBranch[p], false);
+		return new PosVal(*this, p, bestBranch[p]);
 
 		/*for (auto& v: bestBranch[p]) {
 			cout << v << endl;
@@ -96,9 +98,14 @@ public:
   virtual Choice* choice(const Space&, Archive& e) {
     int pos;
 		BestValsType val;
-		bool isEmptySetVal;
-    //e >> pos >> val >> isEmptySetVal;
-    return new PosVal(*this, pos, val, isEmptySetVal);
+    e >> pos;
+		for (int i = 1; i < e.size(); i++) {
+			int v;
+			e >> v;
+			val.insert(v);
+		}
+
+    return new PosVal(*this, pos, val);
   }
   virtual ExecStatus commit(Space& home, 
                             const Choice& c,

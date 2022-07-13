@@ -83,7 +83,7 @@ public:
 		}
 
 		vector<EdgeInfo> updatedEdges;
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, updatedEdges) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars) != ES_OK) {
 				return ES_FAILED;
 		}
 
@@ -170,7 +170,7 @@ public:
 		}
 		updatedEdges.clear();
 
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, updatedEdges) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x) != ES_OK) {
 				return ES_FAILED;
 		}
 
@@ -181,8 +181,8 @@ public:
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
 		//cout << "\nadvisor on " << xIndex << endl;
-		bool isFeasible = graph->updatePrunedValues(x[xIndex], xIndex, updatedEdges, 
-															usingLocalHandle ? &bestBranch : NULL);
+		bool isFeasible = graph->updatePrunedValues(x[xIndex], xIndex, 
+																							  updatedEdges);
 		return isFeasible ? ES_FIX : ES_NOFIX;
 	}
 

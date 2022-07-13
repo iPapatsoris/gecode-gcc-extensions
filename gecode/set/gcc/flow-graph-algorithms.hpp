@@ -10,9 +10,8 @@
 #include <climits>
 #include "flow-graph.hpp"
 
-#define INF_INT INT_MAX
-#define INF_UINT UINT_MAX
-#define NONE_UINT INF_UINT - 1
+#define INF INT_MAX
+#define NONE INF - 1
 
 using namespace std;
 
@@ -24,32 +23,35 @@ class FlowGraphAlgorithms {
 		// source->dest. Updates / deletions are needed because in each iteration,
 		// instead of building the residual graph from scratch, we modify the 
 		// previous one only in the edges that change
-		void updateResidualGraph(unsigned int source, unsigned int dest, 
-														 NormalEdge edge) {
+		void updateResidualGraph(int src, int dest, NormalEdge edge) {
 			auto& nodeList = graph.backtrackStable->nodeList;	
 			int residualEdgeIndex;
 			int residualBackwardsEdgeIndex;
-			ResidualEdge* residualEdgeSearch = graph.getResidualEdge(source, dest, 
-																														&residualEdgeIndex);
-			ResidualEdge* residualBackwardsEdgeSearch = graph.getResidualEdge(dest, source,
-																								 &residualBackwardsEdgeIndex);
+			ResidualEdge* residualEdgeSearch = graph.getResidualEdge(
+																							 	src, 
+																								dest, 
+																								&residualEdgeIndex);
+			ResidualEdge* residualBackwardsEdgeSearch = graph.getResidualEdge(
+																									dest,
+																									src,
+																								 	&residualBackwardsEdgeIndex);
 			if (edge.flow < edge.upperBound) {
 				// Add / update forward residual edge
-				graph.setOrCreateResidualEdge(residualEdgeSearch, source, 
+				graph.setOrCreateResidualEdge(residualEdgeSearch, src, 
 																		  ResidualEdge(dest, 
 																								   edge.upperBound - edge.flow 
 																									 ));
 			} else if (residualEdgeSearch != NULL) {
 				// Delete forward residual edge that should no longer exist
-				auto it = nodeList[source].residualEdgeList.begin() + 
+				auto it = nodeList[src].residualEdgeList.begin() + 
 																					residualEdgeIndex;
-					graph.backtrackStable->nodeList[source].residualEdgeList.erase(it);
+					graph.backtrackStable->nodeList[src].residualEdgeList.erase(it);
 			}
 
 			if (edge.flow > edge.lowerBound) {
 				// Add / update backward residual edge
 				graph.setOrCreateResidualEdge(residualBackwardsEdgeSearch, dest, 
-																		  ResidualEdge(source, 
+																		  ResidualEdge(src, 
 																									 edge.flow - edge.lowerBound 
 																									));
 			} else if (residualBackwardsEdgeSearch != NULL) {
@@ -65,14 +67,14 @@ class FlowGraphAlgorithms {
 		// to also update BestBranch with the latest flow assignment.
 		void buildResidualGraph(BestBranch *bestBranch) {
 			auto& nodeList = graph.backtrackStable->nodeList;
-			for (int i = 0; i < nodeList.size(); i++) {
+			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				nodeList[i].residualEdgeList.clear();
-				if (i < graph.totalVarNodes) {
+				if (bestBranch != NULL && i < (unsigned int) graph.totalVarNodes) {
 					(*bestBranch)[i].clear();
 				}
 			}
 
-			for (int i = graph.totalVarNodes; i < nodeList.size(); i++) {
+			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				auto& node = nodeList[i];
 				for (int j = 0; j < graph.edgeListSize[i]; j++) {
 					auto& edge = (node.edgeList.list)[j];
@@ -96,17 +98,15 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-		void sendFlow(const EdgeInfo& violation, 
-								  vector<unsigned int>& shortestPath, 
-									unsigned int minUpperBound, BestBranch* bestBranch
-		) {
+		void sendFlow(const EdgeInfo& violation, vector<int>& shortestPath, 
+								  BestBranch* bestBranch) {
 			// Send flow through the path edges and update residual graph
-			unsigned int prev = violation.src;
+			int prev = violation.src;
 			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
 				NormalEdge *edge = graph.getEdge(prev, *it);
 				if (edge != NULL) {
 					// Path residual edge is a forward edge in the original graph
-					edge->flow += minUpperBound;
+					edge->flow++;
 					if (edge->destNode < graph.totalVarNodes && bestBranch != NULL) {
 					//	cout << "Adding " << (*graph.nodeToVal)[prev] << " to bestBranch" << endl; 
 						(*bestBranch)[edge->destNode].insert(graph.backtrackStable->nodeToVal[prev]);
@@ -115,7 +115,7 @@ class FlowGraphAlgorithms {
 				}	else {
 					// Path residual edge is a backward edge in the original graph
 					edge = graph.getEdge(*it, prev);
-					edge->flow -= minUpperBound;
+					edge->flow--;
 					if (edge->destNode < graph.totalVarNodes && bestBranch != NULL) {
 						(*bestBranch)[edge->destNode].erase(graph.backtrackStable->nodeToVal[prev]);
 					}
@@ -125,26 +125,12 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-		unsigned int findMinUpperBound(const EdgeInfo& violation, 
-																	 vector<unsigned int>& shortestPath) {
-			// Find min upper bound along shortest path
-			unsigned int prev = violation.src;
-			unsigned int minUpperBound = INF_UINT;
-			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
-				// Bellman returns the path in reverse, so traverse it in reverse
-				ResidualEdge *edge = graph.getResidualEdge(prev, *it);
-				minUpperBound = min((int) minUpperBound, edge->upperBound);
-				prev = *it;
-			}
-			return minUpperBound;
-		}
-
 		bool minCostFlowIteration(const EdgeInfo& violation, BestBranch* bestBranch
 		) {		
 			//graph.printResidual();
 			//cout << "Violation " << violation.first << " " << violation.second 
 			//		 << endl;
-			vector<unsigned int> path;
+			vector<int> path;
 			if (!findPath(violation.dest, violation.src, path)) {
 				// Constraint is not consistent
 				return false;
@@ -156,8 +142,7 @@ class FlowGraphAlgorithms {
 			}
 			cout << endl;*/
 
-			unsigned int minUpperBound = findMinUpperBound(violation, path);		
-			sendFlow(violation, path, minUpperBound, bestBranch);
+			sendFlow(violation, path, bestBranch);
 
 		/*	if (bestBranch != NULL) {
 				for (int i = 0; i < graph.totalVarNodes; i++) {
@@ -179,17 +164,17 @@ class FlowGraphAlgorithms {
 		// Shortest path from source node to dest node
 		// Return the shortest path and cost through parameters,
 		// or false as return value in case of no path
-		bool findPath(unsigned int source, unsigned int dest, 
-									vector<unsigned int>& path) const {
-			vector<unsigned int> prev;
+		bool findPath(int source, int dest, 
+									vector<int>& path) const {
+			vector<int> prev;
 			DFS(source, dest, prev);
 	
 			// No path exists
-			if (prev[dest] == NONE_UINT) {
+			if (prev[dest] == NONE) {
 				return false;
 			}
 			// Trace back shortest path
-			unsigned int node = dest;
+			int node = dest;
 			while (node != source) {
 				path.push_back(node);
 				node = prev[node];
@@ -199,17 +184,17 @@ class FlowGraphAlgorithms {
 			return true;
 		}
 
-		void DFS(unsigned int source, unsigned int dest, vector<unsigned int>& prev) 
+		void DFS(int source, int dest, vector<int>& prev) 
 		const { 
 			auto& nodeList = graph.backtrackStable->nodeList;
-			prev.assign(nodeList.size(), NONE_UINT);
-			stack<unsigned int> frontier;
+			prev.assign(nodeList.size(), NONE);
+			stack<int> frontier;
 			frontier.push(source);
 			while (!frontier.empty()) {
-				unsigned int node = frontier.top();
+				int node = frontier.top();
 				frontier.pop();
 				for (auto& e: nodeList[node].residualEdgeList) {
-					if ((prev[e.destNode] != NONE_UINT) || 
+					if ((prev[e.destNode] != NONE) || 
 							(node == source && e.destNode == dest)) {
 						continue;
 					}
@@ -222,17 +207,16 @@ class FlowGraphAlgorithms {
 			} 
 		}
 
-		void BFS(unsigned int source, unsigned int dest, vector<unsigned int>& prev) 
-		const { 
+		void BFS(int source, int dest, vector<int>& prev) const { 
 			auto& nodeList = graph.backtrackStable->nodeList;
-			prev.assign(nodeList.size(), NONE_UINT);
-			queue<unsigned int> frontier;
+			prev.assign(nodeList.size(), NONE);
+			queue<int> frontier;
 			frontier.push(source);
 			while (!frontier.empty()) {
-				unsigned int node = frontier.front();
+				int node = frontier.front();
 				frontier.pop();
 				for (auto& e: nodeList[node].residualEdgeList) {
-					if ((prev[e.destNode] != NONE_UINT) || 
+					if ((prev[e.destNode] != NONE) || 
 							(node == source && e.destNode == dest)) {
 						continue;
 					}
@@ -248,8 +232,7 @@ class FlowGraphAlgorithms {
 	public:
 		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
 
-		bool findMinCostFlow(BestBranch* bestBranch
-		) {
+		bool findMinCostFlow(BestBranch* bestBranch) {
 			EdgeInfo violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
 				if (!minCostFlowIteration(violation, bestBranch)) {
@@ -274,8 +257,8 @@ class FlowGraphAlgorithms {
 			for (auto& e: updatedEdges) {
 				auto res = graph.getEdge(e.src, e.dest);
 				if (res == NULL || 
-						e.lowerBoundViolation && res->flow >= e.violationBound ||
-					 !e.lowerBoundViolation && res->flow <= e.violationBound) {
+						(e.lowerBoundViolation && res->flow >= e.violationBound) ||
+					 (!e.lowerBoundViolation && res->flow <= e.violationBound)) {
 					// Check if edge has already been removed because it existed twice 
 					// inside updatedEdges.
 					// It is possible to have duplicates inside updatedEdges, because
@@ -299,7 +282,7 @@ class FlowGraphAlgorithms {
 				if (!minCostFlowIteration({src, dest}, bestBranch)) {
 					return false;
 				}
-				if (!e.lowerBoundViolation) {
+				if (!e.lowerBoundViolation && e.dest != graph.tNode()) {
 					graph.deleteEdge(e.src, e.dest);
 					// We have already removed flow from this Val->Var edge and updated 
 					// residual graph, so we know for sure that the only residual edge 
@@ -315,10 +298,10 @@ class FlowGraphAlgorithms {
 			return true;
 		}
 	
-		void findOneSCC(unsigned int src, vector<unsigned int>& ids, vector<unsigned int>& low, 
-										stack<unsigned int>& localVisited, vector<bool>& onLocalVisited, 
-										unsigned int* id, unsigned int* sccCount) const {
-			stack<pair<unsigned int, unsigned int>> frontier;
+		void findOneSCC(int src, vector<int>& ids, vector<int>& low, 
+										stack<int>& localVisited, vector<bool>& onLocalVisited, 
+										int* id, int* sccCount) const {
+			stack<pair<int, int>> frontier;
 			auto& nodeList = graph.backtrackStable->nodeList;
 			frontier.push({src, 0});
 			localVisited.push(src);
@@ -326,13 +309,13 @@ class FlowGraphAlgorithms {
 			ids[src] = low[src] = *id;
 			(*id)++;
 			while (!frontier.empty()) {
-				unsigned int node = frontier.top().first;
-				unsigned int curEdgeIndex = frontier.top().second;
+				int node = frontier.top().first;
+				int curEdgeIndex = frontier.top().second;
 				auto& edges = nodeList[node].residualEdgeList;
-				unsigned int destNode; 
-				if (curEdgeIndex < edges.size()) {
+				int destNode; 
+				if (curEdgeIndex < (int) edges.size()) {
 					destNode = edges[curEdgeIndex].destNode;
-					if (ids[destNode] == NONE_UINT) {
+					if (ids[destNode] == NONE) {
 						// start of call here
 						localVisited.push(destNode);
 						onLocalVisited[destNode] = true;
@@ -352,7 +335,7 @@ class FlowGraphAlgorithms {
 				// last part here
 				if (ids[node] == low[node]) {
 					while (!localVisited.empty()) {
-						unsigned int tmp = localVisited.top();
+						int tmp = localVisited.top();
 						localVisited.pop();
 						onLocalVisited[tmp] = false;
 						low[tmp] = ids[node];
@@ -381,20 +364,20 @@ class FlowGraphAlgorithms {
 		}
 
 
-		void findSCC(vector<unsigned int>& scc) const {
+		void findSCC(vector<int>& scc) const {
 			auto& nodeList = graph.backtrackStable->nodeList;
-			vector<unsigned int> ids;
+			vector<int> ids;
 			vector<bool> onLocalVisited;
-			stack<unsigned int> localVisited;
-			ids.assign(nodeList.size(), NONE_UINT);
-			scc.assign(nodeList.size(), NONE_UINT);
+			stack<int> localVisited;
+			ids.assign(nodeList.size(), NONE);
+			scc.assign(nodeList.size(), NONE);
 			onLocalVisited.assign(nodeList.size(), false);
 
-			unsigned int id = 0;
-			unsigned int sccCount = 0;
+			int id = 0;
+			int sccCount = 0;
 			
 			for (unsigned int src = 0; src < nodeList.size(); src++) {
-				if (ids[src] == NONE_UINT) {
+				if (ids[src] == NONE) {
 					findOneSCC(src, ids, scc, localVisited, onLocalVisited, &id, &sccCount);
 				}
 			}
@@ -412,26 +395,25 @@ class FlowGraphAlgorithms {
 		// costgcc, the search would backtrack to previous instances.
 		// The reason why 
 
-		ExecStatus performArcConsistency(Space& home, ViewArray<Set::SetView>& x, 
-															       vector<EdgeInfo>& updatedEdges) {
+		ExecStatus performArcConsistency(Space& home, ViewArray<Set::SetView>& x) {
 			// Edge nodes, along with the actual value the src node
 			// corresponds to 
 			struct EdgeWithVal {
-				unsigned int src;
-				unsigned int dest;
+				int src;
+				int dest;
 				int val;
-				EdgeWithVal(const unsigned int src, const unsigned int dest, const int val)
+				EdgeWithVal(const int src, const int dest, const int val)
 					: src(src), dest(dest), val(val) {}
 			};
 
 			// Hold the edges we decide to prune during arc consistency
 			// We do the actual pruning at the end of this function's iterations
 			vector<EdgeWithVal> edgesToPrune;
-			vector<unsigned int> scc;
+			vector<int> scc;
 			findSCC(scc);
 			auto& nodeList = graph.backtrackStable->nodeList;
 
-			for (unsigned int n = graph.totalVarNodes; n < graph.sNode(); n++) {
+			for (int n = graph.totalVarNodes; n < graph.sNode(); n++) {
 				for (int i = 0; i < graph.edgeListSize[n]; i++) {
 					auto& e = nodeList[n].edgeList.list[i];
 					if (!e.flow && scc[n] != scc[e.destNode]) {
@@ -440,7 +422,6 @@ class FlowGraphAlgorithms {
 					}
 				}
 			}
-
 
 			// Do the actual pruning and update data structures
 			for (auto& edge: edgesToPrune) {
