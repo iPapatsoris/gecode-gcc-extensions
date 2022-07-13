@@ -78,7 +78,7 @@ public:
 
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
 
-		if (!graphAlgorithms.findMinCostFlow(bestBranch)) {
+		if (!graphAlgorithms.findMinCostFlow(vars, bestBranch)) {
 			return ES_FAILED;
 		}
 
@@ -162,10 +162,10 @@ public:
 		*/
 		//cout << "propagate" << endl;
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(*graph);
-		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, 
+		if (!graphAlgorithms.updateMinCostFlow(x, updatedEdges, 
 																					 usingLocalHandle ? &bestBranch : NULL
 			 )) {
-			//cout << "yo updateMinCostFlow fail lmao" << endl;
+			// cout << "# lmao updateMinCostFlow fail \n" << endl;
 			return ES_FAILED;
 		}
 		updatedEdges.clear();

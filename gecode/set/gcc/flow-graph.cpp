@@ -99,8 +99,7 @@ FlowGraph::FlowGraph(
 // Update is made by tightening the bounds of edge V->X as follows:
 // - If X got assigned to value V, set the lower bound to 1.
 // - For every value V that has been pruned off X, set the upper bound 
-//   to 0. 
-// If we prune a value that is used by current flow, or assign a value 
+//   to 0. If we prune a value that is used by current flow, or assign a value 
 // that is not used by it, set oldFlowIsFeasible to false.
 // Populate updatedEdges, so we know where we should update the old residual
 // graph later on
@@ -112,37 +111,37 @@ bool FlowGraph::updatePrunedValues(Set::SetView x, int xIndex,
 	// Iterate all values for which there is an edge to X
 	auto& values = backtrackStable->varToVals[xIndex];
 	bool isFeasible = true;
-	cout << "var " << xIndex << " lower bound: ";
-	for (SetVarGlbValues i(x); i(); ++i)
-		std::cout << i.val() << " ";
-	cout << "\nvar " << xIndex << " upper bound: ";
-	for (SetVarLubValues i(x); i(); ++i)
-		std::cout << i.val() << " ";
-	cout << endl;
-	print();
+	// cout << "var " << xIndex << " lower bound: ";
+	// for (SetVarGlbValues i(x); i(); ++i)
+	// 	std::cout << i.val() << " ";
+	// cout << "\nvar " << xIndex << " upper bound: ";
+	// for (SetVarLubValues i(x); i(); ++i)
+	// 	std::cout << i.val() << " ";
+	// cout << "cardinalities " << x.cardMin() << " " << x.cardMax() << endl;
+	// print();
 	for (int i = 0; i < varToValsSize[xIndex]; i++) {
 		auto value = (values.list)[i];
 		auto valueNode = backtrackStable->valToNode.find(value)->second;
 		NormalEdge* edge = getEdge(valueNode, xIndex);
 		assert(edge != NULL);
 		if (x.notContains(value)) {
-			cout << "val " << value << " (node " << valueNode << " no longer in var " << xIndex << " upper bound" << endl;
+			// cout << "val " << value << " (node " << valueNode << " no longer in var " << xIndex << " upper bound" << endl;
 			// Value has been pruned from variable X's domain
 			if (edge->flow == 1) {
-				cout << "upper bound violation" << endl;
+				// cout << "upper bound violation" << endl;
 				// Mark infeasible flow and edge to be repaired
 				isFeasible = false;
 				updatedEdges.push_back(EdgeInfo(valueNode, xIndex, false, 0));
 			} else {
-				cout << "delete on the spot" << endl;
+				// cout << "delete on the spot" << endl;
 				// No flow through the edge, can delete on the spot
 				deleteEdge(valueNode, xIndex);
 				prunedValues.push_back(value);
 			}
 		}
 		if (x.contains(value) && !edge->flow) {
-			cout << "val " << value << " (node " << valueNode << " in var " << xIndex << " lower bound but with no flow" << endl;
-			cout << "lower bound violation" << endl;
+			// cout << "val " << value << " (node " << valueNode << " in var " << xIndex << " lower bound but with no flow" << endl;
+			// cout << "lower bound violation" << endl;
 			isFeasible = false;
 			updatedEdges.push_back(EdgeInfo(valueNode, xIndex, true, 1));
 		}
@@ -156,11 +155,11 @@ bool FlowGraph::updatePrunedValues(Set::SetView x, int xIndex,
 	auto& nodeList = backtrackStable->nodeList;
 	auto edge = nodeList[xIndex].edgeList.getVal(tNode(), edgeListSize[xIndex]);
 	if (edge->flow < (int) x.cardMin()) { 
-		cout << "flow " << edge->flow << " vs cardMin " << x.cardMin() << endl;
+		// cout << "flow " << edge->flow << " vs cardMin " << x.cardMin() << endl;
 		isFeasible = false;
 		updatedEdges.push_back(EdgeInfo(xIndex, tNode(), true, x.cardMin()));
 	} else if (edge->flow > (int) x.cardMax()) {
-		cout << "flow " << edge->flow << " vs cardMax " << x.cardMax() << endl;
+		// cout << "flow " << edge->flow << " vs cardMax " << x.cardMax() << endl;
 		isFeasible = false;
 		updatedEdges.push_back(EdgeInfo(xIndex, tNode(), false, x.cardMax()));
 	}

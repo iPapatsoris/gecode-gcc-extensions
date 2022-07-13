@@ -23,7 +23,9 @@ class FlowGraphAlgorithms {
 		// source->dest. Updates / deletions are needed because in each iteration,
 		// instead of building the residual graph from scratch, we modify the 
 		// previous one only in the edges that change
-		void updateResidualGraph(int src, int dest, NormalEdge edge) {
+		void updateResidualGraph(const ViewArray<Set::SetView>& x, int src, 
+														 int dest, 
+														 NormalEdge edge) {
 			auto& nodeList = graph.backtrackStable->nodeList;	
 			int residualEdgeIndex;
 			int residualBackwardsEdgeIndex;
@@ -35,11 +37,17 @@ class FlowGraphAlgorithms {
 																									dest,
 																									src,
 																								 	&residualBackwardsEdgeIndex);
-			if (edge.flow < edge.upperBound) {
+			int lowerBound = edge.lowerBound;
+			int upperBound = edge.upperBound;
+			if (dest == graph.tNode()) {
+				lowerBound = x[src].cardMin();
+				upperBound = x[src].cardMax();
+			}																						 
+			if (edge.flow < upperBound) {
 				// Add / update forward residual edge
 				graph.setOrCreateResidualEdge(residualEdgeSearch, src, 
 																		  ResidualEdge(dest, 
-																								   edge.upperBound - edge.flow 
+																								   upperBound - edge.flow 
 																									 ));
 			} else if (residualEdgeSearch != NULL) {
 				// Delete forward residual edge that should no longer exist
@@ -48,11 +56,11 @@ class FlowGraphAlgorithms {
 					graph.backtrackStable->nodeList[src].residualEdgeList.erase(it);
 			}
 
-			if (edge.flow > edge.lowerBound) {
+			if (edge.flow > lowerBound) {
 				// Add / update backward residual edge
 				graph.setOrCreateResidualEdge(residualBackwardsEdgeSearch, dest, 
 																		  ResidualEdge(src, 
-																									 edge.flow - edge.lowerBound 
+																									 edge.flow - lowerBound 
 																									));
 			} else if (residualBackwardsEdgeSearch != NULL) {
 				// Delete backward residual edge that should no longer exist
@@ -65,7 +73,7 @@ class FlowGraphAlgorithms {
 		// Clear residual graph and build it again. Do not clear T->Var edges.
 		// Since we iterate through the graph, this step is a good opportunity
 		// to also update BestBranch with the latest flow assignment.
-		void buildResidualGraph(BestBranch *bestBranch) {
+		void buildResidualGraph(const ViewArray<Set::SetView>& x, BestBranch *bestBranch) {
 			auto& nodeList = graph.backtrackStable->nodeList;
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				nodeList[i].residualEdgeList.clear();
@@ -78,16 +86,22 @@ class FlowGraphAlgorithms {
 				auto& node = nodeList[i];
 				for (int j = 0; j < graph.edgeListSize[i]; j++) {
 					auto& edge = (node.edgeList.list)[j];
-					if (edge.flow < edge.upperBound) {
+					int lowerBound = edge.lowerBound;
+					int upperBound = edge.upperBound;
+					if (edge.destNode == graph.tNode()) {
+						lowerBound = x[i].cardMin();
+						upperBound = x[i].cardMax();
+					}																						 
+					if (edge.flow < upperBound) {
 						node.residualEdgeList.push_back(ResidualEdge(
 																						  edge.destNode, 
-																						  edge.upperBound - edge.flow));
+																						  upperBound - edge.flow));
 					}
-					if (edge.flow > edge.lowerBound) {
+					if (edge.flow > lowerBound) {
 						nodeList[edge.destNode].residualEdgeList.push_back(
 																						 ResidualEdge(
 																							 i, 
-																							 edge.flow - edge.lowerBound));
+																							 edge.flow - lowerBound));
 					}
 					if (bestBranch != NULL && edge.flow && edge.destNode < 
 																								 graph.totalVarNodes) {
@@ -98,7 +112,7 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-		void sendFlow(const EdgeInfo& violation, vector<int>& shortestPath, 
+		void sendFlow(const ViewArray<Set::SetView>& x, const EdgeInfo& violation, vector<int>& shortestPath, 
 								  BestBranch* bestBranch) {
 			// Send flow through the path edges and update residual graph
 			int prev = violation.src;
@@ -111,7 +125,7 @@ class FlowGraphAlgorithms {
 					//	cout << "Adding " << (*graph.nodeToVal)[prev] << " to bestBranch" << endl; 
 						(*bestBranch)[edge->destNode].insert(graph.backtrackStable->nodeToVal[prev]);
 					}
-					updateResidualGraph(prev, *it, *edge);
+					updateResidualGraph(x, prev, *it, *edge);
 				}	else {
 					// Path residual edge is a backward edge in the original graph
 					edge = graph.getEdge(*it, prev);
@@ -119,13 +133,14 @@ class FlowGraphAlgorithms {
 					if (edge->destNode < graph.totalVarNodes && bestBranch != NULL) {
 						(*bestBranch)[edge->destNode].erase(graph.backtrackStable->nodeToVal[prev]);
 					}
-					updateResidualGraph(*it, prev, *edge);
+					updateResidualGraph(x, *it, prev, *edge);
 				}
 				prev = *it;
 			}
 		}
 
-		bool minCostFlowIteration(const EdgeInfo& violation, BestBranch* bestBranch
+		bool minCostFlowIteration(const ViewArray<Set::SetView>& x, 
+															const EdgeInfo& violation, BestBranch* bestBranch
 		) {		
 			//graph.printResidual();
 			//cout << "Violation " << violation.first << " " << violation.second 
@@ -142,7 +157,7 @@ class FlowGraphAlgorithms {
 			}
 			cout << endl;*/
 
-			sendFlow(violation, path, bestBranch);
+			sendFlow(x, violation, path, bestBranch);
 
 		/*	if (bestBranch != NULL) {
 				for (int i = 0; i < graph.totalVarNodes; i++) {
@@ -232,10 +247,10 @@ class FlowGraphAlgorithms {
 	public:
 		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
 
-		bool findMinCostFlow(BestBranch* bestBranch) {
+		bool findMinCostFlow(const ViewArray<Set::SetView>& x, BestBranch* bestBranch) {
 			EdgeInfo violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
-				if (!minCostFlowIteration(violation, bestBranch)) {
+				if (!minCostFlowIteration(x, violation, bestBranch)) {
 					return false;
 				}
 			}
@@ -248,9 +263,9 @@ class FlowGraphAlgorithms {
 		// - Update the residual graph to match the changes
 		// - If the old flow is not still feasible, find a new one, using the 
 		//   incremental algorithm from the publication
-		bool updateMinCostFlow(vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch) {
+		bool updateMinCostFlow(const ViewArray<Set::SetView>& x, vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch) {
 			vector<NormalEdge*> edgeReference;
-			buildResidualGraph(bestBranch);
+			buildResidualGraph(x, bestBranch);
 			assert(updatedEdges.size());
 
 			// Repair upper bound violations
@@ -279,7 +294,7 @@ class FlowGraphAlgorithms {
 				if (!e.lowerBoundViolation) {
 					swap(src, dest);
 				}
-				if (!minCostFlowIteration({src, dest}, bestBranch)) {
+				if (!minCostFlowIteration(x, {src, dest}, bestBranch)) {
 					return false;
 				}
 				if (!e.lowerBoundViolation && e.dest != graph.tNode()) {
