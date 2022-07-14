@@ -4,6 +4,8 @@
 #include "BestBranch.hpp"
 #include "brancher.hpp"
 
+using namespace std;
+
 SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt) 
 	: Script(opt), model((Model) opt.model()) {
 	IntSetArgs domain;
@@ -16,27 +18,10 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 	y = IntVarArray(*this, 0);
 	z = BoolVarArray(*this, 0);
 
-	/*
-	for (auto& x: x) {
-		cout << "unkown values\n";
-		for (SetVarUnknownValues i(x); i(); ++i)
-			std::cout << i.val() << " ";
-		cout << "unkown ranges\n";
-		for (SetVarUnknownRanges i(x); i(); ++i)
-			std::cout << i.min() << ".." << i.max() << " ";
-		cout << "lowest upper bound values\n";
-		for (SetVarLubValues i(x); i(); ++i)
-			std::cout << i.val() << " ";
-		cout << "lowest upper bound ranges\n";
-		for (SetVarLubRanges i(x); i(); ++i)
-			std::cout << i.min() << ".." << i.max() << " ";
-		cout << "\n\n";
-	}
-
-	dom(*this, x[4], SRT_DISJ, IntSet(4, 4));
-	for (SetVarLubValues i(x[4]); i(); ++i)
-			std::cout << i.val() << " ";
-		cout << "\n\n";*/
+	// dom(*this, x[4], SRT_DISJ, IntSet(4, 4));
+	// for (SetVarLubValues i(x[4]); i(); ++i)
+	// 		std::cout << i.val() << " ";
+	// 	cout << "\n\n";
 
 	// Local object handle, to branch using heuristic information provided by 
 	// the propagator 
@@ -46,7 +31,7 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 	auto simpleBranchVal = SET_VAL_MIN_EXC();
 
 	switch(opt.model()) {
-		case MODEL_SINGLE:
+		case MODEL_SINGLE: {
 			x = SetVarArray(*this, varsCount);
 			for (int i = 0; i < varsCount; i++) {
 				x[i] = SetVar(*this, IntSet::empty, domain[i], lowerVarBounds[i], upperVarBounds[i]);
@@ -61,7 +46,7 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 				branch(*this, x, simpleBranchVar, simpleBranchVal);
 			}
 			break;
-
+		}
 		case MODEL_COUNT: {
 			// Boolean flags for each variable-value assignment. Needed for cost
 			y = IntVarArray(*this, varsCount * vals.size(), 0, 1);
