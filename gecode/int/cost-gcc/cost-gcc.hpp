@@ -102,7 +102,8 @@ public:
 		return ES_OK;
 	}
 
-	CostGcc(Space& home, CostGcc& p) : CostGccBase(home, p), graph(p.graph), updatedEdges(p.updatedEdges) {
+	CostGcc(Space& home, CostGcc& p) : CostGccBase(home, p), graph(p.graph), 
+																     updatedEdges(p.updatedEdges) {
 		c.update(home, p.c);
     x.update(home, p.x);
 		costUpperBound.update(home, p.costUpperBound);
@@ -130,6 +131,7 @@ public:
     (void) CostGccBase::dispose(home);
     return sizeof(*this);
   }
+
 	virtual ExecStatus propagate(Space& home, const ModEventDelta&) {
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(graph);
 		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, 
