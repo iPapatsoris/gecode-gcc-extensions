@@ -38,6 +38,7 @@ protected:
 		Council<ViewAdvisor> c;
 		FlowGraph graph;
 		vector<EdgeInfo> updatedEdges;
+		unordered_set<int> sccOfInterest;
 		BestBranch bestBranch;
 		bool usingLocalHandle;
 		// TODO: do not store, instead use different post functions?
@@ -83,7 +84,7 @@ public:
 		}
 
 		vector<EdgeInfo> updatedEdges;
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, unordered_set<int>()) != ES_OK) {
 				return ES_FAILED;
 		}
 
@@ -100,6 +101,7 @@ public:
 			//cout << "SymGcc copy: " << p.bestBranch[0] << endl;
 		}
 		updatedEdges = p.updatedEdges;
+		sccOfInterest = p.sccOfInterest;
 		ipl = p.ipl;
   }
 
@@ -161,7 +163,7 @@ public:
 		*/
 		//cout << "propagate" << endl;
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(graph);
-		if (!graphAlgorithms.updateMinCostFlow(x, updatedEdges, 
+		if (!graphAlgorithms.updateMinCostFlow(x, updatedEdges, sccOfInterest, 
 																					 usingLocalHandle ? &bestBranch : NULL
 			 )) {
 			// cout << "# lmao updateMinCostFlow fail \n" << endl;
@@ -169,16 +171,17 @@ public:
 		}
 		updatedEdges.clear();
 
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, sccOfInterest) != ES_OK) {
 				return ES_FAILED;
 		}
+		sccOfInterest.clear();
 		return ES_FIX;
 	}
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
 		//cout << "\nadvisor on " << xIndex << endl;
-		bool isFeasible = graph.updatePrunedValues(x[xIndex], xIndex, updatedEdges);
+		bool isFeasible = graph.updatePrunedValues(x[xIndex], xIndex, updatedEdges );
 		return isFeasible ? ES_FIX : ES_NOFIX;
 	}
 

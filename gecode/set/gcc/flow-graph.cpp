@@ -90,6 +90,8 @@ FlowGraph::FlowGraph(
 			node.residualEdgeList.push_back(ResidualEdge(edge));
 		}
 	}
+	scc.assign(totalNodes, -1);
+	maxSCCId = -1;
 }
 
 

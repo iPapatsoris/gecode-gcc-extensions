@@ -272,13 +272,16 @@ class FlowGraphAlgorithms {
 		// - Update the residual graph to match the changes
 		// - If the old flow is not still feasible, find a new one, using the 
 		//   incremental algorithm from the publication
-		bool updateMinCostFlow(const ViewArray<Set::SetView>& x, vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch) {
+		bool updateMinCostFlow(const ViewArray<Set::SetView>& x, vector<EdgeInfo>& updatedEdges, 
+												   unordered_set<int>& sccOfInterest,  BestBranch* bestBranch) {
 			vector<NormalEdge*> edgeReference;
 			buildResidualGraph(x, bestBranch);
 			assert(updatedEdges.size());
 			if (graph.debug) graph.printResidual();
 			// Repair upper bound violations
 			for (auto& e: updatedEdges) {
+				// sccOfInterest.insert(graph.scc[e.src]);
+				// sccOfInterest.insert(graph.scc[e.dest]);
 				auto res = graph.getEdge(e.src, e.dest);
 				auto& var = (e.dest == graph.tNode() ? x[e.src] : x[e.dest]);
 				if (res == NULL || 
@@ -325,9 +328,9 @@ class FlowGraphAlgorithms {
 			return true;
 		}
 	
-		void findOneSCC(int src, vector<int>& ids, vector<int>& low, 
-										stack<int>& localVisited, vector<bool>& onLocalVisited, 
-										int* id, int* sccCount) const {
+		void findOneSCC(int src, vector<int>& ids, stack<int>& localVisited, vector<bool>& onLocalVisited, 
+										const unordered_set<int>& sccOfInterest, int* id, int* sccCount) const {
+			auto low = graph.scc;
 			stack<pair<int, int>> frontier;
 			auto& nodeList = graph.backtrackStable->nodeList;
 			frontier.push({src, 0});
@@ -342,6 +345,12 @@ class FlowGraphAlgorithms {
 				int destNode; 
 				if (curEdgeIndex < (int) edges.size()) {
 					destNode = edges[curEdgeIndex].destNode;
+					if (sccOfInterest.find(graph.scc[destNode]) == sccOfInterest.end()) {
+						cout << "skip" << endl;
+						frontier.pop(); // opt top 
+						frontier.push({node, ++curEdgeIndex});
+						continue;
+					}
 					if (ids[destNode] == NONE) {
 						// start of call here
 						localVisited.push(destNode);
@@ -388,26 +397,39 @@ class FlowGraphAlgorithms {
 					frontier.push({node, ++curEdgeIndex});
 				}
 			}
+			for (unsigned int i = 0; i < graph.scc.size(); i++) {
+				if (sccOfInterest.find(graph.scc[i]) != sccOfInterest.end()) {
+					graph.scc[i] = low[i];
+				}
+			}
 		}
 
 
-		void findSCC(vector<int>& scc) const {
+		void findSCC(const unordered_set<int> &sccOfInterest) const {
 			auto& nodeList = graph.backtrackStable->nodeList;
 			vector<int> ids;
 			vector<bool> onLocalVisited;
 			stack<int> localVisited;
 			ids.assign(nodeList.size(), NONE);
-			scc.assign(nodeList.size(), NONE);
+			// scc.assign(nodeList.size(), NONE);
 			onLocalVisited.assign(nodeList.size(), false);
 
-			int id = 0;
-			int sccCount = 0;
-			
-			for (unsigned int src = 0; src < nodeList.size(); src++) {
-				if (ids[src] == NONE) {
-					findOneSCC(src, ids, scc, localVisited, onLocalVisited, &id, &sccCount);
+			for (unsigned int i = 0; i < nodeList.size(); i++) {
+				if (!sccOfInterest.size() || sccOfInterest.find(graph.scc[i]) != sccOfInterest.end()) {
+					graph.scc[i] = NONE;	
 				}
 			}
+
+			int id = graph.maxSCCId+1;
+			int sccCount = id;
+			
+			for (unsigned int src = 0; src < nodeList.size(); src++) {
+				if (sccOfInterest.find(graph.scc[src]) != sccOfInterest.end() && ids[src] == NONE) {
+					findOneSCC(src, ids, localVisited, onLocalVisited, sccOfInterest, &id, &sccCount);
+				}
+			}
+			graph.maxSCCId = sccCount;
+
 			
 			/*for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
 				cout << "Node " << i << " in SCC " << low[i] << "\n";
@@ -422,7 +444,8 @@ class FlowGraphAlgorithms {
 		// costgcc, the search would backtrack to previous instances.
 		// The reason why 
 
-		ExecStatus performArcConsistency(Space& home, ViewArray<Set::SetView>& x) {
+		ExecStatus performArcConsistency(Space& home, ViewArray<Set::SetView>& x, 
+																		 const unordered_set<int> &sccOfInterest) {
 			// Edge nodes, along with the actual value the src node
 			// corresponds to 
 			struct EdgeWithVal {
@@ -436,14 +459,14 @@ class FlowGraphAlgorithms {
 			// Hold the edges we decide to prune during arc consistency
 			// We do the actual pruning at the end of this function's iterations
 			vector<EdgeWithVal> edgesToPrune;
-			vector<int> scc;
-			findSCC(scc);
+			// vector<int> scc;
+			findSCC(sccOfInterest);
 			auto& nodeList = graph.backtrackStable->nodeList;
 
 			for (int n = graph.totalVarNodes; n < graph.sNode(); n++) {
 				for (int i = 0; i < graph.edgeListSize[n]; i++) {
 					auto& e = nodeList[n].edgeList.list[i];
-					if (!e.flow && scc[n] != scc[e.destNode]) {
+					if (!e.flow && graph.scc[n] != graph.scc[e.destNode]) {
 						int val = (graph.backtrackStable->nodeToVal)[n];
 						edgesToPrune.push_back(EdgeWithVal(n, e.destNode, val));
 					}

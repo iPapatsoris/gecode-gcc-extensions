@@ -83,6 +83,9 @@ class FlowGraph {
 		int totalVarNodes; 
 		bool debug; 
 
+		vector<int> scc;
+		int maxSCCId;
+
 		// Position of S node
 		int sNode() const { return backtrackStable->nodeList.size() - 2; }
 		// Position of T node
