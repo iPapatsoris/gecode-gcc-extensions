@@ -81,6 +81,7 @@ class FlowGraph {
 		vector<int> varToValsSize;
 
 		int totalVarNodes; 
+		bool debug; 
 
 		// Position of S node
 		int sNode() const { return backtrackStable->nodeList.size() - 2; }

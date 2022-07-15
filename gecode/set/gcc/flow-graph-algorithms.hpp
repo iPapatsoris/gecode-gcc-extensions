@@ -73,7 +73,8 @@ class FlowGraphAlgorithms {
 		// Clear residual graph and build it again. Do not clear T->Var edges.
 		// Since we iterate through the graph, this step is a good opportunity
 		// to also update BestBranch with the latest flow assignment.
-		void buildResidualGraph(const ViewArray<Set::SetView>& x, BestBranch *bestBranch) {
+		void buildResidualGraph(const ViewArray<Set::SetView>& x, 
+													  BestBranch *bestBranch) {
 			auto& nodeList = graph.backtrackStable->nodeList;
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				nodeList[i].residualEdgeList.clear();
@@ -91,7 +92,11 @@ class FlowGraphAlgorithms {
 					if (edge.destNode == graph.tNode()) {
 						lowerBound = x[i].cardMin();
 						upperBound = x[i].cardMax();
-					}																						 
+					}	else if (edge.destNode < graph.totalVarNodes 
+										 && x[edge.destNode].contains(
+										 graph.backtrackStable->nodeToVal[i])) {
+						lowerBound = 1; 
+					}																					 
 					if (edge.flow < upperBound) {
 						node.residualEdgeList.push_back(ResidualEdge(
 																						  edge.destNode, 
@@ -143,19 +148,23 @@ class FlowGraphAlgorithms {
 															const EdgeInfo& violation, BestBranch* bestBranch
 		) {		
 			//graph.printResidual();
-			//cout << "Violation " << violation.first << " " << violation.second 
-			//		 << endl;
+			// if (graph.debug) cout << "Violation " << violation.src << " " << violation.dest 
+			// 		 << endl;
 			vector<int> path;
 			if (!findPath(violation.dest, violation.src, path)) {
 				// Constraint is not consistent
+				// if (graph.debug) cout << "false lol" << endl; 
 				return false;
 			}
-			/*for (vector<unsigned int>::reverse_iterator i = path.rbegin(); 
-           i != path.rend(); 
-					 ++i ) { 			
-				cout << *i << (i != path.rend()-1 ? "->" : "");
-			}
-			cout << endl;*/
+			// if (graph.debug) {
+			// for (vector<int>::reverse_iterator i = path.rbegin(); 
+      //      i != path.rend(); 
+			// 		 ++i ) { 			
+			// 	cout << *i << (i != path.rend()-1 ? "->" : "");
+			// }
+			// cout << endl;
+			// exit(1);
+			// }
 
 			sendFlow(x, violation, path, bestBranch);
 
@@ -267,7 +276,7 @@ class FlowGraphAlgorithms {
 			vector<NormalEdge*> edgeReference;
 			buildResidualGraph(x, bestBranch);
 			assert(updatedEdges.size());
-
+			if (graph.debug) graph.printResidual();
 			// Repair upper bound violations
 			for (auto& e: updatedEdges) {
 				auto res = graph.getEdge(e.src, e.dest);
@@ -275,6 +284,7 @@ class FlowGraphAlgorithms {
 				if (res == NULL || 
 					 (e.lowerBoundViolation && res->flow >= e.violationBound) ||
 					 (!e.lowerBoundViolation && res->flow <= e.violationBound)) {					// Check if edge has already been removed because it existed twice 
+					if (graph.debug) cout << "skipping" << endl; 
 					// inside updatedEdges.
 					// It is possible to have duplicates inside updatedEdges, because
 					// when the propagator is scheduled, it is not necessary that it 

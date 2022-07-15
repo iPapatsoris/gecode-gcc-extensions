@@ -172,16 +172,13 @@ public:
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x) != ES_OK) {
 				return ES_FAILED;
 		}
-
-		//graph->print();
 		return ES_FIX;
 	}
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
 		//cout << "\nadvisor on " << xIndex << endl;
-		bool isFeasible = graph.updatePrunedValues(x[xIndex], xIndex, 
-																							  updatedEdges);
+		bool isFeasible = graph.updatePrunedValues(x[xIndex], xIndex, updatedEdges);
 		return isFeasible ? ES_FIX : ES_NOFIX;
 	}
 
