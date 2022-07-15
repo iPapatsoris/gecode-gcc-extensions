@@ -59,6 +59,7 @@ class FlowGraph {
 			// because the graph we hold has Val->Var edges and not the inverse.
 			vector<BtVector<int>> varToVals;
 
+
 			BacktrackStableContent() {}
 		};
 
@@ -85,6 +86,9 @@ class FlowGraph {
 
 		vector<int> scc;
 		int maxSCCId;
+	
+		vector<EdgeInfo> updatedEdges;
+		unordered_set<int> sccOfInterest;
 
 		// Position of S node
 		int sNode() const { return backtrackStable->nodeList.size() - 2; }
@@ -188,8 +192,7 @@ class FlowGraph {
 		// that is not used by it, set oldFlowIsFeasible to false.
 		// Populate updatedEdges, so we know where we should update the old residual
 		// graph later on
-		bool updatePrunedValues(Set::SetView x, int xIndex, 
-													  vector<EdgeInfo>& updatedEdges); 
+		bool updatePrunedValues(Set::SetView x, int xIndex); 
 
 		void print() const;
 		void printResidual() const; 

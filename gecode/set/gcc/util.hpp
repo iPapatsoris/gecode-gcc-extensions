@@ -4,10 +4,12 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#define INF INT_MAX
+#define NONE INF - 1
+
 using namespace std;
 
 typedef unordered_map<int, unordered_set<int>> MapToSet;
-
 struct EdgeInfo {
 	int src;
 	int dest;

@@ -90,7 +90,7 @@ FlowGraph::FlowGraph(
 			node.residualEdgeList.push_back(ResidualEdge(edge));
 		}
 	}
-	scc.assign(totalNodes, -1);
+	scc.assign(totalNodes, NONE);
 	maxSCCId = -1;
 }
 
@@ -105,8 +105,7 @@ FlowGraph::FlowGraph(
 // that is not used by it, set oldFlowIsFeasible to false.
 // Populate updatedEdges, so we know where we should update the old residual
 // graph later on
-bool FlowGraph::updatePrunedValues(Set::SetView x, int xIndex, 
-																   vector<EdgeInfo>& updatedEdges) {
+bool FlowGraph::updatePrunedValues(Set::SetView x, int xIndex) {
 	// Hold the values that we end up prunning, so we can remove them from 
 	// valToVars after iteration is done
 	vector<int> prunedValues; 

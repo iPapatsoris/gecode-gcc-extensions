@@ -37,8 +37,6 @@ protected:
 		};
 		Council<ViewAdvisor> c;
 		FlowGraph graph;
-		vector<EdgeInfo> updatedEdges;
-		unordered_set<int> sccOfInterest;
 		BestBranch bestBranch;
 		bool usingLocalHandle;
 		// TODO: do not store, instead use different post functions?
@@ -46,10 +44,9 @@ protected:
 
 public:
 	SymGcc(Space& home, ViewArray<Set::SetView> x, FlowGraph graph, 
-					const vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch, 
-					IntPropLevel ipl)
+				 BestBranch *bestBranch, IntPropLevel ipl)
 			: NaryPropagator(home, x), c(home), graph(graph), 
-				updatedEdges(updatedEdges), usingLocalHandle(bestBranch != NULL), 
+				usingLocalHandle(bestBranch != NULL), 
 				ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
 			(void)new (home) ViewAdvisor(home, *this, c, x[i], i);
@@ -83,12 +80,11 @@ public:
 			return ES_FAILED;
 		}
 
-		vector<EdgeInfo> updatedEdges;
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, unordered_set<int>()) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars) != ES_OK) {
 				return ES_FAILED;
 		}
 
-		(void)new (home) SymGcc(home, vars, graph, updatedEdges, bestBranch, ipl);
+		(void)new (home) SymGcc(home, vars, graph, bestBranch, ipl);
 		return ES_OK;
 	}
 
@@ -100,8 +96,6 @@ public:
 			bestBranch.update(home, p.bestBranch);
 			//cout << "SymGcc copy: " << p.bestBranch[0] << endl;
 		}
-		updatedEdges = p.updatedEdges;
-		sccOfInterest = p.sccOfInterest;
 		ipl = p.ipl;
   }
 
@@ -116,7 +110,6 @@ public:
 	virtual size_t dispose(Space& home) {
 		home.ignore(*this, AP_DISPOSE);
 		graph.~FlowGraph();
-		updatedEdges.~vector();
     c.dispose(home);
     (void) SymGccBase::dispose(home);
     return sizeof(*this);
@@ -163,25 +156,23 @@ public:
 		*/
 		//cout << "propagate" << endl;
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(graph);
-		if (!graphAlgorithms.updateMinCostFlow(x, updatedEdges, sccOfInterest, 
+		if (!graphAlgorithms.updateMinCostFlow(x,
 																					 usingLocalHandle ? &bestBranch : NULL
 			 )) {
 			// cout << "# lmao updateMinCostFlow fail \n" << endl;
 			return ES_FAILED;
 		}
-		updatedEdges.clear();
 
-		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, sccOfInterest) != ES_OK) {
+		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x) != ES_OK) {
 				return ES_FAILED;
 		}
-		sccOfInterest.clear();
 		return ES_FIX;
 	}
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
 		//cout << "\nadvisor on " << xIndex << endl;
-		bool isFeasible = graph.updatePrunedValues(x[xIndex], xIndex, updatedEdges );
+		bool isFeasible = graph.updatePrunedValues(x[xIndex], xIndex);
 		return isFeasible ? ES_FIX : ES_NOFIX;
 	}
 
