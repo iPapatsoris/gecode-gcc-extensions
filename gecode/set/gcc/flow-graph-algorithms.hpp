@@ -271,10 +271,10 @@ class FlowGraphAlgorithms {
 			// Repair upper bound violations
 			for (auto& e: updatedEdges) {
 				auto res = graph.getEdge(e.src, e.dest);
+				auto& var = (e.dest == graph.tNode() ? x[e.src] : x[e.dest]);
 				if (res == NULL || 
-						(e.lowerBoundViolation && res->flow >= e.violationBound) ||
-					 (!e.lowerBoundViolation && res->flow <= e.violationBound)) {
-					// Check if edge has already been removed because it existed twice 
+					 (e.lowerBoundViolation && res->flow >= e.violationBound) ||
+					 (!e.lowerBoundViolation && res->flow <= e.violationBound)) {					// Check if edge has already been removed because it existed twice 
 					// inside updatedEdges.
 					// It is possible to have duplicates inside updatedEdges, because
 					// when the propagator is scheduled, it is not necessary that it 
@@ -289,26 +289,28 @@ class FlowGraphAlgorithms {
 					// and skip them.
 					continue;
 				}
-				int src = e.src;
-				int dest = e.dest;
-				if (!e.lowerBoundViolation) {
-					swap(src, dest);
-				}
-				if (!minCostFlowIteration(x, {src, dest}, bestBranch)) {
-					return false;
-				}
-				if (!e.lowerBoundViolation && e.dest != graph.tNode()) {
-					graph.deleteEdge(e.src, e.dest);
-					// We have already removed flow from this Val->Var edge and updated 
-					// residual graph, so we know for sure that the only residual edge 
-					// direction will be the same as the original edge.
-					graph.deleteResidualEdge(e.src, e.dest);
-					int val = graph.backtrackStable->nodeToVal[e.src];
-					graph.backtrackStable->varToVals[e.dest].deleteVal(
+				do {
+					int src = e.src;
+					int dest = e.dest;
+					if (!e.lowerBoundViolation) {
+						swap(src, dest);
+					}
+					if (!minCostFlowIteration(x, {src, dest}, bestBranch)) {
+						return false;
+					}
+					if (!e.lowerBoundViolation && e.dest != graph.tNode()) {
+						graph.deleteEdge(e.src, e.dest);
+						// We have already removed flow from this Val->Var edge and updated 
+						// residual graph, so we know for sure that the only residual edge 
+						// direction will be the same as the original edge.
+						graph.deleteResidualEdge(e.src, e.dest);
+						int val = graph.backtrackStable->nodeToVal[e.src];
+						graph.backtrackStable->varToVals[e.dest].deleteVal(
 																										val, 
 																										&graph.varToValsSize[e.dest]
 																										);
-				}
+					}
+				} while (e.dest == graph.tNode() && !res->isFeasible(var));
 			}
 			return true;
 		}

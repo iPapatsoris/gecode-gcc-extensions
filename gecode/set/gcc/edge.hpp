@@ -2,8 +2,10 @@
 #define H_EDGE
 
 #include <iostream>
+#include <gecode/set.hh>
 
 using namespace std;
+using namespace Gecode;
 
 /**
  * Base Edge class
@@ -38,6 +40,10 @@ public:
 	void print() const {
 		cout << destNode << " (" << lowerBound << "," << upperBound 
 				 << ") flow: " << flow << "\n";
+	}
+
+	bool isFeasible(const Set::SetView& x) const {
+		return flow >= (int) x.cardMin() && flow <= (int) x.cardMax();
 	}
 
 	friend class FlowGraph;
