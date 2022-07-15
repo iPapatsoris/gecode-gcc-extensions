@@ -4,10 +4,12 @@ FlowGraph::FlowGraph(
 	const vector<unordered_set<int> >& varToVals,
 	const MapToSet& valToVars,
 	const IntArgs& inputVals, const IntArgs& lowerBounds, 
-	const IntArgs& upperBounds, const IntArgs& costs) 
-		: firstTimeValidCost(true) {
+	const IntArgs& upperBounds, const IntArgs& costs) { 
 	
-	totalVarNodes = vars.size();
+	backtrackStable = make_shared<BacktrackStableContent>();
+	backtrackStable->totalVarNodes = vars.size();
+	backtrackStable->firstTimeValidCost = true;
+	int totalVarNodes = backtrackStable->totalVarNodes;
 	int totalValNodes = inputVals.size();
 	// Nodes are variable nodes, values nodes, S and T nodes
 	int totalNodes = totalVarNodes + totalValNodes + 2;
@@ -18,7 +20,6 @@ FlowGraph::FlowGraph(
 
 	edgeListSize.assign(totalNodes, 0);
 	varToValsSize.assign(totalVarNodes, 0);
-	backtrackStable = make_shared<BacktrackStableContent>();
 	auto& nodeList = backtrackStable->nodeList;
 	auto& valToNode = backtrackStable->valToNode;
 	auto& nodeToVal = backtrackStable->nodeToVal;
@@ -95,8 +96,7 @@ FlowGraph::FlowGraph(
 // algorithm to fix it on the next propagation, and mark flow as infeasible.
 // If a variable is assigned but has no flow, mark flow as infeasible. 
 // Returns whether the current flow is still feasible or not.
-bool FlowGraph::updatePrunedValues(Int::IntView x, int xIndex, 
-												vector<EdgeInfo>& updatedEdges) {
+bool FlowGraph::updatePrunedValues(Int::IntView x, int xIndex) {
 	// Hold the values that we end up prunning, so we can remove them from 
 	// valToVars after iteration is done
 	vector<int> prunedValues; 

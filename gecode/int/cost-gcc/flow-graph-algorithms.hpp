@@ -66,7 +66,7 @@ class FlowGraphAlgorithms {
 				nodeList[i].residualEdgeList.clear();
 			}
 
-			for (int i = graph.totalVarNodes; i < graph.tNode(); i++) {
+			for (int i = graph.backtrackStable->totalVarNodes; i < graph.tNode(); i++) {
 				auto& node = nodeList[i];
 				for (int j = 0; j < graph.edgeListSize[i]; j++) {
 					auto& edge = (node.edgeList.list)[j];
@@ -84,7 +84,7 @@ class FlowGraphAlgorithms {
 																							 -edge.cost));
 					}
 					if (bestBranch != NULL && edge.flow && edge.destNode < 
-																								 graph.totalVarNodes) {
+																				 graph.backtrackStable->totalVarNodes) {
 						// If edge is of type Val->Var and has flow, update BestBranch
 						(*bestBranch)[edge.destNode] = graph.backtrackStable->nodeToVal[i];
 					}
@@ -184,7 +184,8 @@ class FlowGraphAlgorithms {
 				// Path residual edge is a forward edge in the original graph
 				edge->flow++;
 				graph.backtrackStable->flowCost += edge->cost;
-				if (edge->destNode < graph.totalVarNodes && bestBranch != NULL) {
+				if (edge->destNode < graph.backtrackStable->totalVarNodes 
+					  && bestBranch != NULL) {
 					(*bestBranch)[edge->destNode] = graph.backtrackStable->
 																				  nodeToVal[*prev];
 				}
@@ -388,7 +389,7 @@ class FlowGraphAlgorithms {
 			auto mFactor = [](int b, int y, FlowGraph& graph) {
 				auto& nodeList = graph.backtrackStable->nodeList;
 				int min = INF_INT;
-				for (int z = 0 ; z < graph.totalVarNodes ; z++) {
+				for (int z = 0 ; z < graph.backtrackStable->totalVarNodes ; z++) {
 					ResidualEdge *edgeZB;
 					if (z == y || ((edgeZB = graph.getResidualEdge(z, b)) == NULL)) {
 						continue;
@@ -462,11 +463,9 @@ class FlowGraphAlgorithms {
 		// necessary to search for such cycles first and send flow along them, 
 		// to establish a min cost flow.
 		// Then, repair violation and delete the edge in question.
-		bool updateMinCostFlow(vector<EdgeInfo>& updatedEdges, 
-													 BestBranch* bestBranch, 
+		bool updateMinCostFlow(BestBranch* bestBranch, 
 												   Int::IntView costUpperBound) {
 			buildResidualGraph(bestBranch);
-			assert(updatedEdges.size());
 			bool isCycle;
 			do {
 				// Send flow along all cycles of negative cost, to re-establish a min 
@@ -482,7 +481,7 @@ class FlowGraphAlgorithms {
 			} while (isCycle);
 
 			// Repair upper bound violations
-			for (auto& e: updatedEdges) {
+			for (auto& e: graph.updatedEdges) {
 				auto res = graph.getEdge(e.src, e.dest);
 				if (res == NULL) {
 					// Check if edge has already been removed because it existed twice 
@@ -521,6 +520,7 @@ class FlowGraphAlgorithms {
 																									&graph.varToValsSize[e.dest]
 																									);
 			}
+			graph.updatedEdges.clear();
 			return graph.checkFlowCost(costUpperBound);
 		}
 	

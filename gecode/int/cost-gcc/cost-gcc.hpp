@@ -51,7 +51,6 @@ protected:
 		Council<ViewAdvisor> c;
 		Int::IntView costUpperBound;
 		FlowGraph graph;
-		vector<EdgeInfo> updatedEdges;
 		BestBranch bestBranch;
 		bool usingBestBranch;
 		IntPropLevel ipl;
@@ -61,8 +60,7 @@ public:
 					const vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch, IntPropLevel ipl, 
 					Int::IntView costUpperBound)
 			: NaryPropagator(home, x), c(home), costUpperBound(costUpperBound), 
-				graph(graph), updatedEdges(updatedEdges), 
-				usingBestBranch(bestBranch != NULL), ipl(ipl) {
+				graph(graph), usingBestBranch(bestBranch != NULL), ipl(ipl) {
 		for (int i = 0; i < x.size(); i++) {
 			(void)new (home) ViewAdvisor(home, *this, c, x[i], i);
 		}
@@ -102,8 +100,7 @@ public:
 		return ES_OK;
 	}
 
-	CostGcc(Space& home, CostGcc& p) : CostGccBase(home, p), graph(p.graph), 
-																     updatedEdges(p.updatedEdges) {
+	CostGcc(Space& home, CostGcc& p) : CostGccBase(home, p), graph(p.graph) {
 		c.update(home, p.c);
     x.update(home, p.x);
 		costUpperBound.update(home, p.costUpperBound);
@@ -125,7 +122,6 @@ public:
 	virtual size_t dispose(Space& home) {
 		home.ignore(*this, AP_DISPOSE);
 		graph.~FlowGraph();
-		updatedEdges.~vector();
     c.dispose(home);
 		// todo: delete cost?
     (void) CostGccBase::dispose(home);
@@ -134,12 +130,10 @@ public:
 
 	virtual ExecStatus propagate(Space& home, const ModEventDelta&) {
 		FlowGraphAlgorithms graphAlgorithms = FlowGraphAlgorithms(graph);
-		if (!graphAlgorithms.updateMinCostFlow(updatedEdges, 
-															 						 usingBestBranch ? &bestBranch : NULL, 
-																					 costUpperBound)) {
+		if (!graphAlgorithms.updateMinCostFlow(usingBestBranch ? &bestBranch : NULL,
+																			     costUpperBound)) {
 			return ES_FAILED;
 		}
-		updatedEdges.clear();
 
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, x, 
 																										 costUpperBound) != ES_OK) {
@@ -150,8 +144,7 @@ public:
 
 	virtual ExecStatus advise(Space&, Advisor& a, const Delta&) {
 		int xIndex = static_cast<ViewAdvisor&>(a).xIndex;
-		bool isFeasible = graph.updatePrunedValues(x[xIndex], xIndex, 
-																							  updatedEdges);
+		bool isFeasible = graph.updatePrunedValues(x[xIndex], xIndex);
 		return isFeasible ? ES_FIX : ES_NOFIX;
 	}
 

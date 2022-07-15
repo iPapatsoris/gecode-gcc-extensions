@@ -57,6 +57,13 @@ class FlowGraph {
 			// because the graph we hold has Val->Var edges and not the inverse.
 			vector<BtVector<int>> varToVals;
 
+			// The total number of nodes that correspond to a variable
+			int totalVarNodes; 
+		
+			// Mark the first time we find a solution. The first solution is of minimal
+			// cost, use this variable to print it for debugging or testing
+			bool firstTimeValidCost;
+
 			BacktrackStableContent() : flowCost(0) {}
 		};
 
@@ -77,18 +84,15 @@ class FlowGraph {
 		// the old value of the size, without needing to copy the graph each time. 
 		vector<int> edgeListSize;
 		vector<int> varToValsSize;
-		
-		// The total number of nodes that correspond to a variable
-		int totalVarNodes; 
 
+		// Each time the advisor is executed, record the edges with upper bound
+		// violations that need to be fixed at the next execution of the propagator.
+		vector<EdgeInfo> updatedEdges;
+		
 		// Position of S node
 		int sNode() const { return backtrackStable->nodeList.size() - 2; }
 		// Position of T node
 		int tNode() const { return backtrackStable->nodeList.size() - 1; }
-
-		// Mark the first time we find a solution. The first solution is of minimal
-		// cost, use this variable to print it for debugging or testing
-		bool firstTimeValidCost;
 
 		// Search for an edge flow violating lower bounds
 		// Return false if none exists
@@ -168,9 +172,9 @@ class FlowGraph {
 
 		// Check flow cost validity against upper bound
 		bool checkFlowCost(Int::IntView costUpperBound) {
-			if (firstTimeValidCost && backtrackStable->flowCost <= 
+			if (backtrackStable->firstTimeValidCost && backtrackStable->flowCost <= 
 															  costUpperBound.max()) {
-				firstTimeValidCost = false;
+				backtrackStable->firstTimeValidCost = false;
 				cout << backtrackStable->flowCost << "\n";
 			}
 			return backtrackStable->flowCost <= costUpperBound.max();
@@ -200,8 +204,7 @@ class FlowGraph {
 		// algorithm to fix it on the next propagation, and mark flow as infeasible.
 		// If a variable is assigned but has no flow, mark flow as infeasible. 
 		// Returns whether the current flow is still feasible or not.
-		bool updatePrunedValues(Int::IntView x, int xIndex, 
-													  vector<EdgeInfo>& updatedEdges); 
+		bool updatePrunedValues(Int::IntView x, int xIndex); 
 
 		void print() const;
 
@@ -214,7 +217,7 @@ class FlowGraph {
 		// from T to all other nodes during arc consistency, for calculating 
 		// the reduced costs.
 		void addTResidualEdges() {
-			for (int var = 0; var < totalVarNodes; var++) {
+			for (int var = 0; var < backtrackStable->totalVarNodes; var++) {
 				backtrackStable->nodeList[tNode()].residualEdgeList.push_back(
 																					 ResidualEdge(var, 1, 0));
 			}
