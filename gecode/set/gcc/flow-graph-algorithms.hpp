@@ -276,8 +276,8 @@ class FlowGraphAlgorithms {
 			if (graph.debug) graph.printResidual();
 			// Repair upper bound violations
 			for (auto& e: graph.updatedEdges) {
-				// sccOfInterest.insert(graph.scc[e.src]);
-				// sccOfInterest.insert(graph.scc[e.dest]);
+				graph.sccOfInterest.insert(graph.scc[e.src]);
+				graph.sccOfInterest.insert(graph.scc[e.dest]);
 				auto res = graph.getEdge(e.src, e.dest);
 				auto& var = (e.dest == graph.tNode() ? x[e.src] : x[e.dest]);
 				if (res == NULL || 
@@ -327,7 +327,7 @@ class FlowGraphAlgorithms {
 	
 		void findOneSCC(int src, vector<int>& ids, stack<int>& localVisited, vector<bool>& onLocalVisited, 
 										const unordered_set<int>& sccOfInterest, int* id, int* sccCount) const {
-			auto low = graph.scc;
+			auto &low = graph.scc;
 			stack<pair<int, int>> frontier;
 			auto& nodeList = graph.backtrackStable->nodeList;
 			frontier.push({src, 0});
@@ -342,8 +342,9 @@ class FlowGraphAlgorithms {
 				int destNode; 
 				if (curEdgeIndex < (int) edges.size()) {
 					destNode = edges[curEdgeIndex].destNode;
-					if (sccOfInterest.find(graph.scc[destNode]) == sccOfInterest.end()) {
-						cout << "skip" << endl;
+					// cout << "checking " << graph.scc[destNode] << " vs " << graph.maxSCCId << endl;	
+					if (graph.scc[destNode] <= graph.maxSCCId && sccOfInterest.find(graph.scc[destNode]) == sccOfInterest.end()) {
+						// cout << "skip" << endl;
 						frontier.pop(); // opt top 
 						frontier.push({node, ++curEdgeIndex});
 						continue;
@@ -394,11 +395,11 @@ class FlowGraphAlgorithms {
 					frontier.push({node, ++curEdgeIndex});
 				}
 			}
-			for (unsigned int i = 0; i < graph.scc.size(); i++) {
-				if (sccOfInterest.find(graph.scc[i]) != sccOfInterest.end()) {
-					graph.scc[i] = low[i];
-				}
-			}
+			// // for (unsigned int i = 0; i < graph.scc.size(); i++) {
+			// // 	if (sccOfInterest.find(graph.scc[i]) != sccOfInterest.end()) {
+			// // 		graph.scc[i] = low[i];
+			// // 	}
+			// }
 		}
 
 
@@ -415,24 +416,31 @@ class FlowGraphAlgorithms {
 				for (unsigned int i = 0; i < nodeList.size(); i++) {
 					if (sccOfInterest.find(graph.scc[i]) != sccOfInterest.end()) {
 						graph.scc[i] = NONE;	
+						// ids[i] = NONE;
 					}
 				}
+				// cout << "scc of interest:\n";
+				// for (auto s: sccOfInterest) {
+				// 	cout << s << endl;
+				// }
+			} else {
+				graph.scc.assign(nodeList.size(), NONE);
 			}
 
 			int id = graph.maxSCCId+1;
 			int sccCount = id;
 			
 			for (unsigned int src = 0; src < nodeList.size(); src++) {
-				if (sccOfInterest.find(graph.scc[src]) != sccOfInterest.end() && ids[src] == NONE) {
+				if ((!sccOfInterest.size() || sccOfInterest.find(graph.scc[src]) != sccOfInterest.end()) && ids[src] == NONE) {
 					findOneSCC(src, ids, localVisited, onLocalVisited, sccOfInterest, &id, &sccCount);
 				}
 			}
 			graph.maxSCCId = sccCount;
 
 			
-			/*for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
-				cout << "Node " << i << " in SCC " << low[i] << "\n";
-			}*/
+			// for (unsigned int i = 0; i < graph.backtrackStable->nodeList.size(); i++) {
+			// 	cout << "Node " << i << " in SCC " << graph.scc[i] << "\n";
+			// }
 		}
 	
 		// In addition to pruning, hold the affected Val->Var edges in updatedEdges
@@ -473,6 +481,7 @@ class FlowGraphAlgorithms {
 
 			// Do the actual pruning and update data structures
 			for (auto& edge: edgesToPrune) {
+				cout << "pruning " << edge.dest << " " << edge.src << endl;
 				GECODE_ME_CHECK(x[edge.dest].exclude(home, edge.val));
 			}
 			graph.sccOfInterest.clear();

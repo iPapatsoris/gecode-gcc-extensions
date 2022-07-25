@@ -138,6 +138,8 @@ bool FlowGraph::updatePrunedValues(Set::SetView x, int xIndex) {
 				// No flow through the edge, can delete on the spot
 				deleteEdge(valueNode, xIndex);
 				prunedValues.push_back(value);
+				sccOfInterest.insert(scc[valueNode]);
+				sccOfInterest.insert(scc[xIndex]);
 			}
 		}
 		if (x.contains(value) && !edge->flow) {
