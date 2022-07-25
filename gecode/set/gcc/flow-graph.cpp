@@ -11,8 +11,8 @@ FlowGraph::FlowGraph(
 	const IntArgs& inputVals, const IntArgs& lowerValBounds, 
 	const IntArgs& upperValBounds, const IntArgs& lowerVarBounds, 
 	const IntArgs& upperVarBounds) {
-	debug = false;
-	totalVarNodes = vars.size();
+	
+	int totalVarNodes = vars.size();
 	int totalValNodes = inputVals.size();
 	// Nodes are variable nodes, values nodes, S and T nodes
 	int totalNodes = totalVarNodes + totalValNodes + 2;
@@ -24,6 +24,7 @@ FlowGraph::FlowGraph(
 	edgeListSize.assign(totalNodes, 0);
 	varToValsSize.assign(totalVarNodes, 0);
 	backtrackStable = make_shared<BacktrackStableContent>();
+	backtrackStable->totalVarNodes = totalVarNodes;
 	auto& nodeList = backtrackStable->nodeList;
 	auto& valToNode = backtrackStable->valToNode;
 	auto& nodeToVal = backtrackStable->nodeToVal;
@@ -92,9 +93,6 @@ FlowGraph::FlowGraph(
 	}
 }
 
-
-//	TODO: update this comment
-
 // Update graph state to match variable X domain pruning/assignment.
 // Update is made by tightening the bounds of edge V->X as follows:
 // - If X got assigned to value V, set the lower bound to 1.
@@ -103,45 +101,33 @@ FlowGraph::FlowGraph(
 // that is not used by it, set oldFlowIsFeasible to false.
 // Populate updatedEdges, so we know where we should update the old residual
 // graph later on
-bool FlowGraph::updatePrunedValues(Set::SetView x, int xIndex, 
-																   vector<EdgeInfo>& updatedEdges) {
+bool FlowGraph::updatePrunedValues(Set::SetView x, int xIndex) {
 	// Hold the values that we end up prunning, so we can remove them from 
 	// valToVars after iteration is done
 	vector<int> prunedValues; 
 	// Iterate all values for which there is an edge to X
 	auto& values = backtrackStable->varToVals[xIndex];
 	bool isFeasible = true;
-	// cout << "var " << xIndex << " lower bound: ";
-	// for (SetVarGlbValues i(x); i(); ++i)
-	// 	std::cout << i.val() << " ";
-	// cout << "\nvar " << xIndex << " upper bound: ";
-	// for (SetVarLubValues i(x); i(); ++i)
-	// 	std::cout << i.val() << " ";
-	// cout << "cardinalities " << x.cardMin() << " " << x.cardMax() << endl;
-	// print();
 	for (int i = 0; i < varToValsSize[xIndex]; i++) {
 		auto value = (values.list)[i];
 		auto valueNode = backtrackStable->valToNode.find(value)->second;
 		NormalEdge* edge = getEdge(valueNode, xIndex);
 		assert(edge != NULL);
 		if (x.notContains(value)) {
-			// if (debug) cout << "val " << value << " (node " << valueNode << " no longer in var " << xIndex << " upper bound" << endl;
 			// Value has been pruned from variable X's domain
 			if (edge->flow == 1) {
-			// if (debug) 	cout << "upper bound violation" << endl;
 				// Mark infeasible flow and edge to be repaired
 				isFeasible = false;
 				updatedEdges.push_back(EdgeInfo(valueNode, xIndex, false, 0));
 			} else {
-				// if (debug) 	cout << "delete on the spot" << endl;
 				// No flow through the edge, can delete on the spot
 				deleteEdge(valueNode, xIndex);
 				prunedValues.push_back(value);
 			}
 		}
 		if (x.contains(value) && !edge->flow) {
-			// if (debug) 	cout << "val " << value << " (node " << valueNode << " in var " << xIndex << " lower bound but with no flow" << endl;
-			// cout << "lower bound violation" << endl;
+			// Value is contained in GLB but has no flow
+			// Mark infeasible flow and edge to be repaired
 			isFeasible = false;
 			updatedEdges.push_back(EdgeInfo(valueNode, xIndex, true, 1));
 		}
@@ -151,93 +137,18 @@ bool FlowGraph::updatePrunedValues(Set::SetView x, int xIndex,
 		values.deleteVal(val, &varToValsSize[xIndex]);
 	}
 
-	// Update Var->T edge bounds
+	// Check Var->T edge bounds
 	auto& nodeList = backtrackStable->nodeList;
 	auto edge = nodeList[xIndex].edgeList.getVal(tNode(), edgeListSize[xIndex]);
 	if (edge->flow < (int) x.cardMin()) { 
-		// if (debug) 	cout << "flow " << edge->flow << " vs cardMin " << x.cardMin() << endl;
 		isFeasible = false;
 		updatedEdges.push_back(EdgeInfo(xIndex, tNode(), true, x.cardMin()));
 	} else if (edge->flow > (int) x.cardMax()) {
-		// if (debug) 	cout << "flow " << edge->flow << " vs cardMax " << x.cardMax() << endl;
 		isFeasible = false;
 		updatedEdges.push_back(EdgeInfo(xIndex, tNode(), false, x.cardMax()));
 	}
 
 	return isFeasible;																		 
-	
-
-	// for (auto valIt = varToLub[xIndex].begin(); valIt != varToLub[xIndex].end(); valIt++) {
-	// 	auto val = *valIt;
-	// 	if (x.notContains(*valIt)) {
-	// 		// Value has been pruned from variable's X's domain
-	// 		auto valNode = valToNode->find(val)->second;
-	// 		NormalEdge* edge = getEdge(valNode, xIndex);
-	// 		if (!edge->lowerBound && edge->upperBound == 1) {
-	// 			// If edge hasn't already been pruned or assigned, update graph
-	// 			edge->upperBound = 0;
-	// 			if (edge->flow == 1) {
-	// 				oldFlowIsFeasible = false;
-	// 				// if (bestBranch != NULL) {
-	// 				// 	(*bestBranch)[xIndex].erase(val);
-	// 				// }
-	// 			}
-	// 			updatedEdges.push_back({valNode, xIndex});
-	// 			prunedValues.push_back(valIt);
-	// 		}
-	// 	}
-	// }	
-	
-	// for (auto it: prunedValues) {
-	// 	//cout << "\npruning from lub " << *it;
-	// 	varToLub[xIndex].erase(it);
-	// }
-
-	// vector<int> valuesToAdd;
-	// for (SetVarGlbValues i(x); i(); ++i) {
-	// 	auto val = i.val();
-	// 	if (varToGlb[xIndex].find(val) == varToGlb[xIndex].end()) {
-	// 		// Value has been included in variable X's domain
-	// 		auto valNode = valToNode->find(val)->second;
-	// 		NormalEdge* edge = getEdge(valNode, xIndex);
-	// 		if (!edge->lowerBound && edge->upperBound == 1) {
-	// 			// If edge hasn't already been pruned or assigned, update graph
-	// 			edge->lowerBound = 1;
-	// 			if (!edge->flow) {
-	// 				oldFlowIsFeasible = false;
-	// 			} /*else if (bestBranch != NULL) {
-	// 				for (SetVarUnknownValues nextVal(x); nextVal(); ++nextVal) {
-	// 					auto nextValNode = (*valToNode)[nextVal.val()];
-	// 					auto nextValEdge = getEdge(nextValNode, xIndex);
-	// 					cout << "checking val " << nextVal.val(); 
-	// 					if (nextValEdge->flow) {
-	// 						cout << "ok";
-	// 						(*bestBranch)[xIndex] = val;
-	// 					}
-	// 				}
-	// 			}*/
-	// 			updatedEdges.push_back({valNode, xIndex});
-	// 			valuesToAdd.push_back(val);
-	// 		}
-	// 	}
-	// }	
-	
-	// for (auto val: valuesToAdd) {
-	// 	//cout << "\nadding to glb " << val;
-	// 	varToGlb[xIndex].insert(val);
-	// }
-
-	// Update Var->T edge bounds
-	// auto& edge = nodeList[xIndex].edgeList[0];
-	// edge.lowerBound = x.cardMin();
-	// edge.upperBound = x.cardMax();
-	// if (edge.flow < edge.lowerBound || edge.flow > edge.upperBound) {
-	// 	oldFlowIsFeasible = false;
-	// 	updatedEdges.push_back({xIndex, tNode()});
-	// }
-	//cout << "\ncard " << edge.lowerBound << " " << edge.upperBound << "\n";
-
-	//cout << "end of update: feasible flow " << oldFlowIsFeasible << endl; 
 }
 
 void FlowGraph::print() const {
@@ -263,15 +174,3 @@ void FlowGraph::printResidual() const {
 	}
 	cout << endl;
 }
-
-// 	cout << "glb\n";
-// 	for (auto v: varToGlb[x]) {
-// 		cout << v << " ";
-// 	}
-// 	cout << "\nlub\n";
-// 	for (auto v: varToLub[x]) {
-// 		cout << v << " ";
-// 	}
-// 	cout << "\ncard " << nodeList[x].edgeList.front().lowerBound
-// 			 << " " << nodeList[x].edgeList.front().upperBound << "\n";
-// }

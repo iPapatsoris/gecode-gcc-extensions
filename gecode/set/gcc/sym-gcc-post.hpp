@@ -6,7 +6,6 @@
 #include <unordered_set>
 #include "util.hpp"
 #include "sym-gcc.hpp"
-#include "example/BestBranch.hpp"
 
 using namespace Gecode;
 using namespace std;
@@ -14,7 +13,7 @@ using namespace std;
 void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 								const IntArgs& lowerValBounds, const IntArgs& upperValBounds,
 								const IntArgs& lowerVarBounds, const IntArgs& upperVarBounds,
-								BestBranch* bestBranch, IntPropLevel ipl) {
+								IntPropLevel ipl) {
 								
 	using namespace Int;
 
@@ -27,12 +26,14 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 	}
 
 	// Val bounds arrays must be same size as vals array
-	if (vals.size() != lowerValBounds.size() || vals.size() != upperValBounds.size()) {
+	if (vals.size() != lowerValBounds.size() || 
+		  vals.size() != upperValBounds.size()) {
 		throw ArgumentSizeMismatch("Int::symmetricGCC");
 	}
 
 	// Var bounds arrays must be same size as vars array
-	if (vars.size() != lowerVarBounds.size() || vars.size() != upperVarBounds.size()) {
+	if (vars.size() != lowerVarBounds.size() || 
+	 	  vars.size() != upperVarBounds.size()) {
 		throw ArgumentSizeMismatch("Int::symmetricGCC");
 	}
 
@@ -68,7 +69,8 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 	for (int x = 0; x < vars.size(); x++) {
 		for (auto val: varToVals[x]) {
 			if (valsSet.find(val) == valsSet.end()) {
-				throw ArgumentSizeMismatch("Int::symmetricGCC domain value doesn't exist in values array");
+				throw ArgumentSizeMismatch("Int::symmetricGCC domain value doesn't" 
+																	 "exist in values array");
 			}
 			auto it = valToVars.find(val);
 			if (it == valToVars.end()) {
@@ -100,10 +102,9 @@ void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 	
 	ViewArray<Set::SetView> views(home, vars);
 	GECODE_POST;
-	GECODE_ES_FAIL(SymGcc::post(home, views, varToVals, valToVars, vals, lowerValBounds, 
-															upperValBounds, lowerVarBounds, upperVarBounds, 
-															bestBranch, ipl
-															));
+	GECODE_ES_FAIL(SymGcc::post(home, views, varToVals, valToVars, vals, 
+															lowerValBounds, upperValBounds, lowerVarBounds, 
+															upperVarBounds, ipl)); 
 }
 
 #endif

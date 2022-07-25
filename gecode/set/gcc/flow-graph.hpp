@@ -17,22 +17,15 @@
 using namespace Gecode;
 using namespace std;
 /**
- * Graph used to solve min cost flow problem, to prove consistency of
- * costgcc, and also achieve arc consistency later on.
+ * Graph used to solve a feasible flow problem, to prove consistency of
+ * symgcc, and to achieve arc consistency.
  * There is a node for each variable, for each value, and an S and T node.
  * There are value->variable edges according to the respective domains,
  * variable->T edges, S->value edges and a T->S edge.
- * The lower/upper bounds on the edges are chosen in a way to respect 
- * the original contraints, while also making sure that each variable gets
- * eventually assigned to a value.
- * 
- * The graph is built once, and later on any changes in domain such as value 
- * prunes or variable assignments, are expressed by setting value->variable 
- * upper bounds to 0 (prune) or lower bounds to 1 (assignment)
- * 
- * The graph's residual graph exists through Node's residualEdgeList member.
- * It is calculated once on construction, and later on when we have a new flow,
- * it is only modified in the edges that differ from the previous flow.
+ * The graph is built once and is backtracked in an efficient way using 
+ * BtVector. As values get pruned, the corresponding edges are removed and
+ * the flow is incrementally repaired to a feasible one. The flow itself is 
+ * not backtracked.
  */
 class FlowGraph {
 	friend class FlowGraphAlgorithms;
@@ -58,6 +51,7 @@ class FlowGraph {
 			// comparison is only done among those. We need it for fast lookup,
 			// because the graph we hold has Val->Var edges and not the inverse.
 			vector<BtVector<int>> varToVals;
+			int totalVarNodes; 
 
 			BacktrackStableContent() {}
 		};
@@ -80,8 +74,9 @@ class FlowGraph {
 		vector<int> edgeListSize;
 		vector<int> varToValsSize;
 
-		int totalVarNodes; 
-		bool debug; 
+		// Each time the advisor is executed, record the edges with bound
+		// violations that need to be fixed at the next execution of the propagator.
+		vector<EdgeInfo> updatedEdges;
 
 		// Position of S node
 		int sNode() const { return backtrackStable->nodeList.size() - 2; }
@@ -174,19 +169,12 @@ class FlowGraph {
 			const IntArgs& upperValBounds, const IntArgs& lowerVarBounds, 
 			const IntArgs& upperVarBounds);
 
-		// TODO: update this comment
-
-		// Update graph state to match variable X domain pruning/assignment.
-		// Update is made by tightening the bounds of edge V->X as follows:
-		// - If X got assigned to value V, set the lower bound to 1.
-		// - For every value V that has been pruned off X, set the upper bound 
-		//   to 0. 
-	  // If we prune a value that is used by current flow, or assign a value 
-		// that is not used by it, set oldFlowIsFeasible to false.
-		// Populate updatedEdges, so we know where we should update the old residual
-		// graph later on
-		bool updatePrunedValues(Set::SetView x, int xIndex, 
-													  vector<EdgeInfo>& updatedEdges); 
+		// If a variable-value pair is pruned that has no flow, delete it on the 
+		// spot. If it has flow, insert it on updatedEdges, for the flow repair
+		// algorithm to fix it on the next propagation, and mark flow as infeasible.
+		// If a variable is assigned but has no flow, mark flow as infeasible. 
+		// Returns whether the current flow is still feasible or not.
+		bool updatePrunedValues(Set::SetView x, int xIndex); 
 
 		void print() const;
 		void printResidual() const; 

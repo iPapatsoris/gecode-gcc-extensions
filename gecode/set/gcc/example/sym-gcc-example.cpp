@@ -10,22 +10,14 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 	: Script(opt), model((Model) opt.model()) {
 	IntSetArgs domain;
 	IntArgs vals, lowerValBounds, upperValBounds, lowerVarBounds, upperVarBounds;
-	readInput(opt.instance(), varsCount, domain, vals, lowerValBounds, upperValBounds, 
+	readInput(opt.instance(), varsCount, domain, vals, lowerValBounds, 
+					  upperValBounds, 
 						lowerVarBounds, upperVarBounds);
 	valsCount = vals.size();
 	
 	x = SetVarArray(*this, 0);
 	y = IntVarArray(*this, 0);
 	z = BoolVarArray(*this, 0);
-
-	// dom(*this, x[4], SRT_DISJ, IntSet(4, 4));
-	// for (SetVarLubValues i(x[4]); i(); ++i)
-	// 		std::cout << i.val() << " ";
-	// 	cout << "\n\n";
-
-	// Local object handle, to branch using heuristic information provided by 
-	// the propagator 
-	BestBranch bestBranch(*this, varsCount);
 
 	auto simpleBranchVar = SET_VAR_DEGREE_MIN();
 	auto simpleBranchVal = SET_VAL_MIN_EXC();
@@ -34,17 +26,12 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 		case MODEL_SINGLE: {
 			x = SetVarArray(*this, varsCount);
 			for (int i = 0; i < varsCount; i++) {
-				x[i] = SetVar(*this, IntSet::empty, domain[i], lowerVarBounds[i], upperVarBounds[i]);
+				x[i] = SetVar(*this, IntSet::empty, domain[i], lowerVarBounds[i], 
+										  upperVarBounds[i]);
 			}
 			symmetricGCC(*this, x, vals, lowerValBounds, upperValBounds, 
-										lowerVarBounds, upperVarBounds, opt.branching() ? &bestBranch : NULL, 
-										opt.ipl());
-		//dom(*this, x[4], SRT_EQ, IntSet{3, 5});
-			if (opt.branching()) {
-				bestval(*this, x, bestBranch);
-			} else { 
-				branch(*this, x, simpleBranchVar, simpleBranchVal);
-			}
+										lowerVarBounds, upperVarBounds, opt.ipl());
+			branch(*this, x, simpleBranchVar, simpleBranchVal);
 			break;
 		}
 		case MODEL_COUNT: {

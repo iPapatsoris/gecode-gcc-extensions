@@ -4,12 +4,10 @@
 #include <gecode/driver.hh>
 #include <gecode/set.hh>
 #include <gecode/minimodel.hh>
-//#include "BestBranch.hpp"
 #include "read-input.hpp"
 
 using namespace Gecode;
 using namespace std;
-
 
 class SymmetricGccExample : public Script {
 protected:
@@ -18,7 +16,6 @@ protected:
 	BoolVarArray z;
 	int varsCount;
 	int valsCount;
-
 
 public:
 	enum Model {

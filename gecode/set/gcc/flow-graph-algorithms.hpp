@@ -70,17 +70,11 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-		// Clear residual graph and build it again. Do not clear T->Var edges.
-		// Since we iterate through the graph, this step is a good opportunity
-		// to also update BestBranch with the latest flow assignment.
-		void buildResidualGraph(const ViewArray<Set::SetView>& x, 
-													  BestBranch *bestBranch) {
+		// Clear residual graph and build it again 
+		void buildResidualGraph(const ViewArray<Set::SetView>& x) {
 			auto& nodeList = graph.backtrackStable->nodeList;
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
 				nodeList[i].residualEdgeList.clear();
-				if (bestBranch != NULL && i < (unsigned int) graph.totalVarNodes) {
-					(*bestBranch)[i].clear();
-				}
 			}
 
 			for (unsigned int i = 0; i < nodeList.size(); i++) {
@@ -92,7 +86,7 @@ class FlowGraphAlgorithms {
 					if (edge.destNode == graph.tNode()) {
 						lowerBound = x[i].cardMin();
 						upperBound = x[i].cardMax();
-					}	else if (edge.destNode < graph.totalVarNodes 
+					}	else if (edge.destNode < graph.backtrackStable->totalVarNodes 
 										 && x[edge.destNode].contains(
 										 graph.backtrackStable->nodeToVal[i])) {
 						lowerBound = 1; 
@@ -108,17 +102,12 @@ class FlowGraphAlgorithms {
 																							 i, 
 																							 edge.flow - lowerBound));
 					}
-					if (bestBranch != NULL && edge.flow && edge.destNode < 
-																								 graph.totalVarNodes) {
-						// If edge is of type Val->Var and has flow, update BestBranch
-						(*bestBranch)[edge.destNode].insert(graph.backtrackStable->nodeToVal[i]);
-					}
 				}
 			}
 		}
 
-		void sendFlow(const ViewArray<Set::SetView>& x, const EdgeInfo& violation, vector<int>& shortestPath, 
-								  BestBranch* bestBranch) {
+		void sendFlow(const ViewArray<Set::SetView>& x, const EdgeInfo& violation,
+								  vector<int>& shortestPath) {
 			// Send flow through the path edges and update residual graph
 			int prev = violation.src;
 			for(auto it = shortestPath.rbegin(); it != shortestPath.rend(); it++) {
@@ -126,61 +115,25 @@ class FlowGraphAlgorithms {
 				if (edge != NULL) {
 					// Path residual edge is a forward edge in the original graph
 					edge->flow++;
-					if (edge->destNode < graph.totalVarNodes && bestBranch != NULL) {
-					//	cout << "Adding " << (*graph.nodeToVal)[prev] << " to bestBranch" << endl; 
-						(*bestBranch)[edge->destNode].insert(graph.backtrackStable->nodeToVal[prev]);
-					}
 					updateResidualGraph(x, prev, *it, *edge);
 				}	else {
 					// Path residual edge is a backward edge in the original graph
 					edge = graph.getEdge(*it, prev);
 					edge->flow--;
-					if (edge->destNode < graph.totalVarNodes && bestBranch != NULL) {
-						(*bestBranch)[edge->destNode].erase(graph.backtrackStable->nodeToVal[prev]);
-					}
 					updateResidualGraph(x, *it, prev, *edge);
 				}
 				prev = *it;
 			}
 		}
 
-		bool minCostFlowIteration(const ViewArray<Set::SetView>& x, 
-															const EdgeInfo& violation, BestBranch* bestBranch
-		) {		
-			//graph.printResidual();
-			// if (graph.debug) cout << "Violation " << violation.src << " " << violation.dest 
-			// 		 << endl;
+		bool flowIteration(const ViewArray<Set::SetView>& x, 
+															const EdgeInfo& violation) {		
 			vector<int> path;
 			if (!findPath(violation.dest, violation.src, path)) {
 				// Constraint is not consistent
-				// if (graph.debug) cout << "false lol" << endl; 
 				return false;
 			}
-			// if (graph.debug) {
-			// for (vector<int>::reverse_iterator i = path.rbegin(); 
-      //      i != path.rend(); 
-			// 		 ++i ) { 			
-			// 	cout << *i << (i != path.rend()-1 ? "->" : "");
-			// }
-			// cout << endl;
-			// exit(1);
-			// }
-
-			sendFlow(x, violation, path, bestBranch);
-
-		/*	if (bestBranch != NULL) {
-				for (int i = 0; i < graph.totalVarNodes; i++) {
-					for (auto& v: (*bestBranch)[i])
-						cout << v << endl;
-				}
-				for (int i = graph.totalVarNodes; i < graph.sNode(); i++) {
-					for (auto& e: graph.nodeList[i].edgeList) {
-						if (e.flow) {
-							cout << "flow for var " << e.destNode << " with val " << (*graph.nodeToVal)[i] << endl;
-						}
-					}
-				}
-			}*/
+			sendFlow(x, violation, path);
 
 			return true;
 		}
@@ -256,40 +209,33 @@ class FlowGraphAlgorithms {
 	public:
 		FlowGraphAlgorithms(FlowGraph& graph) : graph(graph) {}
 
-		bool findMinCostFlow(const ViewArray<Set::SetView>& x, BestBranch* bestBranch) {
+		bool findFlow(const ViewArray<Set::SetView>& x) {
 			EdgeInfo violation;
 			while (graph.getLowerBoundViolatingEdge(violation)) {
-				if (!minCostFlowIteration(x, violation, bestBranch)) {
+				if (!flowIteration(x, violation)) {
 					return false;
 				}
 			}
-			// graph.print();
 			return true;
 		}
 
-		// Given updatedEdges contains the edges whose bounds have been tightened
-		// since last execution, do the following:
-		// - Update the residual graph to match the changes
-		// - If the old flow is not still feasible, find a new one, using the 
-		//   incremental algorithm from the publication
-		bool updateMinCostFlow(const ViewArray<Set::SetView>& x, vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch) {
+		// Repair the flow
+		bool updateFlow(const ViewArray<Set::SetView>& x) {
 			vector<NormalEdge*> edgeReference;
-			buildResidualGraph(x, bestBranch);
-			assert(updatedEdges.size());
-			if (graph.debug) graph.printResidual();
+			buildResidualGraph(x);
 			// Repair upper bound violations
-			for (auto& e: updatedEdges) {
+			for (auto& e: graph.updatedEdges) {
 				auto res = graph.getEdge(e.src, e.dest);
 				auto& var = (e.dest == graph.tNode() ? x[e.src] : x[e.dest]);
 				if (res == NULL || 
 					 (e.lowerBoundViolation && res->flow >= e.violationBound) ||
-					 (!e.lowerBoundViolation && res->flow <= e.violationBound)) {					// Check if edge has already been removed because it existed twice 
-					if (graph.debug) cout << "skipping" << endl; 
-					// inside updatedEdges.
+					 (!e.lowerBoundViolation && res->flow <= e.violationBound)) {					
+					// Check if edge has already been removed because it existed twice,
+					// or if flow has already been repaired from a previous iteration. 
 					// It is possible to have duplicates inside updatedEdges, because
 					// when the propagator is scheduled, it is not necessary that it 
 					// will execute right away. It is possible that another propagator
-					// may take precedence, removing some values, and then costgcc
+					// may take precedence, removing some values, and then symgcc
 					// will check again for domain changes. If the change is on a variable
 					// that has already been inserted in updatedEdges but has not been 
 					// processed yet, then the old variable-value pair will be inserted
@@ -305,10 +251,12 @@ class FlowGraphAlgorithms {
 					if (!e.lowerBoundViolation) {
 						swap(src, dest);
 					}
-					if (!minCostFlowIteration(x, {src, dest}, bestBranch)) {
+					if (!flowIteration(x, {src, dest})) {
 						return false;
 					}
 					if (!e.lowerBoundViolation && e.dest != graph.tNode()) {
+						// Delete edge in case of upper bound violation and only if we 
+						// repaired a Val->Var edge (and not a Var->T for cardinalities).
 						graph.deleteEdge(e.src, e.dest);
 						// We have already removed flow from this Val->Var edge and updated 
 						// residual graph, so we know for sure that the only residual edge 
@@ -320,11 +268,15 @@ class FlowGraphAlgorithms {
 																										&graph.varToValsSize[e.dest]
 																										);
 					}
+					// A violation in the bounds of a Var->T edge implies cardinalities
+					// change, which could mean the pruning of multiple values, so
+					// we may need to take several steps until we reach a feasible flow.
 				} while (e.dest == graph.tNode() && !res->isFeasible(var));
 			}
 			return true;
 		}
-	
+
+		// Iterative Tarjan's algorithm to find SCC	
 		void findOneSCC(int src, vector<int>& ids, vector<int>& low, 
 										stack<int>& localVisited, vector<bool>& onLocalVisited, 
 										int* id, int* sccCount) const {
@@ -343,7 +295,7 @@ class FlowGraphAlgorithms {
 				if (curEdgeIndex < (int) edges.size()) {
 					destNode = edges[curEdgeIndex].destNode;
 					if (ids[destNode] == NONE) {
-						// start of call here
+						// Start of recursive call here
 						localVisited.push(destNode);
 						onLocalVisited[destNode] = true;
 						ids[destNode] = low[destNode] = *id;
@@ -359,7 +311,7 @@ class FlowGraphAlgorithms {
 					continue;
 				}
 
-				// last part here
+				// Last part here
 				if (ids[node] == low[node]) {
 					while (!localVisited.empty()) {
 						int tmp = localVisited.top();
@@ -379,7 +331,6 @@ class FlowGraphAlgorithms {
 					curEdgeIndex = frontier.top().second;
 					destNode = nodeList[node].residualEdgeList[curEdgeIndex].destNode;
 					
-				  // process here as at, to
 					if (onLocalVisited[destNode]) {
 						low[node] = min(low[node], low[destNode]);
 					}
@@ -389,7 +340,6 @@ class FlowGraphAlgorithms {
 				}
 			}
 		}
-
 
 		void findSCC(vector<int>& scc) const {
 			auto& nodeList = graph.backtrackStable->nodeList;
@@ -408,20 +358,12 @@ class FlowGraphAlgorithms {
 					findOneSCC(src, ids, scc, localVisited, onLocalVisited, &id, &sccCount);
 				}
 			}
-			
-			/*for (unsigned int i = 0; i < graph.nodeList.size(); i++) {
-				cout << "Node " << i << " in SCC " << low[i] << "\n";
-			}*/
 		}
-	
-		// In addition to pruning, hold the affected Val->Var edges in updatedEdges
-		// so we can update the residual graph later accordingly. We do not update
-		// it here, because in case the home space fails due to another
-		// constraint, or if we find a solution from this pruning, we would have 
-		// updated it for no reason, as we wouldn't need to re-check the validity of 
-		// costgcc, the search would backtrack to previous instances.
-		// The reason why 
 
+		// Algorithm based on "W. Kocjan, P. Kreuger, Filtering Methods for 
+		// Symmetric Cardinality Constraint, Integration of AI and OR
+		// Techniques in Constraint Programming for Combinatorial Optimization 
+		// Problems, First International Conference, CPAIOR 2004"	
 		ExecStatus performArcConsistency(Space& home, ViewArray<Set::SetView>& x) {
 			// Edge nodes, along with the actual value the src node
 			// corresponds to 
@@ -440,7 +382,7 @@ class FlowGraphAlgorithms {
 			findSCC(scc);
 			auto& nodeList = graph.backtrackStable->nodeList;
 
-			for (int n = graph.totalVarNodes; n < graph.sNode(); n++) {
+			for (int n = graph.backtrackStable->totalVarNodes; n < graph.sNode(); n++) {
 				for (int i = 0; i < graph.edgeListSize[n]; i++) {
 					auto& e = nodeList[n].edgeList.list[i];
 					if (!e.flow && scc[n] != scc[e.destNode]) {
