@@ -10,7 +10,7 @@
 using namespace Gecode;
 using namespace std;
 
-void symmetricGCC(Space& home, const SetVarArgs& vars, const IntArgs& vals,
+void countSet(Space& home, const SetVarArgs& vars, const IntArgs& vals,
 								const IntArgs& lowerValBounds, const IntArgs& upperValBounds,
 								const IntArgs& lowerVarBounds, const IntArgs& upperVarBounds,
 								IntPropLevel ipl) {

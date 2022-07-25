@@ -29,7 +29,7 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 				x[i] = SetVar(*this, IntSet::empty, domain[i], lowerVarBounds[i], 
 										  upperVarBounds[i]);
 			}
-			symmetricGCC(*this, x, vals, lowerValBounds, upperValBounds, 
+			countSet(*this, x, vals, lowerValBounds, upperValBounds, 
 										lowerVarBounds, upperVarBounds, opt.ipl());
 			branch(*this, x, simpleBranchVar, simpleBranchVal);
 			break;
