@@ -41,7 +41,9 @@ FlowGraph::FlowGraph(
 	// Insert variable nodes and var->T edges
 	for (int x = 0; x < totalVarNodes; x++) {
 		nodeList.push_back(Node(1));
-		NormalEdge e(tNode, lowerVarBounds[x], upperVarBounds[x]);
+		int tightestLowerBound = max(lowerVarBounds[x], (int) vars[x].cardMin());
+		int tightestUpperBound = min(upperVarBounds[x], (int) vars[x].cardMax());
+		NormalEdge e(tNode, tightestLowerBound, tightestUpperBound);
 		nodeList.back().edgeList.pushVal(e, &edgeListSize[x]);
 	}
 
