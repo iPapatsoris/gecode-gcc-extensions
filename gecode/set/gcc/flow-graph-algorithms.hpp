@@ -276,17 +276,26 @@ class FlowGraphAlgorithms {
 			return true;
 		}
 
-		// Iterative Tarjan's algorithm to find SCC	
-		void findOneSCC(int src, vector<int>& ids, vector<int>& low, 
-										stack<int>& localVisited, vector<bool>& onLocalVisited, 
-										int* id, int* sccCount) const {
+		// Iterative Tarjan's algorithm to find SCC.
+		// As scc ids are increased, keep the maxValue so as to update 
+		// the certificate at the end of algorithm.	
+		void findOneSCC(int src, stack<int>& localVisited, int* id,
+									  int* sccCount, int* maxValue) const {
 			stack<pair<int, int>> frontier;
 			auto& nodeList = graph.backtrackStable->nodeList;
+			auto& onLocalVisited = graph.backtrackStable->scc.onLocalVisited;
+			auto& ids = graph.backtrackStable->scc.ids;
+			auto& low = graph.backtrackStable->scc.scc;
+			int certificate = graph.backtrackStable->scc.certificate;
+
 			frontier.push({src, 0});
 			localVisited.push(src);
-			onLocalVisited[src] = true;
+			onLocalVisited[src] = certificate;
 			ids[src] = low[src] = *id;
 			(*id)++;
+			if (*id > *maxValue) {
+				*maxValue = *id;
+			}
 			while (!frontier.empty()) {
 				int node = frontier.top().first;
 				int curEdgeIndex = frontier.top().second;
@@ -294,19 +303,21 @@ class FlowGraphAlgorithms {
 				int destNode; 
 				if (curEdgeIndex < (int) edges.size()) {
 					destNode = edges[curEdgeIndex].destNode;
-					if (ids[destNode] == NONE) {
+					if (ids[destNode] < certificate) {
 						// Start of recursive call here
 						localVisited.push(destNode);
-						onLocalVisited[destNode] = true;
+						onLocalVisited[destNode] = certificate;
 						ids[destNode] = low[destNode] = *id;
 						(*id)++;
+						if (*id > *maxValue) {
+							*maxValue = *id;
+						}
 						frontier.push({destNode, 0});
 					} else {
-						if (onLocalVisited[destNode]) {
+						if (onLocalVisited[destNode] >= certificate) {
 							low[node] = min(low[node], low[destNode]);
 						}
-						frontier.pop();
-						frontier.push({node, ++curEdgeIndex});
+						frontier.top() = {node, ++curEdgeIndex};
 					}
 					continue;
 				}
@@ -316,7 +327,7 @@ class FlowGraphAlgorithms {
 					while (!localVisited.empty()) {
 						int tmp = localVisited.top();
 						localVisited.pop();
-						onLocalVisited[tmp] = false;
+						onLocalVisited[tmp] = INT_MIN;
 						low[tmp] = ids[node];
 						if (tmp == node) {
 							break;
@@ -331,33 +342,31 @@ class FlowGraphAlgorithms {
 					curEdgeIndex = frontier.top().second;
 					destNode = nodeList[node].residualEdgeList[curEdgeIndex].destNode;
 					
-					if (onLocalVisited[destNode]) {
+					if (onLocalVisited[destNode] >= certificate) {
 						low[node] = min(low[node], low[destNode]);
 					}
-					
-					frontier.pop();
-					frontier.push({node, ++curEdgeIndex});
+					frontier.top() = {node, ++curEdgeIndex};
 				}
 			}
 		}
 
-		void findSCC(vector<int>& scc) const {
+		void findSCC() const {
 			auto& nodeList = graph.backtrackStable->nodeList;
-			vector<int> ids;
-			vector<bool> onLocalVisited;
 			stack<int> localVisited;
-			ids.assign(nodeList.size(), NONE);
-			scc.assign(nodeList.size(), NONE);
-			onLocalVisited.assign(nodeList.size(), false);
 
-			int id = 0;
 			int sccCount = 0;
-			
+			int certificate = graph.backtrackStable->scc.certificate;
+			int maxValue = INT_MIN;	
+			// Start naming scc ids after certificate. Lower ids are from previous
+			// iterations and considered invalid
+			int id = certificate;
 			for (unsigned int src = 0; src < nodeList.size(); src++) {
-				if (ids[src] == NONE) {
-					findOneSCC(src, ids, scc, localVisited, onLocalVisited, &id, &sccCount);
+				if (graph.backtrackStable->scc.ids[src] < certificate) {
+					findOneSCC(src, localVisited, &id, &sccCount, &maxValue);
 				}
 			}
+			// Update certificate to "clear" structures instantly
+			graph.backtrackStable->scc.certificate = maxValue + 1;
 		}
 
 		// Algorithm based on "W. Kocjan, P. Kreuger, Filtering Methods for 
@@ -378,9 +387,9 @@ class FlowGraphAlgorithms {
 			// Hold the edges we decide to prune during arc consistency
 			// We do the actual pruning at the end of this function's iterations
 			vector<EdgeWithVal> edgesToPrune;
-			vector<int> scc;
-			findSCC(scc);
+			findSCC();
 			auto& nodeList = graph.backtrackStable->nodeList;
+			auto& scc = graph.backtrackStable->scc.scc;
 
 			for (int n = graph.backtrackStable->totalVarNodes; n < graph.sNode(); n++) {
 				for (int i = 0; i < graph.edgeListSize[n]; i++) {

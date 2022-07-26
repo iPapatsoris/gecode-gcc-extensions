@@ -28,6 +28,11 @@ FlowGraph::FlowGraph(
 	auto& nodeList = backtrackStable->nodeList;
 	auto& valToNode = backtrackStable->valToNode;
 	auto& nodeToVal = backtrackStable->nodeToVal;
+	const int certificate = INT_MIN;
+	backtrackStable->scc.certificate = certificate;
+	backtrackStable->scc.ids.assign(totalNodes, certificate);
+	backtrackStable->scc.scc.assign(totalNodes, certificate);
+	backtrackStable->scc.onLocalVisited.assign(totalNodes, certificate);
 	nodeList.reserve(totalNodes);
 
 	for (unsigned int var = 0; var < varToVals.size(); var++) {

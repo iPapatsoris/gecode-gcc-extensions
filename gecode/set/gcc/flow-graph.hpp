@@ -52,7 +52,22 @@ class FlowGraph {
 			// because the graph we hold has Val->Var edges and not the inverse.
 			vector<BtVector<int>> varToVals;
 			int totalVarNodes; 
+			/**
+			 * Holds necessary structures for computing Strongly Connected Components.
+			 * We maintain a certificate integer to mark active elements. During each 
+			 * iteration, instead of clearing the structures, we update the 
+			 * certificate to be larger than the maximum element found. This way
+			 * all elements from previous iterations are invalidated instantly.  
+			 * We compare with the certificate within the algorithm. 
+			 */
+			struct SCC {
+				vector<int> scc;
+				vector<int> ids;
+				vector<int> onLocalVisited;
+				int certificate;
+			};					
 
+			SCC scc;
 			BacktrackStableContent() {}
 		};
 
