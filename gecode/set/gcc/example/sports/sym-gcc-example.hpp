@@ -40,17 +40,22 @@ public:
 	}
 	void print(ostream& os) const {
 		os << "\tSolution: \n";
-		for (int i = 0; i < periods; i++) {
-			for (int j = 0; j < weeks; j++) {
-				if (model == MODEL_COUNT) {
-					cout << y[weeks*i + j] << " ";
-				} else if (model == MODEL_SINGLE) {
+		if (model == MODEL_SINGLE) {
+			for (int i = 0; i < periods; i++) {
+				for (int j = 0; j < weeks; j++) {
 					cout << x[weeks*i + j] << " ";
 				}
+				cout << "\n";
 			}
-			cout << "\n";
+		} else if (model == MODEL_COUNT) {
+			for (int i = 0; i < periods; i++) {
+				for (int j = 0; j < weeks * 2; j += 2) {
+					cout << y[weeks*2*i + j] << "v" << y[weeks*2*i + j + 1] << " ";
+				}
+				cout << "\n";
+			}
 		}
-	}
+	}	
 };
 
 #endif

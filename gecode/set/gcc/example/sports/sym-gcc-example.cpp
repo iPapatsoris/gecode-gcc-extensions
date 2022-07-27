@@ -12,9 +12,14 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 	int teams = atoi(opt.instance());
 	periods = teams / 2;
 	weeks = teams - 1;
-	int varsCount = weeks * periods;
-	int valsCount = teams;
 
+	x = SetVarArray(*this, 0);
+	y = IntVarArray(*this, 0);
+
+	auto simpleBranchVar = SET_VAR_DEGREE_MIN();
+	auto simpleBranchVal = SET_VAL_MIN_EXC();
+
+	int valsCount = teams;
 	for (int v = 0; v < valsCount; v++) {
 		vals << v;
 		lowerValBoundsWeek << 1;
@@ -23,24 +28,20 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 		upperValBoundsPeriod << 2;
 	}
 
-	for (int w = 0; w < weeks; w++) {
-		lowerVarBoundsPeriod << 2;
-		upperVarBoundsPeriod << 2;
-	}
-
-	for (int p = 0; p < periods; p++) {
-		lowerVarBoundsWeek << 2;
-		upperVarBoundsWeek << 2;
-	}
-
-	x = SetVarArray(*this, 0);
-	y = IntVarArray(*this, 0);
-
-	auto simpleBranchVar = SET_VAR_DEGREE_MIN();
-	auto simpleBranchVal = SET_VAL_MIN_EXC();
-
 	switch(opt.model()) {
 		case MODEL_SINGLE: {
+			int varsCount = weeks * periods;
+
+
+			for (int w = 0; w < weeks; w++) {
+				lowerVarBoundsPeriod << 2;
+				upperVarBoundsPeriod << 2;
+			}
+
+			for (int p = 0; p < periods; p++) {
+				lowerVarBoundsWeek << 2;
+				upperVarBoundsWeek << 2;
+			}
 			x = SetVarArray(*this, varsCount);
 			for (int i = 0; i < varsCount; i++) {
 				x[i] = SetVar(*this, IntSet::empty, IntSet(0, teams - 1), 2, 2);
@@ -63,28 +64,44 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 			break;
 		}
 		case MODEL_COUNT: {
-			// Boolean flags for each variable-value assignment. Needed for cost
-			y = IntVarArray(*this, varsCount * vals.size(), 0, 1);
-			Matrix<IntVarArray> m(y, vals.size(), varsCount);
-			// Assign 0 to the illegal domain values
-			for (int i = 0; i < m.height(); i++) {
-				for (int j = 0; j < m.width(); j++) {
-					if (!domain[i].in(vals[j])) {
-						dom(*this, m(j,i), 0, 0);
-					}
+			int varsCount = weeks * periods * 2;
+
+			IntSetArgs boundsWeek;
+			for (int i = 0; i < valsCount; i++) {
+				boundsWeek << IntSet(lowerValBoundsWeek[i], upperValBoundsWeek[i]);
+			}
+
+			IntSetArgs boundsPeriod;
+			for (int i = 0; i < valsCount; i++) {
+				boundsPeriod << IntSet(lowerValBoundsPeriod[i], upperValBoundsPeriod[i]);
+			}
+
+			y = IntVarArray(*this, varsCount);
+			for (int i = 0; i < varsCount; i++) {
+				y[i] = IntVar(*this, 0, teams - 1);
+			}
+			Matrix<IntVarArray> m(y, weeks * 2, periods);
+			for (int w = 0; w < weeks * 2; w += 2) {
+				count(*this, m.col(w) + m.col(w+1), boundsWeek, vals, opt.ipl()); 
+			}
+			for (int p = 0; p < periods; p++) {
+				count(*this, m.row(p), boundsPeriod, vals, opt.ipl()); 
+			}
+			for (int i = 0; i < varsCount - 2; i += 2) {
+				for (int j = i + 2; j < varsCount; j += 2) {
+					BoolVar tmp1(*this, 0, 1);
+					BoolVar tmp2(*this, 0, 1);
+					BoolVar tmp3(*this, 0, 1);
+					BoolVar tmp4(*this, 0, 1);
+					rel(*this, y[i], IRT_NQ, y[j], tmp1, opt.ipl());
+					rel(*this, y[i + 1], IRT_NQ, y[j + 1], tmp2, opt.ipl());
+					rel(*this, y[i], IRT_NQ, y[j + 1], tmp3, opt.ipl());
+					rel(*this, y[i + 1], IRT_NQ, y[j], tmp4, opt.ipl());
+					rel(*this, tmp1, BOT_OR, tmp2, 1, opt.ipl());
+					rel(*this, tmp3, BOT_OR, tmp4, 1, opt.ipl());
 				}
 			}
-			for (int i = 0; i < m.height(); i++) {
-				// count(*this, m.row(i), 1, IRT_GQ, lowerVarBounds[i], opt.ipl());
-				// count(*this, m.row(i), 1, IRT_LQ, upperVarBounds[i], opt.ipl());
-				//count(*this, m.row(i), varBounds[i], 1);
-			}
-			for (int j = 0; j < m.width(); j++) {
-				// count(*this, m.col(j), 1, IRT_GQ, lowerValBounds[j], opt.ipl());
-				// count(*this, m.col(j), 1, IRT_LQ, upperValBounds[j], opt.ipl());
-				//count(*this, m.col(j), bounds, ones);
-			}
-			branch(*this, y, INT_VAL_MAX());
+			branch(*this, y, INT_VAR_SIZE_MIN(), INT_VAL_MAX());
 			break;
 		}
 	}
