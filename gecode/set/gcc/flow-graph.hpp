@@ -2,7 +2,6 @@
 #define H_FLOW_GRAPH
 
 #include "node.hpp"
-#include "BestBranch.hpp"
 #include "util.hpp"
 #include "bt-vector.hpp"
 #include <iostream>
