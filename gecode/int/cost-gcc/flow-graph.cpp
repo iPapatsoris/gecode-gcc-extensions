@@ -85,7 +85,9 @@ FlowGraph::FlowGraph(
 		auto& edges = node.edgeList;
 		for (int e = 0; e < edgeListSize[i]; e++) {
 			auto& edge = (edges.list)[e];
-			node.residualEdgeList.push_back(ResidualEdge(edge));
+			if (edge.upperBound > 0) {
+				node.residualEdgeList.push_back(ResidualEdge(edge));
+			}
 		}
 	}
 }
