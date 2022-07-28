@@ -90,14 +90,7 @@ FlowGraph::FlowGraph(
 
 																		
 	// Create residual graph
-	for (unsigned int i = 0; i < nodeList.size(); i++) {
-		auto& node = nodeList[i];
-		auto& edges = node.edgeList;
-		for (int e = 0; e < edgeListSize[i]; e++) {
-			auto& edge = (edges.list)[e];
-			node.residualEdgeList.push_back(ResidualEdge(edge));
-		}
-	}
+	buildResidualGraph(vars);
 }
 
 // Update graph state to match variable X domain pruning/assignment.
@@ -156,6 +149,42 @@ bool FlowGraph::updatePrunedValues(Set::SetView x, int xIndex) {
 	}
 
 	return isFeasible;																		 
+}
+
+// Clear residual graph and build it again 
+void FlowGraph::buildResidualGraph(const ViewArray<Set::SetView>& x) {
+	auto& nodeList = backtrackStable->nodeList;
+	for (unsigned int i = 0; i < nodeList.size(); i++) {
+		nodeList[i].residualEdgeList.clear();
+	}
+
+	for (unsigned int i = 0; i < nodeList.size(); i++) {
+		auto& node = nodeList[i];
+		for (int j = 0; j < edgeListSize[i]; j++) {
+			auto& edge = (node.edgeList.list)[j];
+			int lowerBound = edge.lowerBound;
+			int upperBound = edge.upperBound;
+			if (edge.destNode == tNode()) {
+				lowerBound = x[i].cardMin();
+				upperBound = x[i].cardMax();
+			}	else if (edge.destNode < backtrackStable->totalVarNodes 
+									&& x[edge.destNode].contains(
+									backtrackStable->nodeToVal[i])) {
+				lowerBound = 1; 
+			}																					 
+			if (edge.flow < upperBound) {
+				node.residualEdgeList.push_back(ResidualEdge(
+																					edge.destNode, 
+																					upperBound - edge.flow));
+			}
+			if (edge.flow > lowerBound) {
+				nodeList[edge.destNode].residualEdgeList.push_back(
+																					ResidualEdge(
+																						i, 
+																						edge.flow - lowerBound));
+			}
+		}
+	}
 }
 
 void FlowGraph::print() const {

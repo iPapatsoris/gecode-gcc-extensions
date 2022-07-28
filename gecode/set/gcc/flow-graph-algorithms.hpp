@@ -70,42 +70,6 @@ class FlowGraphAlgorithms {
 			}
 		}
 
-		// Clear residual graph and build it again 
-		void buildResidualGraph(const ViewArray<Set::SetView>& x) {
-			auto& nodeList = graph.backtrackStable->nodeList;
-			for (unsigned int i = 0; i < nodeList.size(); i++) {
-				nodeList[i].residualEdgeList.clear();
-			}
-
-			for (unsigned int i = 0; i < nodeList.size(); i++) {
-				auto& node = nodeList[i];
-				for (int j = 0; j < graph.edgeListSize[i]; j++) {
-					auto& edge = (node.edgeList.list)[j];
-					int lowerBound = edge.lowerBound;
-					int upperBound = edge.upperBound;
-					if (edge.destNode == graph.tNode()) {
-						lowerBound = x[i].cardMin();
-						upperBound = x[i].cardMax();
-					}	else if (edge.destNode < graph.backtrackStable->totalVarNodes 
-										 && x[edge.destNode].contains(
-										 graph.backtrackStable->nodeToVal[i])) {
-						lowerBound = 1; 
-					}																					 
-					if (edge.flow < upperBound) {
-						node.residualEdgeList.push_back(ResidualEdge(
-																						  edge.destNode, 
-																						  upperBound - edge.flow));
-					}
-					if (edge.flow > lowerBound) {
-						nodeList[edge.destNode].residualEdgeList.push_back(
-																						 ResidualEdge(
-																							 i, 
-																							 edge.flow - lowerBound));
-					}
-				}
-			}
-		}
-
 		void sendFlow(const ViewArray<Set::SetView>& x, const EdgeInfo& violation,
 								  vector<int>& shortestPath) {
 			// Send flow through the path edges and update residual graph
@@ -222,7 +186,7 @@ class FlowGraphAlgorithms {
 		// Repair the flow
 		bool updateFlow(const ViewArray<Set::SetView>& x) {
 			vector<NormalEdge*> edgeReference;
-			buildResidualGraph(x);
+			graph.buildResidualGraph(x);
 			// Repair upper bound violations
 			for (auto& e: graph.updatedEdges) {
 				auto res = graph.getEdge(e.src, e.dest);

@@ -189,7 +189,7 @@ class FlowGraph {
 		// If a variable is assigned but has no flow, mark flow as infeasible. 
 		// Returns whether the current flow is still feasible or not.
 		bool updatePrunedValues(Set::SetView x, int xIndex); 
-
+		void buildResidualGraph(const ViewArray<Set::SetView>& x); 
 		void print() const;
 		void printResidual() const; 
 		void printBounds(int x) const;

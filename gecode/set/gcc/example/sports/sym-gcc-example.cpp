@@ -32,7 +32,6 @@ SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt)
 		case MODEL_SINGLE: {
 			int varsCount = weeks * periods;
 
-
 			for (int w = 0; w < weeks; w++) {
 				lowerVarBoundsPeriod << 2;
 				upperVarBoundsPeriod << 2;
