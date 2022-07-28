@@ -57,7 +57,7 @@ protected:
 
 public:
 	CostGcc(Space& home, ViewArray<Int::IntView> x, FlowGraph graph, 
-					const vector<EdgeInfo>& updatedEdges, BestBranch* bestBranch, IntPropLevel ipl, 
+				  BestBranch* bestBranch, IntPropLevel ipl, 
 					Int::IntView costUpperBound)
 			: NaryPropagator(home, x), c(home), costUpperBound(costUpperBound), 
 				graph(graph), usingBestBranch(bestBranch != NULL), ipl(ipl) {
@@ -89,13 +89,12 @@ public:
 			return ES_FAILED;
 		}
 		graph.addTResidualEdges();
-		vector<EdgeInfo> updatedEdges;
 		if (ipl == IPL_DOM && graphAlgorithms.performArcConsistency(home, vars, 
 																										 costUpperBound) != ES_OK) {
 				return ES_FAILED;
 		}
 
-		(void)new (home) CostGcc(home, vars, graph, updatedEdges, bestBranch, ipl, 
+		(void)new (home) CostGcc(home, vars, graph, bestBranch, ipl, 
 														 costUpperBound);
 		return ES_OK;
 	}
