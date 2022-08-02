@@ -5,7 +5,9 @@ FLAGS	= -fcx-limited-range -fno-signaling-nans -fno-rounding-math -ffinite-math-
 SRCFLAGS	= $(FLAGS) -DQT_NO_DEBUG 
 LIBS	= -lgecodedriver -lgecodegist -lgecodesearch -lgecodeminimodel -lgecodeint -lgecodekernel -lgecodesupport -lpthread 
 
-all: $(OBJS) $(HEADER)
+all: cost-gcc gendata
+
+cost-gcc: $(OBJS) $(HEADER)
 	$(CC) -o cost-gcc $(OBJS) -L. -I. $(FLAGS) $(LIBS)
 
 cost-gcc-example.o: cost-gcc-example.cpp
@@ -17,8 +19,11 @@ read-input.o: read-input.cpp
 flow-graph.o: ../flow-graph.cpp
 	$(CC) $(SRCFLAGS) -c -o flow-graph.o ../flow-graph.cpp
 
+gendata: gendata.cpp
+	g++ gendata.cpp -o gendata
+
 clean:
-	rm -f cost-gcc $(OBJS)
+	rm -f cost-gcc gendata $(OBJS)
 
 count:
 	wc -l *.cpp *.hpp ../*.cpp ../*.hpp 
