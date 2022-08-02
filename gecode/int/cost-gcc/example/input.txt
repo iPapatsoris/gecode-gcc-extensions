@@ -1,0 +1,32 @@
+# Number of variables
+7 
+
+# Cost upper bound
+12
+
+# Domains
+0,1 
+0,1
+0,1
+0,1
+2
+3
+3,4 
+
+# Values
+0,1,2,3,4
+
+# Lower bounds
+1,1,1,0,0
+
+# Upper bounds
+2,2,1,2,2
+
+# Costs
+1,4,0,0,0
+1,4,0,0,0 
+3,1,0,0,0 
+3,1,0,0,0
+0,0,1,0,0
+0,0,0,1,0
+0,0,0,1,1
