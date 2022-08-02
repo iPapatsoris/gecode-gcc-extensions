@@ -175,7 +175,7 @@ class FlowGraph {
 			if (backtrackStable->firstTimeValidCost && backtrackStable->flowCost <= 
 															  costUpperBound.max()) {
 				backtrackStable->firstTimeValidCost = false;
-				cout << backtrackStable->flowCost << "\n";
+				// cout << backtrackStable->flowCost << "\n";
 			}
 			return backtrackStable->flowCost <= costUpperBound.max();
 		}
