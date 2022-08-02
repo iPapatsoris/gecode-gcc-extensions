@@ -1,9 +1,6 @@
 #include "sym-gcc-example.hpp"
 #include "../sym-gcc-post.hpp"
 
-#include "BestBranch.hpp"
-#include "brancher.hpp"
-
 using namespace std;
 
 SymmetricGccExample::SymmetricGccExample(const InstanceOptions& opt) 
