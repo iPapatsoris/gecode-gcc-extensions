@@ -1,7 +1,6 @@
 *~
 config.log
 config.status
-Makefile
 doxygen.conf
 doxygen.log
 doxygen.hh
